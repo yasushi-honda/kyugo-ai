@@ -77,15 +77,15 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("auto-provisions staff document on first login", async () => {
+  it("auto-provisions staff document on first login (idempotent create)", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "new-uid",
       email: "new@example.com",
       name: "New User",
     } as never);
 
-    const mockSet = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "auto-staff-001", set: mockSet });
+    const mockCreate = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "new-uid", create: mockCreate });
     const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
     const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
     const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
@@ -99,7 +99,8 @@ describe("requireAuth middleware", () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockDoc).toHaveBeenCalledWith("new-uid");
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
       firebaseUid: "new-uid",
       email: "new@example.com",
       role: "staff",
@@ -108,7 +109,43 @@ describe("requireAuth middleware", () => {
       uid: "new-uid",
       email: "new@example.com",
       role: "staff",
-      staffId: "auto-staff-001",
+      staffId: "new-uid",
+    });
+  });
+
+  it("handles concurrent auto-provision (ALREADY_EXISTS)", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "race-uid",
+      email: "race@example.com",
+    } as never);
+
+    const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
+    alreadyExistsErr.code = 6; // gRPC ALREADY_EXISTS
+    const mockCreate = vi.fn().mockRejectedValue(alreadyExistsErr);
+    const mockDocGet = vi.fn().mockResolvedValue({
+      id: "race-uid",
+      data: () => ({ role: "staff", email: "race@example.com", name: "" }),
+    });
+    const mockDoc = vi.fn().mockReturnValue({ id: "race-uid", create: mockCreate, get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockQueryGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer race-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(mockDocGet).toHaveBeenCalled();
+    expect(req.user).toEqual({
+      uid: "race-uid",
+      email: "race@example.com",
+      role: "staff",
+      staffId: "race-uid",
     });
   });
 
