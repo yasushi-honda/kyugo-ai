@@ -20,7 +20,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       .get();
 
     let staffId: string;
-    let role: string;
+    let role: "admin" | "staff";
 
     if (staffQuery.empty) {
       // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
@@ -38,7 +38,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       const staffDoc = staffQuery.docs[0];
       const staffData = staffDoc.data();
       staffId = staffDoc.id;
-      role = staffData.role ?? "staff";
+      role = (staffData.role as "admin" | "staff") ?? "staff";
     }
 
     req.user = {
