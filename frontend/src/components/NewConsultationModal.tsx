@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   caseId: string;
@@ -10,9 +11,9 @@ interface Props {
 type Mode = "text" | "audio";
 
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
+  const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
   const [form, setForm] = useState({
-    staffId: "staff-001",
     content: "",
     consultationType: "counter",
     context: "",
@@ -31,7 +32,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     try {
       if (mode === "text") {
         await api.createConsultation(caseId, {
-          staffId: form.staffId,
+          staffId: user?.uid ?? "",
           content: form.content,
           consultationType: form.consultationType,
         });
@@ -39,7 +40,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
       } else if (audioFile) {
         const formData = new FormData();
         formData.append("audio", audioFile);
-        formData.append("staffId", form.staffId);
+        formData.append("staffId", user?.uid ?? "");
         formData.append("consultationType", form.consultationType);
         formData.append("context", form.context);
 
@@ -136,12 +137,8 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
           <div style={{ display: "flex", gap: "var(--space-4)" }}>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">職員ID</label>
-              <input
-                className="form-input"
-                value={form.staffId}
-                onChange={(e) => setForm({ ...form, staffId: e.target.value })}
-              />
+              <label className="form-label">職員</label>
+              <input className="form-input" value={user?.email ?? ""} disabled />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">相談種別</label>

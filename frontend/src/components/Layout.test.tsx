@@ -3,14 +3,17 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Layout } from "./Layout";
+import { TestAuthWrapper } from "../test-utils";
 
 function renderLayout(path = "/") {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Layout>
-        <div data-testid="child-content">テストコンテンツ</div>
-      </Layout>
-    </MemoryRouter>,
+    <TestAuthWrapper>
+      <MemoryRouter initialEntries={[path]}>
+        <Layout>
+          <div data-testid="child-content">テストコンテンツ</div>
+        </Layout>
+      </MemoryRouter>
+    </TestAuthWrapper>,
   );
 }
 
@@ -42,10 +45,11 @@ describe("Layout", () => {
     expect(navItem).toHaveClass("active");
   });
 
-  it("renders footer with version info", () => {
+  it("renders logout button and user email in footer", () => {
     renderLayout();
 
-    expect(screen.getByText(/福祉相談業務AI支援システム/)).toBeInTheDocument();
+    expect(screen.getByText("test@example.com")).toBeInTheDocument();
+    expect(screen.getByText("ログアウト")).toBeInTheDocument();
   });
 
   it("navigates when nav item is clicked", async () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewConsultationModal } from "./NewConsultationModal";
+import { TestAuthWrapper } from "../test-utils";
 
 vi.mock("../api", () => ({
   api: {
@@ -24,7 +25,7 @@ function renderModal(props?: Partial<{ caseId: string; onClose: () => void; onCr
   return {
     onClose,
     onCreated,
-    ...render(<NewConsultationModal caseId={caseId} onClose={onClose} onCreated={onCreated} />),
+    ...render(<TestAuthWrapper><NewConsultationModal caseId={caseId} onClose={onClose} onCreated={onCreated} /></TestAuthWrapper>),
   };
 }
 
@@ -67,7 +68,7 @@ describe("NewConsultationModal", () => {
     vi.mocked(api.createConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
-      staffId: "staff-001",
+      staffId: "test-uid",
       content: "テスト内容",
       transcript: "",
       summary: "",
@@ -84,7 +85,7 @@ describe("NewConsultationModal", () => {
     await user.click(screen.getByText("相談を記録"));
 
     expect(api.createConsultation).toHaveBeenCalledWith("case-1", {
-      staffId: "staff-001",
+      staffId: "test-uid",
       content: "テスト内容",
       consultationType: "counter",
     });
@@ -98,7 +99,7 @@ describe("NewConsultationModal", () => {
     vi.mocked(api.createAudioConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
-      staffId: "staff-001",
+      staffId: "test-uid",
       content: "",
       transcript: "音声のテキスト",
       summary: "AI要約テスト",

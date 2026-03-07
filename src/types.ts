@@ -1,5 +1,13 @@
 import { Timestamp } from "@google-cloud/firestore";
 
+// 認証ユーザー情報（Firebase IDトークンから取得）
+export interface AuthUser {
+  uid: string;
+  email: string;
+  role: "admin" | "staff";
+  staffId: string;
+}
+
 // ケースファイル（要支援者単位）
 export interface Case {
   id?: string;

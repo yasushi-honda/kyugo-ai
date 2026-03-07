@@ -32,7 +32,10 @@ describe("api.listCases", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/cases?staffId=staff-001",
       expect.objectContaining({
-        headers: expect.objectContaining({ "Content-Type": "application/json" }),
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          Authorization: "Bearer mock-token",
+        }),
       }),
     );
     expect(result).toEqual(cases);

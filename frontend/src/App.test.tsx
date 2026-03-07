@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
@@ -15,14 +16,16 @@ vi.mock("./api", () => ({
 
 function renderApp(path = "/") {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/cases/:id" element={<CaseDetail />} />
-        </Routes>
-      </Layout>
-    </MemoryRouter>,
+    <AuthProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/cases/:id" element={<CaseDetail />} />
+          </Routes>
+        </Layout>
+      </MemoryRouter>
+    </AuthProvider>,
   );
 }
 
