@@ -10,6 +10,9 @@ vi.mock("./config.js", () => ({
   generativeModel: {
     generateContent: vi.fn(),
   },
+  firebaseAuth: {
+    verifyIdToken: vi.fn(),
+  },
   PROJECT_ID: "test-project",
   REGION: "asia-northeast1",
   MODEL: "gemini-2.5-flash",
@@ -41,6 +44,7 @@ vi.mock("./services/ai.js", () => ({
 
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
+import { requireAuth } from "./middleware/auth.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
@@ -51,6 +55,12 @@ const app = express();
 app.use(express.json());
 app.use("/api/cases", casesRouter);
 app.use("/api/support-menus", supportMenusRouter);
+
+// App with auth middleware for integration tests
+const authApp = express();
+authApp.use(express.json());
+authApp.use("/api/cases", requireAuth, casesRouter);
+authApp.use("/api/support-menus", requireAuth, supportMenusRouter);
 
 const NOW = Timestamp.now();
 const MOCK_CASE = {
@@ -384,6 +394,30 @@ describe("GET /api/support-menus", () => {
     const res = await request(app).get("/api/support-menus?category=住居支援");
     expect(res.status).toBe(200);
     expect(supportMenuRepo.listSupportMenus).toHaveBeenCalledWith("住居支援");
+  });
+});
+
+describe("API authentication integration", () => {
+  it("returns 401 on /api/cases without Authorization header", async () => {
+    const res = await request(authApp).get("/api/cases?staffId=staff-1");
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Authorization header with Bearer token is required");
+  });
+
+  it("returns 401 on /api/support-menus without Authorization header", async () => {
+    const res = await request(authApp).get("/api/support-menus");
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Authorization header with Bearer token is required");
+  });
+
+  it("returns 401 on POST /api/cases without Authorization header", async () => {
+    const res = await request(authApp).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "1990-01-01",
+      assignedStaffId: "staff-1",
+    });
+    expect(res.status).toBe(401);
   });
 });
 

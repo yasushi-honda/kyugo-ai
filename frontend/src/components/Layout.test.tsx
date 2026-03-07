@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Layout } from "./Layout";
 import { TestAuthWrapper } from "../test-utils";
+import { signOut } from "firebase/auth";
 
 function renderLayout(path = "/") {
   return render(
@@ -50,6 +51,15 @@ describe("Layout", () => {
 
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(screen.getByText("ログアウト")).toBeInTheDocument();
+  });
+
+  it("calls signOut when logout button is clicked", async () => {
+    renderLayout();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("ログアウト"));
+
+    expect(signOut).toHaveBeenCalled();
   });
 
   it("navigates when nav item is clicked", async () => {
