@@ -1,5 +1,13 @@
-# Build stage
-FROM node:22-slim AS build
+# Frontend build stage
+FROM node:22-slim AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
+
+# Backend build stage
+FROM node:22-slim AS backend-build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -13,7 +21,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-COPY --from=build /app/dist/ dist/
+COPY --from=backend-build /app/dist/ dist/
+COPY --from=frontend-build /app/frontend/dist/ frontend/dist/
 EXPOSE 8080
 USER node
 CMD ["node", "dist/index.js"]
