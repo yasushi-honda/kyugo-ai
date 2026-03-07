@@ -1,6 +1,6 @@
 # ADR-002: セキュリティアーキテクチャ
 
-## ステータス: 承認済み
+## ステータス: 改訂済み（v2）
 
 ## コンテキスト
 
@@ -15,9 +15,30 @@
 | 層 | 方式 | 詳細 |
 |---|------|------|
 | CI/CD → GCP | Workload Identity Federation | GitHub Actions OIDC。SAキー不使用 |
-| ユーザー → アプリ | Firebase Authentication | メール+パスワード or Google SSO |
-| アプリ → Firestore | Firestore Security Rules | ロールベースアクセス制御 |
+| ユーザー → アプリ | Firebase Authentication | Google SSO |
+| **アプリ → API（主防御線）** | **Express認可ミドルウェア** | **ロールベース + リソース所有権チェック** |
+| アプリ → Firestore | Firestore Security Rules | 二重防御（サーバー側認可の補完） |
 | アプリ → Vertex AI | IAMサービスアカウント | aiplatform.user ロール（最小権限） |
+
+#### 認可モデル
+
+| ロール | ケース一覧 | ケース詳細 | ケース操作 | 相談記録 |
+|--------|-----------|-----------|-----------|---------|
+| admin | 全件 | 全件 | 全件 | 全件 |
+| staff | 担当のみ | 担当のみ | 担当のみ | 担当ケースのみ |
+
+**実装方式:**
+- Express ミドルウェア `requireAuth`（認証）+ `requireCaseAccess`（認可）の2段階
+- POST系エンドポイントは `req.user.staffId` を強制使用（クライアント入力を信用しない）
+- GET/PATCH系はケースの `assignedStaffId` と `req.user.staffId` を照合
+
+#### Firestore Security Rules の位置づけ
+
+サーバーは `@google-cloud/firestore`（Admin SDK）でFirestoreにアクセスするため、
+Security Rules はバイパスされる。Rules は以下の目的で維持する:
+- クライアントSDK直接アクセスの防止（フォールバック）
+- サブコレクション構造（`/cases/{caseId}/consultations`）の反映
+- 認証チェック（`request.auth != null`）の二重防御
 
 ### 2. データ保護
 
@@ -47,6 +68,14 @@
 ## 結果
 
 - SAキーレス運用によりクレデンシャル漏洩リスクをゼロに
-- Firestoreルールによる行レベルのアクセス制御
+- **Express認可ミドルウェアによるリソースレベルのアクセス制御（主防御線）**
+- Firestore Security Rules による二重防御
 - 日本リージョン限定によるデータ主権の確保
 - 段階的なセキュリティ強化パス（dev → staging → prod）
+
+## 変更履歴
+
+| 日付 | 変更内容 |
+|------|---------|
+| 初版 | Firestore Rules を認可の主防御線として設計 |
+| v2 (2026-03-08) | Express認可ミドルウェアを主防御線に変更。Firestore Rules は二重防御に。サブコレクション構造に合わせてRules更新 |

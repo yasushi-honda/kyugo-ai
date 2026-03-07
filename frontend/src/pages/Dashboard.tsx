@@ -26,7 +26,7 @@ export function Dashboard() {
     if (!userInfo) return;
     setLoading(true);
     try {
-      const data = await api.listCases(userInfo.staffId);
+      const data = await api.listCases();
       setCases(data);
     } catch (err) {
       console.error("Failed to load cases:", err);

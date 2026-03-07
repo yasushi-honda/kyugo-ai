@@ -11,7 +11,7 @@ interface Props {
 type Mode = "text" | "audio";
 
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
-  const { user, userInfo } = useAuth();
+  const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
   const [form, setForm] = useState({
     content: "",
@@ -32,7 +32,6 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     try {
       if (mode === "text") {
         await api.createConsultation(caseId, {
-          staffId: userInfo?.staffId ?? "",
           content: form.content,
           consultationType: form.consultationType,
         });
@@ -40,7 +39,6 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
       } else if (audioFile) {
         const formData = new FormData();
         formData.append("audio", audioFile);
-        formData.append("staffId", userInfo?.staffId ?? "");
         formData.append("consultationType", form.consultationType);
         formData.append("context", form.context);
 

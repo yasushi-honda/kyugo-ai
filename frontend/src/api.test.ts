@@ -25,14 +25,14 @@ beforeEach(() => {
 });
 
 describe("api.listCases", () => {
-  it("fetches cases with staffId query parameter", async () => {
+  it("fetches cases without staffId (server determines from auth)", async () => {
     const cases = [{ id: "case-1", clientName: "山田太郎" }];
     mockFetch.mockResolvedValue(jsonResponse(cases));
 
-    const result = await api.listCases("staff-001");
+    const result = await api.listCases();
 
     expect(mockFetch).toHaveBeenCalledWith(
-      "/api/cases?staffId=staff-001",
+      "/api/cases",
       expect.objectContaining({
         headers: expect.objectContaining({
           "Content-Type": "application/json",
@@ -41,16 +41,6 @@ describe("api.listCases", () => {
       }),
     );
     expect(result).toEqual(cases);
-  });
-
-  it("encodes staffId with special characters", async () => {
-    mockFetch.mockResolvedValue(jsonResponse([]));
-    await api.listCases("staff 001");
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/cases?staffId=staff%20001",
-      expect.any(Object),
-    );
   });
 });
 
@@ -67,12 +57,11 @@ describe("api.getCase", () => {
 });
 
 describe("api.createCase", () => {
-  it("sends POST with JSON body", async () => {
+  it("sends POST with JSON body (no assignedStaffId)", async () => {
     const input = {
       clientName: "山田太郎",
       clientId: "client-001",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "staff-001",
     };
     mockFetch.mockResolvedValue(jsonResponse({ id: "case-1", ...input }));
 
@@ -100,8 +89,8 @@ describe("api.updateCaseStatus", () => {
 });
 
 describe("api.createConsultation", () => {
-  it("sends POST with consultation data", async () => {
-    const data = { staffId: "staff-001", content: "相談内容", consultationType: "counter" };
+  it("sends POST with consultation data (no staffId)", async () => {
+    const data = { content: "相談内容", consultationType: "counter" };
     mockFetch.mockResolvedValue(jsonResponse({ id: "cons-1", ...data }));
 
     await api.createConsultation("case-1", data);
@@ -145,7 +134,7 @@ describe("error handling", () => {
   it("throws Error with server error message", async () => {
     mockFetch.mockResolvedValue(errorResponse(400, { error: "Invalid input" }));
 
-    await expect(api.listCases("staff-001")).rejects.toThrow("Invalid input");
+    await expect(api.listCases()).rejects.toThrow("Invalid input");
   });
 
   it("throws Error with status text when no error field", async () => {
@@ -153,6 +142,6 @@ describe("error handling", () => {
       new Response("not json", { status: 500, statusText: "Internal Server Error" }),
     );
 
-    await expect(api.listCases("staff-001")).rejects.toThrow("Internal Server Error");
+    await expect(api.listCases()).rejects.toThrow("Internal Server Error");
   });
 });

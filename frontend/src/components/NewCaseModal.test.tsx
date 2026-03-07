@@ -77,7 +77,6 @@ describe("NewCaseModal", () => {
       clientName: "テスト太郎",
       clientId: "client-test",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "test-staff-001",
     });
 
     await vi.waitFor(() => {

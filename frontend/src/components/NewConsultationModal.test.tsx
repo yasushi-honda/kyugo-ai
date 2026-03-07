@@ -78,7 +78,6 @@ describe("NewConsultationModal", () => {
     await user.click(screen.getByText("相談を記録"));
 
     expect(api.createConsultation).toHaveBeenCalledWith("case-1", {
-      staffId: "test-staff-001",
       content: "テスト内容",
       consultationType: "counter",
     });
@@ -88,7 +87,7 @@ describe("NewConsultationModal", () => {
     });
   });
 
-  it("sends staffId from userInfo (not uid) in audio mode", async () => {
+  it("does not send staffId in audio mode (server uses req.user)", async () => {
     vi.mocked(api.createAudioConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
@@ -116,7 +115,7 @@ describe("NewConsultationModal", () => {
     });
 
     const formData = vi.mocked(api.createAudioConsultation).mock.calls[0][1] as FormData;
-    expect(formData.get("staffId")).toBe("test-staff-001");
+    expect(formData.get("staffId")).toBeNull();
   });
 
   it("shows AI result after audio submission", async () => {
