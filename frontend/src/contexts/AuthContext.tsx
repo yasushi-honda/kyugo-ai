@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   userInfo: UserInfo | null;
   loading: boolean;
+  authError: string | null;
   logout: () => Promise<void>;
   getIdToken: () => Promise<string>;
 }
@@ -17,16 +18,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      setAuthError(null);
       if (u) {
         try {
           const info = await api.getMe();
           setUserInfo(info);
-        } catch {
+        } catch (err) {
           setUserInfo(null);
+          setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
         }
       } else {
         setUserInfo(null);
@@ -44,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userInfo, loading, logout, getIdToken }}>
+    <AuthContext.Provider value={{ user, userInfo, loading, authError, logout, getIdToken }}>
       {children}
     </AuthContext.Provider>
   );

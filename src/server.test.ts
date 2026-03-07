@@ -128,6 +128,57 @@ describe("GET /api/me", () => {
     const res = await request(authApp).get("/api/me");
     expect(res.status).toBe(401);
   });
+
+  it("auto-provisions staff doc when not found in Firestore", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "uid-new",
+      email: "new@example.com",
+      name: "New User",
+    } as never);
+
+    const mockSet = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "auto-staff-001", set: mockSet });
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere, doc: mockDoc } as never);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      uid: "uid-new",
+      email: "new@example.com",
+      role: "staff",
+      staffId: "auto-staff-001",
+    });
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+      firebaseUid: "uid-new",
+      email: "new@example.com",
+      role: "staff",
+    }));
+  });
+
+  it("returns 401 when Firestore query fails", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "uid-err",
+      email: "err@example.com",
+    } as never);
+
+    const mockGet = vi.fn().mockRejectedValue(new Error("Firestore unavailable"));
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Authentication failed");
+  });
 });
 
 describe("POST /api/cases", () => {
