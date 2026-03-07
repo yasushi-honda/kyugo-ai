@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function NewCaseModal({ onClose, onCreated }: Props) {
-  const { user, userInfo } = useAuth();
+  const { user } = useAuth();
   const [form, setForm] = useState({
     clientName: "",
     clientId: "",
@@ -20,7 +20,7 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
     if (!form.clientName || !form.clientId || !form.dateOfBirth) return;
     setSubmitting(true);
     try {
-      await api.createCase({ ...form, assignedStaffId: userInfo?.staffId ?? "" });
+      await api.createCase(form);
       onCreated();
     } catch (err) {
       alert(`作成に失敗しました: ${(err as Error).message}`);

@@ -70,8 +70,8 @@ export interface UserInfo {
 export const api = {
   getMe: () => request<UserInfo>("/api/me"),
 
-  listCases: (staffId: string) =>
-    request<Case[]>(`/api/cases?staffId=${encodeURIComponent(staffId)}`),
+  listCases: () =>
+    request<Case[]>("/api/cases"),
 
   getCase: (id: string) =>
     request<Case>(`/api/cases/${id}`),
@@ -80,7 +80,6 @@ export const api = {
     clientName: string;
     clientId: string;
     dateOfBirth: string;
-    assignedStaffId: string;
   }) => request<Case>("/api/cases", { method: "POST", body: JSON.stringify(data) }),
 
   updateCaseStatus: (id: string, status: string) =>
@@ -90,7 +89,6 @@ export const api = {
     request<Consultation[]>(`/api/cases/${caseId}/consultations`),
 
   createConsultation: (caseId: string, data: {
-    staffId: string;
     content: string;
     consultationType: string;
   }) => request<Consultation>(`/api/cases/${caseId}/consultations`, {

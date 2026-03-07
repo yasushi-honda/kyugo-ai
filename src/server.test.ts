@@ -52,10 +52,21 @@ import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js"
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
+// Fake user for route tests (routes now require req.user)
+const FAKE_USER = { uid: "test-uid", email: "test@test.com", role: "staff" as const, staffId: "staff-1" };
+const FAKE_ADMIN = { uid: "admin-uid", email: "admin@test.com", role: "admin" as const, staffId: "admin-staff" };
+
 const app = express();
 app.use(express.json());
+app.use((req, _res, next) => { req.user = FAKE_USER; next(); });
 app.use("/api/cases", casesRouter);
 app.use("/api/support-menus", supportMenusRouter);
+
+// App with admin user
+const adminApp = express();
+adminApp.use(express.json());
+adminApp.use((req, _res, next) => { req.user = FAKE_ADMIN; next(); });
+adminApp.use("/api/cases", casesRouter);
 
 // App with auth middleware for integration tests
 const authApp = express();
@@ -78,6 +89,12 @@ const MOCK_CASE = {
   assignedStaffId: "staff-1",
   createdAt: NOW,
   updatedAt: NOW,
+};
+
+const OTHER_STAFF_CASE = {
+  ...MOCK_CASE,
+  id: "case-other",
+  assignedStaffId: "other-staff",
 };
 
 beforeEach(() => {
@@ -182,28 +199,61 @@ describe("GET /api/me", () => {
 });
 
 describe("POST /api/cases", () => {
-  it("creates a case", async () => {
+  it("creates a case with staffId from authenticated user", async () => {
     vi.mocked(caseRepo.createCase).mockResolvedValue(MOCK_CASE);
 
     const res = await request(app).post("/api/cases").send({
       clientName: "テスト太郎",
       clientId: "client-001",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "staff-1",
     });
 
     expect(res.status).toBe(201);
     expect(res.body.clientName).toBe("テスト太郎");
+    expect(vi.mocked(caseRepo.createCase)).toHaveBeenCalledWith(
+      expect.objectContaining({ assignedStaffId: "staff-1" }),
+    );
   });
 
   it("returns 400 if required fields missing", async () => {
     const res = await request(app).post("/api/cases").send({});
     expect(res.status).toBe(400);
   });
+
+  it("returns 500 when repository throws", async () => {
+    vi.mocked(caseRepo.createCase).mockRejectedValue(new Error("Firestore unavailable"));
+
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "1990-01-01",
+    });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Firestore unavailable");
+  });
+});
+
+describe("GET /api/cases", () => {
+  it("returns cases for authenticated staff", async () => {
+    vi.mocked(caseRepo.listCasesByStaff).mockResolvedValue([MOCK_CASE]);
+
+    const res = await request(app).get("/api/cases");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(vi.mocked(caseRepo.listCasesByStaff)).toHaveBeenCalledWith("staff-1");
+  });
+
+  it("admin can filter by staffId query param", async () => {
+    vi.mocked(caseRepo.listCasesByStaff).mockResolvedValue([MOCK_CASE]);
+
+    const res = await request(adminApp).get("/api/cases?staffId=staff-1");
+    expect(res.status).toBe(200);
+    expect(vi.mocked(caseRepo.listCasesByStaff)).toHaveBeenCalledWith("staff-1");
+  });
 });
 
 describe("GET /api/cases/:id", () => {
-  it("returns a case", async () => {
+  it("returns a case when user is assigned", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
 
     const res = await request(app).get("/api/cases/case-1");
@@ -217,25 +267,26 @@ describe("GET /api/cases/:id", () => {
     const res = await request(app).get("/api/cases/nonexistent");
     expect(res.status).toBe(404);
   });
-});
 
-describe("GET /api/cases?staffId=xxx", () => {
-  it("returns cases for staff", async () => {
-    vi.mocked(caseRepo.listCasesByStaff).mockResolvedValue([MOCK_CASE]);
+  it("returns 403 if staff is not assigned to case", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
 
-    const res = await request(app).get("/api/cases?staffId=staff-1");
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
+    const res = await request(app).get("/api/cases/case-other");
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("Access denied");
   });
 
-  it("returns 400 if staffId missing", async () => {
-    const res = await request(app).get("/api/cases");
-    expect(res.status).toBe(400);
+  it("admin can access any case", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
+
+    const res = await request(adminApp).get("/api/cases/case-other");
+    expect(res.status).toBe(200);
   });
 });
 
 describe("PATCH /api/cases/:id/status", () => {
   it("updates case status", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(caseRepo.updateCaseStatus).mockResolvedValue({ ...MOCK_CASE, status: "closed" });
 
     const res = await request(app).patch("/api/cases/case-1/status").send({ status: "closed" });
@@ -244,15 +295,38 @@ describe("PATCH /api/cases/:id/status", () => {
   });
 
   it("returns 400 for invalid transition", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(caseRepo.updateCaseStatus).mockRejectedValue(new Error("Invalid status transition"));
 
     const res = await request(app).patch("/api/cases/case-1/status").send({ status: "active" });
     expect(res.status).toBe(400);
   });
+
+  it("returns 400 if status field is missing", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).patch("/api/cases/case-1/status").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("required");
+  });
+
+  it("returns 404 if case not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(null);
+
+    const res = await request(app).patch("/api/cases/nonexistent/status").send({ status: "closed" });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 if staff is not assigned", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
+
+    const res = await request(app).patch("/api/cases/case-other/status").send({ status: "closed" });
+    expect(res.status).toBe(403);
+  });
 });
 
 describe("POST /api/cases/:id/consultations", () => {
-  it("creates consultation", async () => {
+  it("creates consultation with staffId from authenticated user", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
       id: "cons-1",
@@ -270,24 +344,56 @@ describe("POST /api/cases/:id/consultations", () => {
     vi.mocked(analyzeConsultation).mockResolvedValue({ summary: "要約", suggestedSupports: [] });
 
     const res = await request(app).post("/api/cases/case-1/consultations").send({
-      staffId: "staff-1",
       content: "家賃の支払いが困難",
       consultationType: "counter",
     });
 
     expect(res.status).toBe(201);
     expect(res.body.content).toBe("家賃の支払いが困難");
+    expect(vi.mocked(consultationRepo.createConsultation)).toHaveBeenCalledWith(
+      "case-1",
+      expect.objectContaining({ staffId: "staff-1" }),
+    );
   });
 
   it("returns 404 if case not found", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(null);
 
     const res = await request(app).post("/api/cases/nonexistent/consultations").send({
-      staffId: "staff-1",
       content: "test",
       consultationType: "counter",
     });
     expect(res.status).toBe(404);
+  });
+
+  it("returns 403 if staff is not assigned", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
+
+    const res = await request(app).post("/api/cases/case-other/consultations").send({
+      content: "test",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 if required fields missing", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("required");
+  });
+
+  it("returns 500 when repository throws", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockRejectedValue(new Error("DB connection failed"));
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "テスト",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("DB connection failed");
   });
 });
 
@@ -320,7 +426,6 @@ describe("POST /api/cases/:id/consultations/audio", () => {
 
     const res = await request(app)
       .post("/api/cases/case-1/consultations/audio")
-      .field("staffId", "staff-1")
       .field("consultationType", "visit")
       .field("context", "訪問相談")
       .attach("audio", Buffer.from("fake-audio-data"), { filename: "recording.wav", contentType: "audio/wav" });
@@ -329,6 +434,10 @@ describe("POST /api/cases/:id/consultations/audio", () => {
     expect(res.body.transcript).toBe(MOCK_AUDIO_RESULT.transcript);
     expect(res.body.summary).toBe(MOCK_AUDIO_RESULT.summary);
     expect(res.body.suggestedSupports).toHaveLength(1);
+    expect(vi.mocked(consultationRepo.createConsultation)).toHaveBeenCalledWith(
+      "case-1",
+      expect.objectContaining({ staffId: "staff-1" }),
+    );
   });
 
   it("returns 404 if case not found", async () => {
@@ -336,7 +445,6 @@ describe("POST /api/cases/:id/consultations/audio", () => {
 
     const res = await request(app)
       .post("/api/cases/nonexistent/consultations/audio")
-      .field("staffId", "staff-1")
       .field("consultationType", "visit")
       .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
 
@@ -348,7 +456,6 @@ describe("POST /api/cases/:id/consultations/audio", () => {
 
     const res = await request(app)
       .post("/api/cases/case-1/consultations/audio")
-      .field("staffId", "staff-1")
       .field("consultationType", "visit");
 
     expect(res.status).toBe(400);
@@ -363,51 +470,22 @@ describe("POST /api/cases/:id/consultations/audio", () => {
 
     expect(res.status).toBe(400);
   });
-});
 
-describe("POST /api/cases/:id/consultations - edge cases", () => {
-  it("returns 400 if required fields missing", async () => {
-    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+  it("returns 403 if staff is not assigned", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
 
-    const res = await request(app).post("/api/cases/case-1/consultations").send({
-      staffId: "staff-1",
-      // missing content and consultationType
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain("required");
-  });
+    const res = await request(app)
+      .post("/api/cases/case-other/consultations/audio")
+      .field("consultationType", "visit")
+      .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
 
-  it("returns 500 when repository throws", async () => {
-    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
-    vi.mocked(consultationRepo.createConsultation).mockRejectedValue(new Error("DB connection failed"));
-
-    const res = await request(app).post("/api/cases/case-1/consultations").send({
-      staffId: "staff-1",
-      content: "テスト",
-      consultationType: "counter",
-    });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toBe("DB connection failed");
-  });
-});
-
-describe("PATCH /api/cases/:id/status - edge cases", () => {
-  it("returns 400 if status field is missing", async () => {
-    const res = await request(app).patch("/api/cases/case-1/status").send({});
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain("required");
-  });
-
-  it("returns 404 if case not found", async () => {
-    vi.mocked(caseRepo.updateCaseStatus).mockRejectedValue(new Error("Case not found"));
-
-    const res = await request(app).patch("/api/cases/nonexistent/status").send({ status: "closed" });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/cases/:id/consultations", () => {
   it("returns consultation list", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.listConsultations).mockResolvedValue([]);
 
     const res = await request(app).get("/api/cases/case-1/consultations");
@@ -416,15 +494,24 @@ describe("GET /api/cases/:id/consultations", () => {
   });
 
   it("returns 500 when repository throws", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.listConsultations).mockRejectedValue(new Error("DB error"));
 
     const res = await request(app).get("/api/cases/case-1/consultations");
     expect(res.status).toBe(500);
   });
+
+  it("returns 403 if staff is not assigned", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
+
+    const res = await request(app).get("/api/cases/case-other/consultations");
+    expect(res.status).toBe(403);
+  });
 });
 
 describe("GET /api/cases/:id/consultations/:consultationId", () => {
   it("returns a consultation", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
@@ -444,25 +531,11 @@ describe("GET /api/cases/:id/consultations/:consultationId", () => {
   });
 
   it("returns 404 if not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.getConsultation).mockResolvedValue(null);
 
     const res = await request(app).get("/api/cases/case-1/consultations/nonexistent");
     expect(res.status).toBe(404);
-  });
-});
-
-describe("POST /api/cases - edge cases", () => {
-  it("returns 500 when repository throws", async () => {
-    vi.mocked(caseRepo.createCase).mockRejectedValue(new Error("Firestore unavailable"));
-
-    const res = await request(app).post("/api/cases").send({
-      clientName: "テスト",
-      clientId: "client-001",
-      dateOfBirth: "1990-01-01",
-      assignedStaffId: "staff-1",
-    });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Firestore unavailable");
   });
 });
 
@@ -489,7 +562,7 @@ describe("GET /api/support-menus", () => {
 
 describe("API authentication integration", () => {
   it("returns 401 on /api/cases without Authorization header", async () => {
-    const res = await request(authApp).get("/api/cases?staffId=staff-1");
+    const res = await request(authApp).get("/api/cases");
     expect(res.status).toBe(401);
     expect(res.body.error).toBe("Authorization header with Bearer token is required");
   });
@@ -505,7 +578,6 @@ describe("API authentication integration", () => {
       clientName: "テスト",
       clientId: "client-001",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "staff-1",
     });
     expect(res.status).toBe(401);
   });
