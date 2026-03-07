@@ -21,17 +21,21 @@ export async function requireCaseAccess(req: Request, res: Response, next: NextF
     return;
   }
 
-  const caseData = await caseRepo.getCase(caseId);
-  if (!caseData) {
-    res.status(404).json({ error: "Case not found" });
-    return;
-  }
+  try {
+    const caseData = await caseRepo.getCase(caseId);
+    if (!caseData) {
+      res.status(404).json({ error: "Case not found" });
+      return;
+    }
 
-  if (user.role !== "admin" && caseData.assignedStaffId !== user.staffId) {
-    res.status(403).json({ error: "Access denied: not assigned to this case" });
-    return;
-  }
+    if (user.role !== "admin" && caseData.assignedStaffId !== user.staffId) {
+      res.status(403).json({ error: "Access denied: not assigned to this case" });
+      return;
+    }
 
-  req.caseData = caseData;
-  next();
+    req.caseData = caseData;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 }
