@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import path from "path";
-import { fileURLToPath } from "url";
+import fs from "fs";
+import os from "os";
 import express from "express";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Mock dependencies (same as server.ts requires)
 vi.mock("./config.js", () => ({
@@ -39,20 +38,33 @@ vi.mock("./services/ai.js", () => ({
   analyzeAudioConsultation: vi.fn(),
 }));
 
-// Build a test app that mirrors server.ts static serving setup
-// but uses frontend/dist which exists in the repo
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
 
-const frontendDir = path.join(__dirname, "../frontend/dist");
-const app = express();
-app.use(express.json());
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
-app.use("/api/cases", casesRouter);
-app.use("/api/support-menus", supportMenusRouter);
-app.use(express.static(frontendDir));
-app.get("/{*splat}", (_req, res) => {
-  res.sendFile(path.join(frontendDir, "index.html"));
+let tmpDir: string;
+let app: express.Express;
+
+const TEST_HTML = '<!doctype html><html lang="ja"><head><title>Test</title></head><body><div id="root"></div><script src="/assets/app.js"></script></body></html>';
+
+beforeAll(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kyugo-static-test-"));
+  fs.mkdirSync(path.join(tmpDir, "assets"));
+  fs.writeFileSync(path.join(tmpDir, "index.html"), TEST_HTML);
+  fs.writeFileSync(path.join(tmpDir, "assets", "app.js"), "console.log('test')");
+
+  app = express();
+  app.use(express.json());
+  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  app.use("/api/cases", casesRouter);
+  app.use("/api/support-menus", supportMenusRouter);
+  app.use(express.static(tmpDir));
+  app.get("/{*splat}", (_req, res) => {
+    res.sendFile(path.join(tmpDir, "index.html"));
+  });
+});
+
+afterAll(() => {
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
 describe("Static file serving", () => {
@@ -76,9 +88,9 @@ describe("Static file serving", () => {
     expect(res.body.status).toBe("ok");
   });
 
-  it("serves static assets from frontend/dist", async () => {
-    const res = await request(app).get("/").expect(200);
-    // index.html references JS/CSS assets
-    expect(res.text).toContain("/assets/");
+  it("serves static assets directly", async () => {
+    const res = await request(app).get("/assets/app.js");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/javascript/);
   });
 });
