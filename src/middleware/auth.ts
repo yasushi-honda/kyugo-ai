@@ -19,19 +19,33 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       .limit(1)
       .get();
 
-    if (staffQuery.empty) {
-      res.status(403).json({ error: "User is not registered as staff" });
-      return;
-    }
+    let staffId: string;
+    let role: "admin" | "staff";
 
-    const staffDoc = staffQuery.docs[0];
-    const staffData = staffDoc.data();
+    if (staffQuery.empty) {
+      // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
+      const newStaffRef = firestore.collection("staff").doc();
+      await newStaffRef.set({
+        firebaseUid: decoded.uid,
+        email: decoded.email ?? "",
+        name: decoded.name ?? "",
+        role: "staff",
+        createdAt: new Date(),
+      });
+      staffId = newStaffRef.id;
+      role = "staff";
+    } else {
+      const staffDoc = staffQuery.docs[0];
+      const staffData = staffDoc.data();
+      staffId = staffDoc.id;
+      role = (staffData.role as "admin" | "staff") ?? "staff";
+    }
 
     req.user = {
       uid: decoded.uid,
       email: decoded.email ?? "",
-      role: staffData.role ?? "staff",
-      staffId: staffDoc.id,
+      role,
+      staffId,
     };
 
     next();

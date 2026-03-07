@@ -77,24 +77,39 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when user is not registered as staff", async () => {
+  it("auto-provisions staff document on first login", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
-      uid: "firebase-uid-1",
-      email: "user@example.com",
+      uid: "new-uid",
+      email: "new@example.com",
+      name: "New User",
     } as never);
 
+    const mockSet = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "auto-staff-001", set: mockSet });
     const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
     const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
     const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    vi.mocked(firestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
 
-    const { req, res, next } = mockReqResNext("Bearer valid-token");
+    const { req, res, next } = mockReqResNext("Bearer new-user-token");
 
     await requireAuth(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "User is not registered as staff" });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+      firebaseUid: "new-uid",
+      email: "new@example.com",
+      role: "staff",
+    }));
+    expect(req.user).toEqual({
+      uid: "new-uid",
+      email: "new@example.com",
+      role: "staff",
+      staffId: "auto-staff-001",
+    });
   });
 
   it("calls next() and sets req.user when authentication succeeds", async () => {
