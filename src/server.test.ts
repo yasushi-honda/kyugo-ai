@@ -1,0 +1,204 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import request from "supertest";
+import express from "express";
+
+// Mock dependencies before importing routes
+vi.mock("./config.js", () => ({
+  firestore: {
+    collection: vi.fn(),
+  },
+  generativeModel: {
+    generateContent: vi.fn(),
+  },
+  PROJECT_ID: "test-project",
+  REGION: "asia-northeast1",
+  MODEL: "gemini-2.5-flash",
+}));
+
+vi.mock("./repositories/case-repository.js", () => ({
+  createCase: vi.fn(),
+  getCase: vi.fn(),
+  listCasesByStaff: vi.fn(),
+  updateCaseStatus: vi.fn(),
+}));
+
+vi.mock("./repositories/consultation-repository.js", () => ({
+  createConsultation: vi.fn(),
+  getConsultation: vi.fn(),
+  listConsultations: vi.fn(),
+  updateConsultationAIResults: vi.fn(),
+}));
+
+vi.mock("./repositories/support-menu-repository.js", () => ({
+  getSupportMenu: vi.fn(),
+  listSupportMenus: vi.fn(),
+}));
+
+vi.mock("./services/ai.js", () => ({
+  analyzeConsultation: vi.fn(),
+}));
+
+import { casesRouter } from "./routes/cases.js";
+import { supportMenusRouter } from "./routes/support-menus.js";
+import * as caseRepo from "./repositories/case-repository.js";
+import * as consultationRepo from "./repositories/consultation-repository.js";
+import * as supportMenuRepo from "./repositories/support-menu-repository.js";
+import { analyzeConsultation } from "./services/ai.js";
+import { Timestamp } from "@google-cloud/firestore";
+
+const app = express();
+app.use(express.json());
+app.use("/api/cases", casesRouter);
+app.use("/api/support-menus", supportMenusRouter);
+
+const NOW = Timestamp.now();
+const MOCK_CASE = {
+  id: "case-1",
+  clientName: "テスト太郎",
+  clientId: "client-001",
+  dateOfBirth: NOW,
+  householdInfo: {},
+  incomeInfo: {},
+  status: "active" as const,
+  assignedStaffId: "staff-1",
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("GET /health", () => {
+  const healthApp = express();
+  healthApp.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+  it("returns ok", async () => {
+    const res = await request(healthApp).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+  });
+});
+
+describe("POST /api/cases", () => {
+  it("creates a case", async () => {
+    vi.mocked(caseRepo.createCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト太郎",
+      clientId: "client-001",
+      dateOfBirth: "1990-01-01",
+      assignedStaffId: "staff-1",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.clientName).toBe("テスト太郎");
+  });
+
+  it("returns 400 if required fields missing", async () => {
+    const res = await request(app).post("/api/cases").send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/cases/:id", () => {
+  it("returns a case", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).get("/api/cases/case-1");
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe("case-1");
+  });
+
+  it("returns 404 if not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(null);
+
+    const res = await request(app).get("/api/cases/nonexistent");
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/cases?staffId=xxx", () => {
+  it("returns cases for staff", async () => {
+    vi.mocked(caseRepo.listCasesByStaff).mockResolvedValue([MOCK_CASE]);
+
+    const res = await request(app).get("/api/cases?staffId=staff-1");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+  });
+
+  it("returns 400 if staffId missing", async () => {
+    const res = await request(app).get("/api/cases");
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("PATCH /api/cases/:id/status", () => {
+  it("updates case status", async () => {
+    vi.mocked(caseRepo.updateCaseStatus).mockResolvedValue({ ...MOCK_CASE, status: "closed" });
+
+    const res = await request(app).patch("/api/cases/case-1/status").send({ status: "closed" });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("closed");
+  });
+
+  it("returns 400 for invalid transition", async () => {
+    vi.mocked(caseRepo.updateCaseStatus).mockRejectedValue(new Error("Invalid status transition"));
+
+    const res = await request(app).patch("/api/cases/case-1/status").send({ status: "active" });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/cases/:id/consultations", () => {
+  it("creates consultation", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-1",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "家賃の支払いが困難",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    vi.mocked(analyzeConsultation).mockResolvedValue({ summary: "要約", suggestedSupports: [] });
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      staffId: "staff-1",
+      content: "家賃の支払いが困難",
+      consultationType: "counter",
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.content).toBe("家賃の支払いが困難");
+  });
+
+  it("returns 404 if case not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(null);
+
+    const res = await request(app).post("/api/cases/nonexistent/consultations").send({
+      staffId: "staff-1",
+      content: "test",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/support-menus", () => {
+  it("returns menu list", async () => {
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([
+      { id: "menu-1", name: "生活保護", category: "生活支援", eligibility: "", description: "", relatedLaws: [], updatedAt: NOW },
+    ]);
+
+    const res = await request(app).get("/api/support-menus");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].name).toBe("生活保護");
+  });
+});
