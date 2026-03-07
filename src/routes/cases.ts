@@ -1,10 +1,23 @@
 import { Router, Request, Response } from "express";
+import multer from "multer";
 import * as caseRepo from "../repositories/case-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
-import { analyzeConsultation } from "../services/ai.js";
-import { CaseStatus, ConsultationType } from "../types.js";
+import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
+import { CaseStatus, ConsultationType, SUPPORTED_AUDIO_MIME_TYPES } from "../types.js";
 import { Timestamp } from "@google-cloud/firestore";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB（約8時間の音声に対応）
+  fileFilter: (_req, file, cb) => {
+    if (SUPPORTED_AUDIO_MIME_TYPES.includes(file.mimetype as never)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported audio format: ${file.mimetype}. Supported: ${SUPPORTED_AUDIO_MIME_TYPES.join(", ")}`));
+    }
+  },
+});
 
 function paramStr(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
@@ -123,6 +136,70 @@ casesRouter.post("/:id/consultations", async (req: Request, res: Response) => {
     res.status(201).json(consultation);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// POST /api/cases/:id/consultations/audio - 音声付き相談記録作成（1 API callで文字起こし+要約+提案）
+casesRouter.post("/:id/consultations/audio", upload.single("audio"), async (req: Request, res: Response) => {
+  try {
+    const caseId = paramStr(req.params.id);
+    const caseData = await caseRepo.getCase(caseId);
+    if (!caseData) {
+      res.status(404).json({ error: "Case not found" });
+      return;
+    }
+
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "audio file is required" });
+      return;
+    }
+
+    const { staffId, context, consultationType } = req.body;
+    if (!staffId || !consultationType) {
+      res.status(400).json({ error: "staffId, consultationType are required" });
+      return;
+    }
+
+    // Gemini 2.5 Flash で音声分析（文字起こし + 要約 + 支援提案を1回で）
+    const menus = await supportMenuRepo.listSupportMenus();
+    const aiResult = await analyzeAudioConsultation(
+      file.buffer,
+      file.mimetype,
+      context ?? "",
+      menus,
+    );
+
+    // 分析結果を含めて相談記録を作成
+    const consultationData = {
+      staffId,
+      content: context ?? "",
+      transcript: aiResult.transcript,
+      consultationType: consultationType as ConsultationType,
+    };
+    const consultation = await consultationRepo.createConsultation(caseId, consultationData);
+
+    // AI結果を即座に反映
+    await consultationRepo.updateConsultationAIResults(
+      caseId,
+      consultation.id!,
+      aiResult.summary,
+      aiResult.suggestedSupports,
+    );
+
+    res.status(201).json({
+      ...consultation,
+      transcript: aiResult.transcript,
+      summary: aiResult.summary,
+      suggestedSupports: aiResult.suggestedSupports,
+    });
+  } catch (err) {
+    const message = (err as Error).message;
+    if (message.includes("Unsupported audio format")) {
+      res.status(400).json({ error: message });
+    } else {
+      res.status(500).json({ error: message });
+    }
   }
 });
 

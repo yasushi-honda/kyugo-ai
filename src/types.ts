@@ -71,3 +71,23 @@ export interface AISummaryResult {
   summary: string;
   suggestedSupports: SuggestedSupport[];
 }
+
+// 音声AI分析レスポンス（文字起こし含む）
+export interface AudioAnalysisResult extends AISummaryResult {
+  transcript: string;
+}
+
+// 対応する音声フォーマット
+export const SUPPORTED_AUDIO_MIME_TYPES = [
+  "audio/wav",
+  "audio/mp3",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/m4a",
+  "audio/ogg",
+  "audio/flac",
+  "audio/webm",
+  "audio/x-aac",
+] as const;
+
+export type SupportedAudioMimeType = (typeof SUPPORTED_AUDIO_MIME_TYPES)[number];

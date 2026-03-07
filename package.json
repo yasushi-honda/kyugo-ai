@@ -17,10 +17,12 @@
     "@google-cloud/firestore": "^7.0.0",
     "@google-cloud/vertexai": "^1.10.0",
     "express": "^5.2.1",
+    "multer": "^2.1.1",
     "typescript-eslint": "^8.56.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.0.0",
     "@types/supertest": "^7.2.0",
     "eslint": "^9.0.0",

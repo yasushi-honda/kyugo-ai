@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { VALID_STATUS_TRANSITIONS, CaseStatus } from "./types.js";
+import { VALID_STATUS_TRANSITIONS, CaseStatus, SUPPORTED_AUDIO_MIME_TYPES } from "./types.js";
 
 describe("VALID_STATUS_TRANSITIONS", () => {
   it("active can transition to referred or closed", () => {
@@ -24,6 +24,24 @@ describe("VALID_STATUS_TRANSITIONS", () => {
       if (status !== "closed") {
         expect(transitions.length).toBeGreaterThan(0);
       }
+    }
+  });
+});
+
+describe("SUPPORTED_AUDIO_MIME_TYPES", () => {
+  it("includes common audio formats", () => {
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/wav");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/mp3");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/mpeg");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/mp4");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/ogg");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/flac");
+    expect(SUPPORTED_AUDIO_MIME_TYPES).toContain("audio/webm");
+  });
+
+  it("does not include video formats", () => {
+    for (const mime of SUPPORTED_AUDIO_MIME_TYPES) {
+      expect(mime).toMatch(/^audio\//);
     }
   });
 });

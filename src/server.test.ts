@@ -36,6 +36,7 @@ vi.mock("./repositories/support-menu-repository.js", () => ({
 
 vi.mock("./services/ai.js", () => ({
   analyzeConsultation: vi.fn(),
+  analyzeAudioConsultation: vi.fn(),
 }));
 
 import { casesRouter } from "./routes/cases.js";
@@ -43,7 +44,7 @@ import { supportMenusRouter } from "./routes/support-menus.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation } from "./services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js";
 import { Timestamp } from "@google-cloud/firestore";
 
 const app = express();
@@ -187,6 +188,80 @@ describe("POST /api/cases/:id/consultations", () => {
       consultationType: "counter",
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/cases/:id/consultations/audio", () => {
+  const MOCK_AUDIO_RESULT = {
+    transcript: "相談者: 家賃が払えなくて困っています。職員: 住居確保給付金という制度があります。",
+    summary: "家賃支払い困難の相談。住居確保給付金を案内。",
+    suggestedSupports: [
+      { menuId: "juukyo-kakuho-kyuufukin", menuName: "住居確保給付金", reason: "家賃支払い困難", relevanceScore: 0.95 },
+    ],
+  };
+
+  it("processes audio file and returns transcript + analysis", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    vi.mocked(analyzeAudioConsultation).mockResolvedValue(MOCK_AUDIO_RESULT);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-audio-1",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "visit",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(consultationRepo.updateConsultationAIResults).mockResolvedValue();
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("staffId", "staff-1")
+      .field("consultationType", "visit")
+      .field("context", "訪問相談")
+      .attach("audio", Buffer.from("fake-audio-data"), { filename: "recording.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.transcript).toBe(MOCK_AUDIO_RESULT.transcript);
+    expect(res.body.summary).toBe(MOCK_AUDIO_RESULT.summary);
+    expect(res.body.suggestedSupports).toHaveLength(1);
+  });
+
+  it("returns 404 if case not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post("/api/cases/nonexistent/consultations/audio")
+      .field("staffId", "staff-1")
+      .field("consultationType", "visit")
+      .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 if no audio file", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("staffId", "staff-1")
+      .field("consultationType", "visit");
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 if required fields missing", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(400);
   });
 });
 
