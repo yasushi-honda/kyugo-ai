@@ -8,3 +8,5 @@ dist/
 credentials/
 *.key
 service-account*.json
+.playwright-mcp/
+frontend/dist/
