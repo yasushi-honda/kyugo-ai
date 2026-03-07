@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
-
-const STAFF_ID = "staff-001";
+import { useAuth } from "../contexts/AuthContext";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "対応中",
@@ -18,21 +17,23 @@ function formatDate(ts: { _seconds: number }) {
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewCase, setShowNewCase] = useState(false);
 
   const loadCases = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      const data = await api.listCases(STAFF_ID);
+      const data = await api.listCases(user.uid);
       setCases(data);
     } catch (err) {
       console.error("Failed to load cases:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => { loadCases(); }, [loadCases]);
 
@@ -47,7 +48,7 @@ export function Dashboard() {
     <>
       <div className="page-header">
         <h1>ケース一覧</h1>
-        <p className="page-header-subtitle">担当: {STAFF_ID}</p>
+        <p className="page-header-subtitle">担当: {user?.email}</p>
       </div>
       <div className="page-body">
         <div className="stats-bar">

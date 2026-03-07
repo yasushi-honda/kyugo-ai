@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   onClose: () => void;
@@ -7,11 +8,11 @@ interface Props {
 }
 
 export function NewCaseModal({ onClose, onCreated }: Props) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     clientName: "",
     clientId: "",
     dateOfBirth: "",
-    assignedStaffId: "staff-001",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,7 +20,7 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
     if (!form.clientName || !form.clientId || !form.dateOfBirth) return;
     setSubmitting(true);
     try {
-      await api.createCase(form);
+      await api.createCase({ ...form, assignedStaffId: user?.uid ?? "" });
       onCreated();
     } catch (err) {
       alert(`作成に失敗しました: ${(err as Error).message}`);
@@ -64,12 +65,8 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">担当職員ID</label>
-            <input
-              className="form-input"
-              value={form.assignedStaffId}
-              onChange={(e) => setForm({ ...form, assignedStaffId: e.target.value })}
-            />
+            <label className="form-label">担当職員</label>
+            <input className="form-input" value={user?.email ?? ""} disabled />
           </div>
         </div>
         <div className="modal-footer">

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewCaseModal } from "./NewCaseModal";
+import { TestAuthWrapper } from "../test-utils";
 
 vi.mock("../api", () => ({
   api: {
@@ -21,7 +22,7 @@ function renderModal(props?: Partial<{ onClose: () => void; onCreated: () => voi
   return {
     onClose,
     onCreated,
-    ...render(<NewCaseModal onClose={onClose} onCreated={onCreated} />),
+    ...render(<TestAuthWrapper><NewCaseModal onClose={onClose} onCreated={onCreated} /></TestAuthWrapper>),
   };
 }
 
@@ -47,7 +48,7 @@ describe("NewCaseModal", () => {
 
     await user.type(screen.getByPlaceholderText("例: 山田 太郎"), "テスト太郎");
     await user.type(screen.getByPlaceholderText("例: client-001"), "client-test");
-    const dateInput = screen.getByDisplayValue("");
+    const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
     await user.type(dateInput, "1990-01-01");
 
     const submitBtn = screen.getByText("ケースを作成");
@@ -82,7 +83,7 @@ describe("NewCaseModal", () => {
       clientName: "テスト太郎",
       clientId: "client-test",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "staff-001",
+      assignedStaffId: "test-uid",
     });
 
     await vi.waitFor(() => {

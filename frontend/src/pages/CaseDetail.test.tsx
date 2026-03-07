@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { CaseDetail } from "./CaseDetail";
+import { TestAuthWrapper } from "../test-utils";
 
 vi.mock("../api", () => ({
   api: {
@@ -52,12 +53,14 @@ beforeEach(() => {
 
 function renderCaseDetail(caseId = "case-1") {
   return render(
-    <MemoryRouter initialEntries={[`/cases/${caseId}`]}>
-      <Routes>
-        <Route path="/cases/:id" element={<CaseDetail />} />
-        <Route path="/" element={<div>Home</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <TestAuthWrapper>
+      <MemoryRouter initialEntries={[`/cases/${caseId}`]}>
+        <Routes>
+          <Route path="/cases/:id" element={<CaseDetail />} />
+          <Route path="/" element={<div>Home</div>} />
+        </Routes>
+      </MemoryRouter>
+    </TestAuthWrapper>,
   );
 }
 

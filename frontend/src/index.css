@@ -509,3 +509,64 @@ a:hover { color: var(--ai-600); }
   .stats-bar { flex-direction: column; }
   .page-body { padding: var(--space-4); }
 }
+
+/* ── Login Page ── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-main);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  margin: var(--space-4);
+}
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  text-align: center;
+  color: var(--ai-600);
+  margin-bottom: var(--space-1);
+}
+
+.login-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-6);
+}
+
+.login-error {
+  background: var(--kaki-100);
+  color: var(--kaki-600);
+  border: 1px solid var(--kaki-400);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+/* ── Sidebar User / Logout ── */
+.sidebar-user {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-logout {
+  width: 100%;
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+}

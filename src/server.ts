@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import express from "express";
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
+import { requireAuth } from "./middleware/auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,9 +17,9 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// API routes
-app.use("/api/cases", casesRouter);
-app.use("/api/support-menus", supportMenusRouter);
+// API routes (protected by Firebase Auth)
+app.use("/api/cases", requireAuth, casesRouter);
+app.use("/api/support-menus", requireAuth, supportMenusRouter);
 
 // Frontend static files
 const frontendDir = path.join(__dirname, "../frontend/dist");

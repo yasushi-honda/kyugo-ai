@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
   { path: "/", icon: "📋", label: "ケース一覧" },
@@ -8,6 +9,7 @@ const NAV_ITEMS = [
 export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   return (
     <div className="app-layout">
@@ -31,7 +33,10 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-footer">
-          福祉相談業務AI支援システム v0.1
+          <div className="sidebar-user">{user?.email}</div>
+          <button className="btn btn-secondary sidebar-logout" onClick={logout}>
+            ログアウト
+          </button>
         </div>
       </aside>
       <main className="main-content">{children}</main>

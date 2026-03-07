@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Dashboard } from "./Dashboard";
+import { TestAuthWrapper } from "../test-utils";
 
 const mockCases = [
   {
@@ -57,9 +58,11 @@ beforeEach(() => {
 
 function renderDashboard() {
   return render(
-    <MemoryRouter>
-      <Dashboard />
-    </MemoryRouter>,
+    <TestAuthWrapper>
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    </TestAuthWrapper>,
   );
 }
 
