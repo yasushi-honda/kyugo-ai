@@ -99,10 +99,8 @@ describe("Dashboard", () => {
       expect(screen.getByText("3")).toBeInTheDocument(); // total
     });
 
-    const statValues = screen.getAllByClassName
-      ? screen.getAllByText("1")
-      : screen.queryAllByText("1");
     // active=1, referred=1, closed=1
+    const statValues = screen.queryAllByText("1");
     expect(statValues.length).toBeGreaterThanOrEqual(3);
   });
 

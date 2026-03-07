@@ -73,8 +73,6 @@ describe("NewCaseModal", () => {
 
     await user.type(screen.getByPlaceholderText("例: 山田 太郎"), "テスト太郎");
     await user.type(screen.getByPlaceholderText("例: client-001"), "client-test");
-    // Find the date input by its type
-    const inputs = screen.getAllByRole("textbox");
     const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
     await user.type(dateInput, "1990-01-01");
 
