@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.unmock("./api");
 import { api } from "./api";
 
 const mockFetch = vi.fn();

@@ -4,13 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { NewConsultationModal } from "./NewConsultationModal";
 import { TestAuthWrapper } from "../test-utils";
 
-vi.mock("../api", () => ({
-  api: {
-    createConsultation: vi.fn(),
-    createAudioConsultation: vi.fn(),
-  },
-}));
-
 import { api } from "../api";
 
 beforeEach(() => {
@@ -68,7 +61,7 @@ describe("NewConsultationModal", () => {
     vi.mocked(api.createConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
-      staffId: "test-uid",
+      staffId: "test-staff-001",
       content: "テスト内容",
       transcript: "",
       summary: "",
@@ -85,7 +78,7 @@ describe("NewConsultationModal", () => {
     await user.click(screen.getByText("相談を記録"));
 
     expect(api.createConsultation).toHaveBeenCalledWith("case-1", {
-      staffId: "test-uid",
+      staffId: "test-staff-001",
       content: "テスト内容",
       consultationType: "counter",
     });
@@ -99,7 +92,7 @@ describe("NewConsultationModal", () => {
     vi.mocked(api.createAudioConsultation).mockResolvedValue({
       id: "cons-1",
       caseId: "case-1",
-      staffId: "test-uid",
+      staffId: "test-staff-001",
       content: "",
       transcript: "音声のテキスト",
       summary: "AI要約テスト",

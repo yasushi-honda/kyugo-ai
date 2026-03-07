@@ -9,7 +9,7 @@ import { Timestamp } from "@google-cloud/firestore";
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB（約8時間の音声に対応）
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB（Cloud Run 32MBリクエスト上限を考慮、ヘッダ・メタデータ分のマージン確保）
   fileFilter: (_req, file, cb) => {
     if (SUPPORTED_AUDIO_MIME_TYPES.includes(file.mimetype as never)) {
       cb(null, true);

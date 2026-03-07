@@ -17,23 +17,23 @@ function formatDate(ts: { _seconds: number }) {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userInfo } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewCase, setShowNewCase] = useState(false);
 
   const loadCases = useCallback(async () => {
-    if (!user) return;
+    if (!userInfo) return;
     setLoading(true);
     try {
-      const data = await api.listCases(user.uid);
+      const data = await api.listCases(userInfo.staffId);
       setCases(data);
     } catch (err) {
       console.error("Failed to load cases:", err);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userInfo]);
 
   useEffect(() => { loadCases(); }, [loadCases]);
 

@@ -60,7 +60,16 @@ export interface SupportMenu {
   description: string;
 }
 
+export interface UserInfo {
+  uid: string;
+  email: string;
+  role: "admin" | "staff";
+  staffId: string;
+}
+
 export const api = {
+  getMe: () => request<UserInfo>("/api/me"),
+
   listCases: (staffId: string) =>
     request<Case[]>(`/api/cases?staffId=${encodeURIComponent(staffId)}`),
 

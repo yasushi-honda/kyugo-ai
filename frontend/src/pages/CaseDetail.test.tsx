@@ -5,14 +5,6 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { CaseDetail } from "./CaseDetail";
 import { TestAuthWrapper } from "../test-utils";
 
-vi.mock("../api", () => ({
-  api: {
-    getCase: vi.fn(),
-    listConsultations: vi.fn(),
-    updateCaseStatus: vi.fn(),
-  },
-}));
-
 import { api } from "../api";
 
 const mockCase = {

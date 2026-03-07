@@ -17,6 +17,11 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+// Current user info
+app.get("/api/me", requireAuth, (req, res) => {
+  res.json(req.user);
+});
+
 // API routes (protected by Firebase Auth)
 app.use("/api/cases", requireAuth, casesRouter);
 app.use("/api/support-menus", requireAuth, supportMenusRouter);
