@@ -41,7 +41,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         if (code === 6) {
           // ALREADY_EXISTS: 同時リクエストが先に作成済み
           const existingDoc = await newStaffRef.get();
-          const existingData = existingDoc.data()!;
+          const existingData = existingDoc.data();
+          if (!existingData) {
+            throw new Error("Staff document exists but has no data");
+          }
           staffId = existingDoc.id;
           role = (existingData.role as "admin" | "staff") ?? "staff";
         } else {
