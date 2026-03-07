@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  auth-check:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/880774580577/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "kyugo-ai-deployer@kyugo-ai-dev.iam.gserviceaccount.com"
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: kyugo-ai-dev

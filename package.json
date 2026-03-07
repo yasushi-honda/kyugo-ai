@@ -1,0 +1,28 @@
+{
+  "name": "kyugo-ai",
+  "version": "0.1.0",
+  "description": "福祉相談業務AI支援システム - Welfare Consultation AI Support System",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src/",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@google-cloud/aiplatform": "^3.0.0",
+    "@google-cloud/firestore": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
