@@ -23,7 +23,6 @@ echo ""
 
 # 1. 対象ケースのサブコレクション consultations から不正レコードを検索
 # Firestoreパス: cases/{caseId}/consultations
-SUBCOL_URL="${BASE_URL}/cases/${CASE_ID}/consultations"
 echo "--- 相談レコードを検索中 (cases/${CASE_ID}/consultations) ---"
 QUERY_RESULT=$(curl -s -X POST \
   "${BASE_URL}/cases/${CASE_ID}:runQuery" \
