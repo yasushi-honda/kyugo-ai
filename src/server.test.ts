@@ -153,8 +153,8 @@ describe("GET /api/me", () => {
       name: "New User",
     } as never);
 
-    const mockSet = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "auto-staff-001", set: mockSet });
+    const mockCreate = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "uid-new", create: mockCreate });
     const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
     const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
     const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
@@ -169,9 +169,9 @@ describe("GET /api/me", () => {
       uid: "uid-new",
       email: "new@example.com",
       role: "staff",
-      staffId: "auto-staff-001",
+      staffId: "uid-new",
     });
-    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
       firebaseUid: "uid-new",
       email: "new@example.com",
       role: "staff",

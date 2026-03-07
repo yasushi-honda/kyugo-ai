@@ -24,16 +24,30 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     if (staffQuery.empty) {
       // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
-      const newStaffRef = firestore.collection("staff").doc();
-      await newStaffRef.set({
-        firebaseUid: decoded.uid,
-        email: decoded.email ?? "",
-        name: decoded.name ?? "",
-        role: "staff",
-        createdAt: new Date(),
-      });
-      staffId = newStaffRef.id;
-      role = "staff";
+      // firebaseUidをドキュメントIDに使い、create()で冪等に作成（競合対策）
+      const newStaffRef = firestore.collection("staff").doc(decoded.uid);
+      try {
+        await newStaffRef.create({
+          firebaseUid: decoded.uid,
+          email: decoded.email ?? "",
+          name: decoded.name ?? "",
+          role: "staff",
+          createdAt: new Date(),
+        });
+        staffId = newStaffRef.id;
+        role = "staff";
+      } catch (provisionErr: unknown) {
+        const code = (provisionErr as { code?: number }).code;
+        if (code === 6) {
+          // ALREADY_EXISTS: 同時リクエストが先に作成済み
+          const existingDoc = await newStaffRef.get();
+          const existingData = existingDoc.data()!;
+          staffId = existingDoc.id;
+          role = (existingData.role as "admin" | "staff") ?? "staff";
+        } else {
+          throw provisionErr;
+        }
+      }
     } else {
       const staffDoc = staffQuery.docs[0];
       const staffData = staffDoc.data();
