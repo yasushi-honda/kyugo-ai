@@ -88,6 +88,37 @@ describe("NewConsultationModal", () => {
     });
   });
 
+  it("sends staffId from userInfo (not uid) in audio mode", async () => {
+    vi.mocked(api.createAudioConsultation).mockResolvedValue({
+      id: "cons-1",
+      caseId: "case-1",
+      staffId: "test-staff-001",
+      content: "",
+      transcript: "text",
+      summary: "summary",
+      suggestedSupports: [],
+      consultationType: "counter",
+      createdAt: { _seconds: 1700000000 },
+      updatedAt: { _seconds: 1700000000 },
+    });
+
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText(/音声ファイル/));
+    const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, file);
+    await user.click(screen.getByText("音声を分析・記録"));
+
+    await vi.waitFor(() => {
+      expect(api.createAudioConsultation).toHaveBeenCalled();
+    });
+
+    const formData = vi.mocked(api.createAudioConsultation).mock.calls[0][1] as FormData;
+    expect(formData.get("staffId")).toBe("test-staff-001");
+  });
+
   it("shows AI result after audio submission", async () => {
     vi.mocked(api.createAudioConsultation).mockResolvedValue({
       id: "cons-1",

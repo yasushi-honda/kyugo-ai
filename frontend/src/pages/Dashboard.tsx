@@ -17,7 +17,7 @@ function formatDate(ts: { _seconds: number }) {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { user, userInfo } = useAuth();
+  const { user, userInfo, authError } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewCase, setShowNewCase] = useState(false);
@@ -48,9 +48,14 @@ export function Dashboard() {
     <>
       <div className="page-header">
         <h1>ケース一覧</h1>
-        <p className="page-header-subtitle">担当: {user?.email}</p>
+        <p className="page-header-subtitle">担当: {userInfo?.staffId ?? user?.email}</p>
       </div>
       <div className="page-body">
+        {authError && (
+          <div className="alert alert-error" style={{ marginBottom: "var(--space-5)", padding: "var(--space-4)", background: "var(--kuri-50)", border: "1px solid var(--kuri-200)", borderRadius: "var(--radius-md)", color: "var(--kuri-700)" }}>
+            {authError}
+          </div>
+        )}
         <div className="stats-bar">
           <div className="stat-card">
             <div className="stat-value">{stats.total}</div>

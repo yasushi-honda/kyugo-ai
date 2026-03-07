@@ -48,6 +48,12 @@ import { api } from "../api";
 
 beforeEach(() => {
   vi.mocked(api.listCases).mockReset();
+  vi.mocked(api.getMe).mockReset().mockResolvedValue({
+    uid: "test-uid",
+    email: "test@example.com",
+    role: "staff",
+    staffId: "test-staff-001",
+  });
 });
 
 function renderDashboard() {
@@ -113,6 +119,16 @@ describe("Dashboard", () => {
     await user.click(screen.getByText("最初のケースを作成"));
 
     expect(screen.getByText("新規ケース作成")).toBeInTheDocument();
+  });
+
+  it("shows auth error when getMe fails", async () => {
+    vi.mocked(api.getMe).mockRejectedValue(new Error("Network error"));
+    vi.mocked(api.listCases).mockResolvedValue([]);
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText(/職員情報の取得に失敗しました/)).toBeInTheDocument();
+    });
   });
 
   it("displays status labels in Japanese", async () => {
