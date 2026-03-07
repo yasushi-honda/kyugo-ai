@@ -265,6 +265,107 @@ describe("POST /api/cases/:id/consultations/audio", () => {
   });
 });
 
+describe("POST /api/cases/:id/consultations - edge cases", () => {
+  it("returns 400 if required fields missing", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      staffId: "staff-1",
+      // missing content and consultationType
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("required");
+  });
+
+  it("returns 500 when repository throws", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockRejectedValue(new Error("DB connection failed"));
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      staffId: "staff-1",
+      content: "テスト",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("DB connection failed");
+  });
+});
+
+describe("PATCH /api/cases/:id/status - edge cases", () => {
+  it("returns 400 if status field is missing", async () => {
+    const res = await request(app).patch("/api/cases/case-1/status").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("required");
+  });
+
+  it("returns 404 if case not found", async () => {
+    vi.mocked(caseRepo.updateCaseStatus).mockRejectedValue(new Error("Case not found"));
+
+    const res = await request(app).patch("/api/cases/nonexistent/status").send({ status: "closed" });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/cases/:id/consultations", () => {
+  it("returns consultation list", async () => {
+    vi.mocked(consultationRepo.listConsultations).mockResolvedValue([]);
+
+    const res = await request(app).get("/api/cases/case-1/consultations");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it("returns 500 when repository throws", async () => {
+    vi.mocked(consultationRepo.listConsultations).mockRejectedValue(new Error("DB error"));
+
+    const res = await request(app).get("/api/cases/case-1/consultations");
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("GET /api/cases/:id/consultations/:consultationId", () => {
+  it("returns a consultation", async () => {
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
+      id: "cons-1",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "テスト",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+
+    const res = await request(app).get("/api/cases/case-1/consultations/cons-1");
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe("cons-1");
+  });
+
+  it("returns 404 if not found", async () => {
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue(null);
+
+    const res = await request(app).get("/api/cases/case-1/consultations/nonexistent");
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/cases - edge cases", () => {
+  it("returns 500 when repository throws", async () => {
+    vi.mocked(caseRepo.createCase).mockRejectedValue(new Error("Firestore unavailable"));
+
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "1990-01-01",
+      assignedStaffId: "staff-1",
+    });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Firestore unavailable");
+  });
+});
+
 describe("GET /api/support-menus", () => {
   it("returns menu list", async () => {
     vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([
@@ -275,5 +376,32 @@ describe("GET /api/support-menus", () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].name).toBe("生活保護");
+  });
+
+  it("passes category filter", async () => {
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+
+    const res = await request(app).get("/api/support-menus?category=住居支援");
+    expect(res.status).toBe(200);
+    expect(supportMenuRepo.listSupportMenus).toHaveBeenCalledWith("住居支援");
+  });
+});
+
+describe("GET /api/support-menus/:id", () => {
+  it("returns a menu", async () => {
+    vi.mocked(supportMenuRepo.getSupportMenu).mockResolvedValue({
+      id: "menu-1", name: "生活保護", category: "生活支援", eligibility: "", description: "", relatedLaws: [], updatedAt: NOW,
+    });
+
+    const res = await request(app).get("/api/support-menus/menu-1");
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe("生活保護");
+  });
+
+  it("returns 404 if not found", async () => {
+    vi.mocked(supportMenuRepo.getSupportMenu).mockResolvedValue(null);
+
+    const res = await request(app).get("/api/support-menus/nonexistent");
+    expect(res.status).toBe(404);
   });
 });

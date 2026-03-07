@@ -1,0 +1,181 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { CaseDetail } from "./CaseDetail";
+
+vi.mock("../api", () => ({
+  api: {
+    getCase: vi.fn(),
+    listConsultations: vi.fn(),
+    updateCaseStatus: vi.fn(),
+  },
+}));
+
+import { api } from "../api";
+
+const mockCase = {
+  id: "case-1",
+  clientName: "山田太郎",
+  clientId: "client-001",
+  status: "active" as const,
+  assignedStaffId: "staff-001",
+  dateOfBirth: { _seconds: 631152000 },
+  householdInfo: {},
+  incomeInfo: {},
+  createdAt: { _seconds: 1700000000 },
+  updatedAt: { _seconds: 1700000000 },
+};
+
+const mockConsultations = [
+  {
+    id: "cons-1",
+    caseId: "case-1",
+    staffId: "staff-001",
+    content: "初回相談の記録",
+    transcript: "",
+    summary: "AI要約テスト",
+    suggestedSupports: [
+      { menuId: "m1", menuName: "生活保護", reason: "理由テスト", relevanceScore: 0.85 },
+    ],
+    consultationType: "counter" as const,
+    createdAt: { _seconds: 1700000000 },
+    updatedAt: { _seconds: 1700000000 },
+  },
+];
+
+beforeEach(() => {
+  vi.mocked(api.getCase).mockReset();
+  vi.mocked(api.listConsultations).mockReset();
+  vi.mocked(api.updateCaseStatus).mockReset();
+});
+
+function renderCaseDetail(caseId = "case-1") {
+  return render(
+    <MemoryRouter initialEntries={[`/cases/${caseId}`]}>
+      <Routes>
+        <Route path="/cases/:id" element={<CaseDetail />} />
+        <Route path="/" element={<div>Home</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe("CaseDetail", () => {
+  it("shows loading state initially", () => {
+    vi.mocked(api.getCase).mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.listConsultations).mockReturnValue(new Promise(() => {}));
+    renderCaseDetail();
+
+    expect(screen.getByText("読み込み中...")).toBeInTheDocument();
+  });
+
+  it("shows error state when case not found", async () => {
+    vi.mocked(api.getCase).mockRejectedValue(new Error("Not found"));
+    vi.mocked(api.listConsultations).mockRejectedValue(new Error("Not found"));
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("ケースが見つかりません")).toBeInTheDocument();
+    });
+  });
+
+  it("displays case information", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
+    });
+    expect(screen.getByText("ID: client-001")).toBeInTheDocument();
+    expect(screen.getByText("対応中")).toBeInTheDocument();
+  });
+
+  it("displays consultation timeline", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+    expect(screen.getByText("窓口")).toBeInTheDocument();
+  });
+
+  it("displays AI analysis results in consultation", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
+    });
+    expect(screen.getByText("生活保護")).toBeInTheDocument();
+    expect(screen.getByText("85")).toBeInTheDocument(); // relevanceScore * 100
+  });
+
+  it("shows empty state when no consultations", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("相談記録がありません")).toBeInTheDocument();
+    });
+  });
+
+  it("shows status change buttons for active case", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("照会中に変更")).toBeInTheDocument();
+    });
+    expect(screen.getByText("ケースを終了")).toBeInTheDocument();
+  });
+
+  it("calls updateCaseStatus when status button clicked", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    vi.mocked(api.updateCaseStatus).mockResolvedValue({ ...mockCase, status: "referred" });
+
+    renderCaseDetail();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("照会中に変更")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("照会中に変更"));
+
+    expect(api.updateCaseStatus).toHaveBeenCalledWith("case-1", "referred");
+  });
+
+  it("shows closed message for closed case", async () => {
+    vi.mocked(api.getCase).mockResolvedValue({ ...mockCase, status: "closed" });
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("このケースは終了しています")).toBeInTheDocument();
+    });
+  });
+
+  it("opens new consultation modal", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText(/新規相談記録/)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/新規相談記録/));
+
+    expect(screen.getByText("新規相談記録", { selector: "h3" })).toBeInTheDocument();
+  });
+});

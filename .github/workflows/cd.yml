@@ -26,6 +26,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: Frontend test
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
 
   deploy:
     runs-on: ubuntu-latest
