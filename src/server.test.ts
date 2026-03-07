@@ -50,6 +50,7 @@ import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js";
 import { Timestamp } from "@google-cloud/firestore";
+import { firebaseAuth, firestore } from "./config.js";
 
 const app = express();
 app.use(express.json());
@@ -59,6 +60,9 @@ app.use("/api/support-menus", supportMenusRouter);
 // App with auth middleware for integration tests
 const authApp = express();
 authApp.use(express.json());
+authApp.get("/api/me", requireAuth, (req, res) => {
+  res.json(req.user);
+});
 authApp.use("/api/cases", requireAuth, casesRouter);
 authApp.use("/api/support-menus", requireAuth, supportMenusRouter);
 
@@ -88,6 +92,41 @@ describe("GET /health", () => {
     const res = await request(healthApp).get("/health");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
+  });
+});
+
+describe("GET /api/me", () => {
+  it("returns user info when authenticated", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "uid-me",
+      email: "me@example.com",
+    } as never);
+
+    const staffDoc = {
+      id: "staff-me-001",
+      data: () => ({ role: "admin", name: "Me", email: "me@example.com" }),
+    };
+    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      uid: "uid-me",
+      email: "me@example.com",
+      role: "admin",
+      staffId: "staff-me-001",
+    });
+  });
+
+  it("returns 401 without auth header", async () => {
+    const res = await request(authApp).get("/api/me");
+    expect(res.status).toBe(401);
   });
 });
 

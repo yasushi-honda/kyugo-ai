@@ -4,12 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { NewCaseModal } from "./NewCaseModal";
 import { TestAuthWrapper } from "../test-utils";
 
-vi.mock("../api", () => ({
-  api: {
-    createCase: vi.fn(),
-  },
-}));
-
 import { api } from "../api";
 
 beforeEach(() => {
@@ -83,7 +77,7 @@ describe("NewCaseModal", () => {
       clientName: "テスト太郎",
       clientId: "client-test",
       dateOfBirth: "1990-01-01",
-      assignedStaffId: "test-uid",
+      assignedStaffId: "test-staff-001",
     });
 
     await vi.waitFor(() => {

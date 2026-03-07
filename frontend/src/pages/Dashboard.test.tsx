@@ -44,12 +44,6 @@ const mockCases = [
   },
 ];
 
-vi.mock("../api", () => ({
-  api: {
-    listCases: vi.fn(),
-  },
-}));
-
 import { api } from "../api";
 
 beforeEach(() => {
