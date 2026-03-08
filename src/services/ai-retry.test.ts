@@ -246,6 +246,30 @@ describe("retryPendingConsultations", () => {
     await expect(retryPendingConsultations()).rejects.toThrow("Firestore down");
   });
 
+  it("回復ステップをrecoverPending→recoverRetrying→expire→listRetryPendingの順で実行する", async () => {
+    const callOrder: string[] = [];
+    vi.mocked(consultationRepo.recoverStuckPendingConsultations).mockImplementation(async () => {
+      callOrder.push("recoverPending");
+      return 0;
+    });
+    vi.mocked(consultationRepo.recoverStuckRetryingConsultations).mockImplementation(async () => {
+      callOrder.push("recoverRetrying");
+      return 0;
+    });
+    vi.mocked(consultationRepo.expireRetryPendingConsultations).mockImplementation(async () => {
+      callOrder.push("expire");
+      return 0;
+    });
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockImplementation(async () => {
+      callOrder.push("listRetryPending");
+      return [];
+    });
+
+    await retryPendingConsultations();
+
+    expect(callOrder).toEqual(["recoverPending", "recoverRetrying", "expire", "listRetryPending"]);
+  });
+
   it("状態復旧のFirestore書き込みが失敗してもループが継続する", async () => {
     const cons1 = mockConsultation({ id: "cons-1", caseId: "case-1" });
     const cons2 = mockConsultation({ id: "cons-2", caseId: "case-2" });

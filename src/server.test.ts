@@ -845,6 +845,47 @@ describe("POST /api/cases/:id/consultations/audio", () => {
     );
   });
 
+  it("sets aiStatus to error on permanent audio AI error (400)", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-audio-perm",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "訪問相談",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "visit",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    const permanentErr = new Error("Invalid audio format") as Error & { status: number };
+    permanentErr.status = 400;
+    vi.mocked(analyzeAudioConsultation).mockRejectedValue(permanentErr);
+    vi.mocked(consultationRepo.updateConsultationAIStatus).mockResolvedValue();
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("consultationType", "visit")
+      .field("context", "訪問相談")
+      .attach("audio", Buffer.from("fake-audio"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(201);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(vi.mocked(consultationRepo.updateConsultationAIStatus)).toHaveBeenCalledWith(
+      "case-1",
+      "cons-audio-perm",
+      "error",
+      "Invalid audio format",
+      0,
+      undefined,
+    );
+  });
+
   it("returns 400 for invalid consultationType in audio upload", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
 
