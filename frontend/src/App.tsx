@@ -27,9 +27,9 @@ export function ProtectedRoutes() {
         <p>{authError ?? "職員情報を取得できませんでした"}</p>
         {logoutError && <p className="error-text">{logoutError}</p>}
         <div className="auth-error-actions">
-          <button onClick={() => retryGetMe()} disabled={retrying}>再試行</button>
-          <button onClick={() => logout()} disabled={retrying}>ログアウト</button>
-          {logoutError && <button onClick={() => forceLogout()}>強制ログアウト</button>}
+          <button className="btn btn-primary" onClick={() => retryGetMe()} disabled={retrying}>再試行</button>
+          <button className="btn btn-secondary" onClick={() => logout()} disabled={retrying}>ログアウト</button>
+          {logoutError && <button className="btn btn-ghost btn-danger" onClick={() => forceLogout()}>強制ログアウト</button>}
         </div>
       </div>
     );
