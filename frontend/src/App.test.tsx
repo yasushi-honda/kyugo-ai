@@ -86,6 +86,75 @@ describe("Unauthenticated routing", () => {
   });
 });
 
+describe("Auth fetchMe race condition", () => {
+  afterEach(() => {
+    // Restore default onAuthStateChanged mock for other tests
+    vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
+      (callback as (user: unknown) => void)({
+        uid: "test-uid",
+        email: "test@example.com",
+        getIdToken: vi.fn().mockResolvedValue("mock-token"),
+      });
+      return vi.fn();
+    });
+  });
+
+  it("discards stale fetchMe response when user changes rapidly", async () => {
+    // Capture the onAuthStateChanged callback so we can fire it manually
+    let authCallback!: (user: unknown) => void;
+    vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
+      authCallback = callback as (user: unknown) => void;
+      return vi.fn();
+    });
+
+    // First getMe: slow (controlled by resolveFirst)
+    let resolveFirst!: (value: UserInfo | PromiseLike<UserInfo>) => void;
+    vi.mocked(api.getMe)
+      .mockImplementationOnce(() => new Promise<UserInfo>((resolve) => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({
+        uid: "user-2",
+        email: "second@example.com",
+        role: "staff",
+        staffId: "staff-002",
+      });
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    // First user logs in — starts slow getMe
+    authCallback({ uid: "user-1", email: "first@example.com", getIdToken: vi.fn().mockResolvedValue("token-1") });
+
+    // Immediately switch to second user — starts fast getMe
+    authCallback({ uid: "user-2", email: "second@example.com", getIdToken: vi.fn().mockResolvedValue("token-2") });
+
+    // Second getMe resolves quickly
+    await waitFor(() => {
+      expect(screen.getByText("ケース一覧", { selector: "h1" })).toBeInTheDocument();
+    });
+
+    // Now resolve the stale first getMe — should be discarded
+    resolveFirst({
+      uid: "user-1",
+      email: "stale@example.com",
+      role: "staff",
+      staffId: "staff-001",
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Stale data should not appear
+    expect(screen.queryByText("stale@example.com")).not.toBeInTheDocument();
+  });
+});
+
 describe("Auth error handling", () => {
   it("shows error message when getMe fails (half-login prevention)", async () => {
     vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));

@@ -79,6 +79,17 @@ describe("CaseDetail", () => {
     expect(screen.getByText("一覧に戻る")).toBeInTheDocument();
   });
 
+  it("shows not found when case does not exist", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(undefined as never);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("ケースが見つかりません")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("データの取得に失敗しました")).not.toBeInTheDocument();
+  });
+
   it("retries loading when retry button is clicked", async () => {
     vi.mocked(api.getCase).mockRejectedValueOnce(new Error("timeout"));
     vi.mocked(api.listConsultations).mockRejectedValueOnce(new Error("timeout"));
