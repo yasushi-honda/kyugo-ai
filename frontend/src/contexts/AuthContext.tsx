@@ -8,7 +8,10 @@ interface AuthContextType {
   userInfo: UserInfo | null;
   loading: boolean;
   authError: string | null;
+  logoutError: string | null;
   logout: () => Promise<void>;
+  forceLogout: () => void;
+  retryGetMe: () => Promise<void>;
   getIdToken: () => Promise<string>;
 }
 
@@ -19,28 +22,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  const fetchMe = async () => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      const info = await api.getMe();
+      setUserInfo(info);
+    } catch (err) {
+      setUserInfo(null);
+      setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setAuthError(null);
+      setLogoutError(null);
       if (u) {
-        try {
-          const info = await api.getMe();
-          setUserInfo(info);
-        } catch (err) {
-          setUserInfo(null);
-          setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
-        }
+        await fetchMe();
       } else {
         setUserInfo(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
     return unsubscribe;
   }, []);
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    setLogoutError(null);
+    try {
+      await signOut(auth);
+    } catch (err) {
+      setLogoutError(`ログアウトに失敗しました: ${(err as Error).message}`);
+    }
+  };
+
+  const forceLogout = () => {
+    setUser(null);
+    setUserInfo(null);
+    setAuthError(null);
+    setLogoutError(null);
+  };
+
+  const retryGetMe = async () => {
+    if (!user) return;
+    await fetchMe();
+  };
 
   const getIdToken = async () => {
     if (!user) throw new Error("Not authenticated");
@@ -48,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userInfo, loading, authError, logout, getIdToken }}>
+    <AuthContext.Provider value={{ user, userInfo, loading, authError, logoutError, logout, forceLogout, retryGetMe, getIdToken }}>
       {children}
     </AuthContext.Provider>
   );

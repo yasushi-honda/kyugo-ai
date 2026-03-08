@@ -148,4 +148,96 @@ describe("Auth error handling", () => {
     // Should NOT show protected content (Dashboard)
     expect(screen.queryByText("ケース一覧", { selector: "h1" })).not.toBeInTheDocument();
   });
+
+  it("retries getMe when retry button is clicked", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/職員情報の取得に失敗しました/)).toBeInTheDocument();
+    });
+
+    // getMe will succeed on retry
+    vi.mocked(api.getMe).mockResolvedValueOnce({
+      uid: "test-uid",
+      email: "test@example.com",
+      role: "staff",
+      staffId: "test-staff-001",
+    });
+
+    fireEvent.click(screen.getByText("再試行"));
+
+    await waitFor(() => {
+      expect(screen.getByText("ケース一覧", { selector: "h1" })).toBeInTheDocument();
+    });
+  });
+
+  it("shows signOut error and force logout button when signOut fails", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
+    vi.mocked(signOut).mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("ログアウト")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("ログアウト"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/ログアウトに失敗しました/)).toBeInTheDocument();
+    });
+    expect(screen.getByText("強制ログアウト")).toBeInTheDocument();
+  });
+
+  it("force logout clears local state and redirects to login", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
+    vi.mocked(signOut).mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("ログアウト")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("ログアウト"));
+
+    await waitFor(() => {
+      expect(screen.getByText("強制ログアウト")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("強制ログアウト"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("login-page")).toBeInTheDocument();
+    });
+  });
 });

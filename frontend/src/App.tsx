@@ -6,7 +6,7 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 
 export function ProtectedRoutes() {
-  const { user, userInfo, loading, authError, logout } = useAuth();
+  const { user, userInfo, loading, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
 
   if (loading) {
     return (
@@ -25,7 +25,12 @@ export function ProtectedRoutes() {
     return (
       <div className="loading-overlay">
         <p>{authError ?? "職員情報を取得できませんでした"}</p>
-        <button onClick={() => logout()}>ログアウト</button>
+        {logoutError && <p className="error-text">{logoutError}</p>}
+        <div className="auth-error-actions">
+          <button onClick={() => retryGetMe()}>再試行</button>
+          <button onClick={() => logout()}>ログアウト</button>
+          {logoutError && <button onClick={() => forceLogout()}>強制ログアウト</button>}
+        </div>
       </div>
     );
   }
