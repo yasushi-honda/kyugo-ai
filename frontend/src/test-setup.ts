@@ -7,6 +7,7 @@ vi.mock("./api", () => ({
     getMe: vi.fn().mockResolvedValue({
       uid: "test-uid",
       email: "test@example.com",
+      name: "テスト職員",
       role: "staff",
       staffId: "test-staff-001",
     }),

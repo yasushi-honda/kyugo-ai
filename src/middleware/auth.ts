@@ -40,7 +40,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.status(401).json({ error: "Invalid or expired token" });
     } else {
       // auth/internal-error, auth/project-not-found, network errors, etc.
-      console.error("Token verification failed", { code, message: (err as Error).message });
+      console.error("Token verification failed", JSON.stringify({ code, message: (err as Error).message }));
       res.status(401).json({ error: "Authentication failed" });
     }
     return;
@@ -63,6 +63,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const staffCollection = firestore.collection("staff");
     let staffId: string;
     let role: "admin" | "staff";
+    let staffName = "";
 
     // Step 2a: doc(uid) を一次ソースとして検索（新規ユーザーはuid=docId）
     const primaryDoc = await staffCollection.doc(decoded.uid).get();
@@ -71,6 +72,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       const data = primaryDoc.data()!;
       staffId = primaryDoc.id;
       role = (data.role as "admin" | "staff") ?? "staff";
+      staffName = (data.name as string) ?? "";
     } else {
       // Step 2b: レガシー互換 — firebaseUidフィールドで検索（limit なし）
       const legacyQuery = await staffCollection
@@ -93,6 +95,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         const staffDoc = legacyQuery.docs[0];
         staffId = staffDoc.id;
         role = (staffDoc.data().role as "admin" | "staff") ?? "staff";
+        staffName = (staffDoc.data().name as string) ?? "";
       } else {
         // 未登録ユーザーのアクセス制御
         if (!decoded.email) {
@@ -121,6 +124,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
           });
           staffId = newStaffRef.id;
           role = "staff";
+          staffName = decoded.name ?? "";
         } catch (provisionErr: unknown) {
           const code = (provisionErr as { code?: number }).code;
           if (code === 6) {
@@ -132,6 +136,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             }
             staffId = existingDoc.id;
             role = (existingData.role as "admin" | "staff") ?? "staff";
+            staffName = (existingData.name as string) ?? "";
           } else {
             throw provisionErr;
           }
@@ -142,6 +147,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.user = {
       uid: decoded.uid,
       email: decoded.email ?? "",
+      name: staffName,
       role,
       staffId,
     };

@@ -64,8 +64,8 @@ import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
 // Fake user for route tests (routes now require req.user)
-const FAKE_USER = { uid: "test-uid", email: "test@test.com", role: "staff" as const, staffId: "staff-1" };
-const FAKE_ADMIN = { uid: "admin-uid", email: "admin@test.com", role: "admin" as const, staffId: "admin-staff" };
+const FAKE_USER = { uid: "test-uid", email: "test@test.com", name: "テスト職員", role: "staff" as const, staffId: "staff-1" };
+const FAKE_ADMIN = { uid: "admin-uid", email: "admin@test.com", name: "管理者", role: "admin" as const, staffId: "admin-staff" };
 
 const app = express();
 app.use(express.json());
@@ -150,6 +150,7 @@ describe("GET /api/me", () => {
     expect(res.body).toEqual({
       uid: "uid-me",
       email: "me@example.com",
+      name: "Me",
       role: "admin",
       staffId: "staff-me-001",
     });
@@ -183,6 +184,7 @@ describe("GET /api/me", () => {
     expect(res.body).toEqual({
       uid: "uid-new",
       email: "new@example.com",
+      name: "New User",
       role: "staff",
       staffId: "uid-new",
     });

@@ -4,6 +4,7 @@ import { Timestamp } from "@google-cloud/firestore";
 export interface AuthUser {
   uid: string;
   email: string;
+  name: string;
   role: "admin" | "staff";
   staffId: string;
 }

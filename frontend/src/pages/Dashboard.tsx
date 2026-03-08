@@ -39,7 +39,7 @@ export function Dashboard() {
     <>
       <div className="page-header">
         <h1>ケース一覧</h1>
-        <p className="page-header-subtitle">担当: {userInfo?.staffId ?? user?.email}</p>
+        <p className="page-header-subtitle">担当: {userInfo?.name || userInfo?.email || user?.email}</p>
       </div>
       <div className="page-body">
         {authError && (
@@ -108,7 +108,9 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {c.assignedStaffId}
+                      👤 {c.assignedStaffId === userInfo?.staffId
+                        ? (userInfo.name || userInfo.email)
+                        : c.assignedStaffId}
                     </div>
                   </div>
                 </div>

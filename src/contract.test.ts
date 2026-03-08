@@ -6,6 +6,7 @@ import type { AuthUser, Case, CaseStatus, Consultation, ConsultationType, AIStat
 interface FrontendUserInfo {
   uid: string;
   email: string;
+  name: string;
   role: "admin" | "staff";
   staffId: string;
 }
@@ -69,7 +70,7 @@ describe("FE↔BE contract: UserInfo / AuthUser", () => {
   });
 
   it("AuthUser has exactly the expected keys", () => {
-    expectTypeOf<keyof AuthUser>().toEqualTypeOf<"uid" | "email" | "role" | "staffId">();
+    expectTypeOf<keyof AuthUser>().toEqualTypeOf<"uid" | "email" | "name" | "role" | "staffId">();
   });
 });
 
