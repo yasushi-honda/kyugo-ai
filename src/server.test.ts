@@ -255,6 +255,25 @@ describe("POST /api/cases", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 for non-existent date that JS auto-corrects (2025-02-31)", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "2025-02-31",
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Invalid date");
+  });
+
+  it("returns 400 for April 31st (2025-04-31)", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "2025-04-31",
+    });
+    expect(res.status).toBe(400);
+  });
+
   it("returns 400 when clientName is empty string", async () => {
     const res = await request(app).post("/api/cases").send({
       clientName: "",
