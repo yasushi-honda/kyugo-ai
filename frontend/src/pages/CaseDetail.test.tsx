@@ -32,6 +32,7 @@ const mockConsultations = [
       { menuId: "m1", menuName: "生活保護", reason: "理由テスト", relevanceScore: 0.85 },
     ],
     consultationType: "counter" as const,
+    aiStatus: "completed" as const,
     createdAt: { _seconds: 1700000000 },
     updatedAt: { _seconds: 1700000000 },
   },
@@ -155,6 +156,89 @@ describe("CaseDetail", () => {
 
     await waitFor(() => {
       expect(screen.getByText("このケースは終了しています")).toBeInTheDocument();
+    });
+  });
+
+  it("shows AI analyzing indicator when aiStatus is pending", async () => {
+    const pendingConsultation = {
+      ...mockConsultations[0],
+      id: "cons-pending",
+      summary: "",
+      suggestedSupports: [],
+      aiStatus: "pending" as const,
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([pendingConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析中...")).toBeInTheDocument();
+    });
+    // AI分析結果パネルは表示されない
+    expect(screen.queryByText("AI分析結果")).not.toBeInTheDocument();
+  });
+
+  it("shows retry pending indicator when aiStatus is retry_pending", async () => {
+    const retryConsultation = {
+      ...mockConsultations[0],
+      id: "cons-retry",
+      summary: "",
+      suggestedSupports: [],
+      aiStatus: "retry_pending" as const,
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([retryConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析 再試行待ち")).toBeInTheDocument();
+    });
+  });
+
+  it("shows error message when aiStatus is error", async () => {
+    const errorConsultation = {
+      ...mockConsultations[0],
+      id: "cons-error",
+      summary: "",
+      suggestedSupports: [],
+      aiStatus: "error" as const,
+      aiErrorMessage: "Model overloaded",
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([errorConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析エラー")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Model overloaded")).toBeInTheDocument();
+  });
+
+  it("shows completed AI results with aiStatus completed", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
+    });
+    // pending/error表示は出ない
+    expect(screen.queryByText("AI分析中...")).not.toBeInTheDocument();
+    expect(screen.queryByText("AI分析エラー")).not.toBeInTheDocument();
+  });
+
+  it("shows AI results for legacy data without aiStatus field", async () => {
+    const legacyConsultation = {
+      ...mockConsultations[0],
+      id: "cons-legacy",
+      aiStatus: undefined as unknown as "completed",
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([legacyConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
     });
   });
 

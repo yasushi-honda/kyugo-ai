@@ -136,7 +136,37 @@ export function CaseDetail() {
                           </div>
                         )}
 
-                        {con.summary && (
+                        {con.aiStatus === "pending" && (
+                          <div className="ai-panel ai-panel-pending">
+                            <div className="ai-panel-header">
+                              <div className="ai-panel-icon">AI</div>
+                              <span className="ai-status-pulse">AI分析中...</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {con.aiStatus === "retry_pending" && (
+                          <div className="ai-panel ai-panel-retry">
+                            <div className="ai-panel-header">
+                              <div className="ai-panel-icon">AI</div>
+                              AI分析 再試行待ち
+                            </div>
+                          </div>
+                        )}
+
+                        {con.aiStatus === "error" && (
+                          <div className="ai-panel ai-panel-error">
+                            <div className="ai-panel-header">
+                              <div className="ai-panel-icon ai-panel-icon-error">AI</div>
+                              AI分析エラー
+                            </div>
+                            {con.aiErrorMessage && (
+                              <div className="ai-error-message">{con.aiErrorMessage}</div>
+                            )}
+                          </div>
+                        )}
+
+                        {(con.aiStatus === "completed" || !con.aiStatus) && con.summary && (
                           <div className="ai-panel">
                             <div className="ai-panel-header">
                               <div className="ai-panel-icon">AI</div>
