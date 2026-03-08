@@ -44,7 +44,7 @@ export interface Consultation {
   updatedAt: Timestamp;
 }
 
-export type ConsultationType = "visit" | "counter" | "phone";
+export type ConsultationType = "visit" | "counter" | "phone" | "online";
 
 export interface SuggestedSupport {
   menuId: string;

@@ -1,12 +1,25 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
+import type { ZodType } from "zod";
 import * as caseRepo from "../repositories/case-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
-import { ConsultationType, SUPPORTED_AUDIO_MIME_TYPES } from "../types.js";
+import { SUPPORTED_AUDIO_MIME_TYPES } from "../types.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { requireCaseAccess } from "../middleware/authz.js";
+import {
+  createCaseSchema,
+  updateCaseStatusSchema,
+  createConsultationSchema,
+  createAudioConsultationSchema,
+} from "../schemas/case.js";
+
+function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,18 +41,19 @@ export const casesRouter = Router();
 
 // POST /api/cases - ケース作成（assignedStaffIdはreq.userから強制）
 casesRouter.post("/", async (req: Request, res: Response) => {
+  const parsed = validate(createCaseSchema, req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
   try {
-    const { clientName, clientId, dateOfBirth, householdInfo, incomeInfo } = req.body;
-    if (!clientName || !clientId) {
-      res.status(400).json({ error: "clientName, clientId are required" });
-      return;
-    }
+    const data = parsed.data;
     const created = await caseRepo.createCase({
-      clientName,
-      clientId,
-      dateOfBirth: Timestamp.fromDate(new Date(dateOfBirth)),
-      householdInfo: householdInfo ?? {},
-      incomeInfo: incomeInfo ?? {},
+      clientName: data.clientName,
+      clientId: data.clientId,
+      dateOfBirth: Timestamp.fromDate(new Date(data.dateOfBirth)),
+      householdInfo: data.householdInfo,
+      incomeInfo: data.incomeInfo,
       assignedStaffId: req.user!.staffId,
     });
     res.status(201).json(created);
@@ -82,13 +96,13 @@ casesRouter.get("/:id", requireCaseAccess, async (req: Request, res: Response) =
 
 // PATCH /api/cases/:id/status - ステータス変更（認可チェック済み）
 casesRouter.patch("/:id/status", requireCaseAccess, async (req: Request, res: Response) => {
+  const parsed = validate(updateCaseStatusSchema, req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
   try {
-    const { status } = req.body;
-    if (!status) {
-      res.status(400).json({ error: "status is required" });
-      return;
-    }
-    const updated = await caseRepo.updateCaseStatus(paramStr(req.params.id), status);
+    const updated = await caseRepo.updateCaseStatus(paramStr(req.params.id), parsed.data.status);
     res.json(updated);
   } catch (err) {
     const message = (err as Error).message;
@@ -99,25 +113,25 @@ casesRouter.patch("/:id/status", requireCaseAccess, async (req: Request, res: Re
 
 // POST /api/cases/:id/consultations - 相談記録作成 + AI分析（staffIdはreq.userから強制）
 casesRouter.post("/:id/consultations", requireCaseAccess, async (req: Request, res: Response) => {
+  const parsed = validate(createConsultationSchema, req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
   try {
     const caseId = paramStr(req.params.id);
-
-    const { content, transcript, consultationType } = req.body;
-    if (!content || !consultationType) {
-      res.status(400).json({ error: "content, consultationType are required" });
-      return;
-    }
+    const data = parsed.data;
 
     const consultation = await consultationRepo.createConsultation(caseId, {
       staffId: req.user!.staffId,
-      content,
-      transcript: transcript ?? "",
-      consultationType: consultationType as ConsultationType,
+      content: data.content,
+      transcript: data.transcript,
+      consultationType: data.consultationType,
     });
 
     // AI分析を非同期で実行（レスポンスは先に返す）
     const menus = await supportMenuRepo.listSupportMenus();
-    analyzeConsultation({ content, transcript: transcript ?? "" }, menus)
+    analyzeConsultation({ content: data.content, transcript: data.transcript }, menus)
       .then(async (aiResult) => {
         await consultationRepo.updateConsultationAIResults(
           caseId,
@@ -148,27 +162,28 @@ casesRouter.post("/:id/consultations/audio", requireCaseAccess, upload.single("a
       return;
     }
 
-    const { context, consultationType } = req.body;
-    if (!consultationType) {
-      res.status(400).json({ error: "consultationType is required" });
+    const parsed = validate(createAudioConsultationSchema, req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error });
       return;
     }
+    const data = parsed.data;
 
     // Gemini 2.5 Flash で音声分析（文字起こし + 要約 + 支援提案を1回で）
     const menus = await supportMenuRepo.listSupportMenus();
     const aiResult = await analyzeAudioConsultation(
       file.buffer,
       file.mimetype,
-      context ?? "",
+      data.context,
       menus,
     );
 
     // 分析結果を含めて相談記録を作成
     const consultationData = {
       staffId: req.user!.staffId,
-      content: context ?? "",
+      content: data.context,
       transcript: aiResult.transcript,
-      consultationType: consultationType as ConsultationType,
+      consultationType: data.consultationType,
     };
     const consultation = await consultationRepo.createConsultation(caseId, consultationData);
 
