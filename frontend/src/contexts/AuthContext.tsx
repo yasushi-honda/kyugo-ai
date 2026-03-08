@@ -44,16 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserInfo(null);
       setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
     } finally {
-      if (requestId !== fetchIdRef.current) return;
-      if (isRetry) {
-        setRetrying(false);
-      } else {
-        setLoading(false);
+      if (requestId === fetchIdRef.current) {
+        if (isRetry) {
+          setRetrying(false);
+        } else {
+          setLoading(false);
+        }
       }
     }
   };
 
   useEffect(() => {
+    const ref = fetchIdRef;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setAuthError(null);
@@ -61,14 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         await fetchMe();
       } else {
-        fetchIdRef.current++;
+        ref.current++;
         setUserInfo(null);
         setLoading(false);
       }
     });
     return () => {
       unsubscribe();
-      fetchIdRef.current++;
+      ref.current++;
     };
   }, []);
 
