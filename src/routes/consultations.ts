@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import type { ZodType } from "zod";
+import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
-import { SUPPORTED_AUDIO_MIME_TYPES } from "../types.js";
+import { SUPPORTED_AUDIO_MIME_TYPES, AI_RETRY_CONFIG } from "../types.js";
+import { isTransientError } from "../utils/error.js";
 import { requireCaseAccess } from "../middleware/authz.js";
 import {
   createConsultationSchema,
@@ -15,13 +17,6 @@ function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: 
   const result = schema.safeParse(data);
   if (result.success) return { success: true, data: result.data };
   return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
-}
-
-function isTransientError(err: unknown): boolean {
-  const status = (err as { status?: number }).status ?? (err as { code?: number }).code;
-  if (status === 429 || status === 503) return true;
-  const message = (err as Error).message ?? "";
-  return /timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|socket hang up/i.test(message);
 }
 
 const upload = multer({
@@ -77,12 +72,16 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
         console.error(`AI analysis failed for consultation ${consultation.id}:`, err);
         const isTransient = isTransientError(err);
         try {
+          const nextRetryAt = isTransient
+            ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
+            : undefined;
           await consultationRepo.updateConsultationAIStatus(
             caseId,
             consultation.id!,
             isTransient ? "retry_pending" : "error",
             (err as Error).message,
             0,
+            nextRetryAt,
           );
         } catch (statusErr) {
           console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);

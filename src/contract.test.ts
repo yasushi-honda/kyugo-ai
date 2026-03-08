@@ -21,7 +21,7 @@ interface FrontendConsultation {
   summary: string;
   suggestedSupports: FrontendSuggestedSupport[];
   consultationType: "visit" | "counter" | "phone" | "online";
-  aiStatus: "pending" | "completed" | "retry_pending" | "error";
+  aiStatus: "pending" | "completed" | "retry_pending" | "retrying" | "error";
   aiErrorMessage?: string;
   createdAt: { _seconds: number };
   updatedAt: { _seconds: number };

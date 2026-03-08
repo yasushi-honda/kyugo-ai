@@ -178,6 +178,24 @@ describe("CaseDetail", () => {
     expect(screen.queryByText("AI分析結果")).not.toBeInTheDocument();
   });
 
+  it("shows AI analyzing indicator when aiStatus is retrying", async () => {
+    const retryingConsultation = {
+      ...mockConsultations[0],
+      id: "cons-retrying",
+      summary: "",
+      suggestedSupports: [],
+      aiStatus: "retrying" as const,
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([retryingConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析中...")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("AI分析結果")).not.toBeInTheDocument();
+  });
+
   it("shows retry pending indicator when aiStatus is retry_pending", async () => {
     const retryConsultation = {
       ...mockConsultations[0],

@@ -136,7 +136,7 @@ export function CaseDetail() {
                           </div>
                         )}
 
-                        {con.aiStatus === "pending" && (
+                        {(con.aiStatus === "pending" || con.aiStatus === "retrying") && (
                           <div className="ai-panel ai-panel-pending">
                             <div className="ai-panel-header">
                               <div className="ai-panel-icon">AI</div>
