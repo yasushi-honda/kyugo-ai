@@ -15,7 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="sidebar-brand">
+          <div className="sidebar-brand" onClick={() => navigate("/")}>
             <div className="sidebar-brand-icon">救</div>
             <span>救護AI</span>
           </div>
@@ -34,7 +34,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">{user?.email}</div>
-          <button className="btn btn-secondary sidebar-logout" onClick={logout}>
+          <button className="sidebar-logout" onClick={logout}>
             ログアウト
           </button>
         </div>

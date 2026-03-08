@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
 import { useAuth } from "../contexts/AuthContext";
+import { SuggestedSupports } from "./SuggestedSupports";
 
 interface Props {
   caseId: string;
@@ -60,14 +61,14 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   if (aiResult) {
     return (
       <div className="modal-overlay" onClick={onCreated}>
-        <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "720px" }}>
+        <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h3>AI分析結果</h3>
             <button className="btn btn-ghost" onClick={onCreated}>✕</button>
           </div>
           <div className="modal-body">
             {aiResult.transcript && (
-              <div style={{ marginBottom: "var(--space-5)" }}>
+              <div className="transcript-section">
                 <label className="form-label">文字起こし</label>
                 <div className="transcript-block">{aiResult.transcript}</div>
               </div>
@@ -82,22 +83,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                 <div className="ai-summary">{aiResult.summary}</div>
               )}
               {aiResult.suggestedSupports && aiResult.suggestedSupports.length > 0 && (
-                <div>
-                  <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--ai-700)", marginBottom: "var(--space-2)" }}>
-                    提案された支援メニュー
-                  </div>
-                  {aiResult.suggestedSupports.map((s, i) => (
-                    <div key={i} className="support-suggestion">
-                      <div className={`support-score ${s.relevanceScore >= 0.8 ? "score-high" : s.relevanceScore >= 0.5 ? "score-mid" : "score-low"}`}>
-                        {Math.round(s.relevanceScore * 100)}
-                      </div>
-                      <div>
-                        <div className="support-name">{s.menuName}</div>
-                        <div className="support-reason">{s.reason}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <SuggestedSupports supports={aiResult.suggestedSupports} />
               )}
             </div>
           </div>
@@ -118,27 +104,27 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
         </div>
         <div className="modal-body">
           {/* Mode Toggle */}
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-5)" }}>
+          <div className="mode-toggle">
             <button
               className={`btn ${mode === "text" ? "btn-primary" : "btn-secondary"}`}
               onClick={() => setMode("text")}
             >
-              📝 テキスト入力
+              テキスト入力
             </button>
             <button
               className={`btn ${mode === "audio" ? "btn-primary" : "btn-secondary"}`}
               onClick={() => setMode("audio")}
             >
-              🎙️ 音声ファイル
+              音声ファイル
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: "var(--space-4)" }}>
-            <div className="form-group" style={{ flex: 1 }}>
+          <div className="form-row">
+            <div className="form-group form-group-flex">
               <label className="form-label">職員</label>
               <input className="form-input" value={user?.email ?? ""} disabled />
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-group form-group-flex">
               <label className="form-label">相談種別</label>
               <select
                 className="form-select"
@@ -219,7 +205,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           >
             {submitting ? (
               <>
-                <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                <div className="spinner spinner-sm" />
                 {mode === "audio" ? "AI分析中..." : "保存中..."}
               </>
             ) : (

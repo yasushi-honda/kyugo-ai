@@ -29,8 +29,13 @@ export function Login() {
     <div className="login-page">
       <div className="login-card card">
         <div className="card-body">
-          <h1 className="login-title">救護AI</h1>
-          <p className="login-subtitle">福祉相談業務AI支援システム</p>
+          <div className="login-brand">
+            <div className="login-brand-icon">救</div>
+            <h1 className="login-title">救護AI</h1>
+            <p className="login-subtitle">福祉相談業務AI支援システム</p>
+          </div>
+
+          <div className="login-divider">ログイン</div>
 
           {error && <div className="login-error">{error}</div>}
 

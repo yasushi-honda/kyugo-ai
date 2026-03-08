@@ -3,24 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Case, Consultation } from "../api";
 import { NewConsultationModal } from "../components/NewConsultationModal";
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "対応中",
-  referred: "照会中",
-  closed: "終了",
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  visit: "訪問",
-  counter: "窓口",
-  phone: "電話",
-  online: "オンライン",
-};
-
-function formatDateTime(ts: { _seconds: number }) {
-  const d = new Date(ts._seconds * 1000);
-  return d.toLocaleDateString("ja-JP") + " " + d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-}
+import { SuggestedSupports } from "../components/SuggestedSupports";
+import { STATUS_LABELS, TYPE_LABELS, formatDate, formatDateTime } from "../constants";
 
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +58,7 @@ export function CaseDetail() {
     <>
       <div className="page-header">
         <div className="back-link" onClick={() => navigate("/")}>← ケース一覧に戻る</div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div className="case-detail-header">
           <div>
             <h1>{caseData.clientName}</h1>
             <p className="page-header-subtitle">ID: {caseData.clientId}</p>
@@ -90,7 +74,7 @@ export function CaseDetail() {
         <div className="detail-layout">
           {/* Main: Consultation Timeline (Golden Ratio: 61.8%) */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-5)" }}>
+            <div className="section-header">
               <h3>相談記録</h3>
               <button className="btn btn-accent" onClick={() => setShowNewConsultation(true)}>
                 ＋ 新規相談記録
@@ -114,13 +98,11 @@ export function CaseDetail() {
                     </div>
                     <div className="card">
                       <div className="card-body">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+                        <div className="consultation-card-header">
                           <span className="consultation-type-badge">
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
-                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
-                            {con.staffId}
-                          </span>
+                          <span className="consultation-staff">{con.staffId}</span>
                         </div>
 
                         {con.content && (
@@ -128,10 +110,8 @@ export function CaseDetail() {
                         )}
 
                         {con.transcript && (
-                          <div style={{ marginTop: "var(--space-4)" }}>
-                            <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--text-tertiary)", marginBottom: "var(--space-2)" }}>
-                              文字起こし
-                            </div>
+                          <div className="transcript-section">
+                            <div className="transcript-label">文字起こし</div>
                             <div className="transcript-block">{con.transcript}</div>
                           </div>
                         )}
@@ -174,22 +154,7 @@ export function CaseDetail() {
                             </div>
                             <div className="ai-summary">{con.summary}</div>
                             {con.suggestedSupports?.length > 0 && (
-                              <div>
-                                <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--ai-700)", marginBottom: "var(--space-2)" }}>
-                                  提案された支援メニュー
-                                </div>
-                                {con.suggestedSupports.map((s, i) => (
-                                  <div key={i} className="support-suggestion">
-                                    <div className={`support-score ${s.relevanceScore >= 0.8 ? "score-high" : s.relevanceScore >= 0.5 ? "score-mid" : "score-low"}`}>
-                                      {Math.round(s.relevanceScore * 100)}
-                                    </div>
-                                    <div>
-                                      <div className="support-name">{s.menuName}</div>
-                                      <div className="support-reason">{s.reason}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                              <SuggestedSupports supports={con.suggestedSupports} />
                             )}
                           </div>
                         )}
@@ -205,7 +170,7 @@ export function CaseDetail() {
           <div className="detail-sidebar">
             <div className="card">
               <div className="card-body">
-                <h4 style={{ marginBottom: "var(--space-4)" }}>ケース情報</h4>
+                <h4 className="sidebar-card-title">ケース情報</h4>
                 <div className="info-grid">
                   <div>
                     <div className="info-item-label">相談者ID</div>
@@ -217,24 +182,20 @@ export function CaseDetail() {
                   </div>
                   <div>
                     <div className="info-item-label">生年月日</div>
-                    <div className="info-item-value">
-                      {new Date(caseData.dateOfBirth._seconds * 1000).toLocaleDateString("ja-JP")}
-                    </div>
+                    <div className="info-item-value">{formatDate(caseData.dateOfBirth)}</div>
                   </div>
                   <div>
                     <div className="info-item-label">作成日</div>
-                    <div className="info-item-value">
-                      {new Date(caseData.createdAt._seconds * 1000).toLocaleDateString("ja-JP")}
-                    </div>
+                    <div className="info-item-value">{formatDate(caseData.createdAt)}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="card" style={{ marginTop: "var(--space-4)" }}>
+            <div className="card sidebar-card-gap">
               <div className="card-body">
-                <h4 style={{ marginBottom: "var(--space-4)" }}>ステータス変更</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <h4 className="sidebar-card-title">ステータス変更</h4>
+                <div className="status-actions">
                   {caseData.status !== "closed" && (
                     <>
                       {caseData.status === "active" && (
@@ -260,8 +221,7 @@ export function CaseDetail() {
                         </button>
                       )}
                       <button
-                        className="btn btn-ghost"
-                        style={{ color: "var(--kuri-500)" }}
+                        className="btn btn-ghost btn-danger"
                         onClick={async () => {
                           if (confirm("このケースを終了しますか？")) {
                             await api.updateCaseStatus(caseData.id, "closed");
@@ -274,9 +234,7 @@ export function CaseDetail() {
                     </>
                   )}
                   {caseData.status === "closed" && (
-                    <p style={{ fontSize: "var(--text-sm)", color: "var(--text-tertiary)" }}>
-                      このケースは終了しています
-                    </p>
+                    <p className="status-closed-text">このケースは終了しています</p>
                   )}
                 </div>
               </div>

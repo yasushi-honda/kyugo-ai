@@ -4,16 +4,7 @@ import { api } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
 import { useAuth } from "../contexts/AuthContext";
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "対応中",
-  referred: "照会中",
-  closed: "終了",
-};
-
-function formatDate(ts: { _seconds: number }) {
-  return new Date(ts._seconds * 1000).toLocaleDateString("ja-JP");
-}
+import { STATUS_LABELS, formatDate } from "../constants";
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -52,9 +43,7 @@ export function Dashboard() {
       </div>
       <div className="page-body">
         {authError && (
-          <div className="alert alert-error" style={{ marginBottom: "var(--space-5)", padding: "var(--space-4)", background: "var(--kuri-50)", border: "1px solid var(--kuri-200)", borderRadius: "var(--radius-md)", color: "var(--kuri-700)" }}>
-            {authError}
-          </div>
+          <div className="alert-error">{authError}</div>
         )}
         <div className="stats-bar">
           <div className="stat-card">
@@ -62,20 +51,20 @@ export function Dashboard() {
             <div className="stat-label">総ケース数</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--matcha-600)" }}>{stats.active}</div>
+            <div className="stat-value">{stats.active}</div>
             <div className="stat-label">対応中</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--kohaku-500)" }}>{stats.referred}</div>
+            <div className="stat-value">{stats.referred}</div>
             <div className="stat-label">照会中</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: "var(--text-tertiary)" }}>{stats.closed}</div>
+            <div className="stat-value">{stats.closed}</div>
             <div className="stat-label">終了</div>
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-5)" }}>
+        <div className="section-header">
           <h3>全ケース</h3>
           <button className="btn btn-accent" onClick={() => setShowNewCase(true)}>
             ＋ 新規ケース
