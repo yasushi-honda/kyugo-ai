@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   userInfo: UserInfo | null;
   loading: boolean;
+  retrying: boolean;
   authError: string | null;
   logoutError: string | null;
   logout: () => Promise<void>;
@@ -23,10 +24,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
-  const fetchMe = async () => {
+  const fetchMe = async (isRetry = false) => {
     setAuthError(null);
-    setLoading(true);
+    if (isRetry) {
+      setRetrying(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const info = await api.getMe();
       setUserInfo(info);
@@ -34,7 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserInfo(null);
       setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
     } finally {
-      setLoading(false);
+      if (isRetry) {
+        setRetrying(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -70,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const retryGetMe = async () => {
-    if (!user) return;
-    await fetchMe();
+    if (!user || retrying) return;
+    await fetchMe(true);
   };
 
   const getIdToken = async () => {
@@ -80,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userInfo, loading, authError, logoutError, logout, forceLogout, retryGetMe, getIdToken }}>
+    <AuthContext.Provider value={{ user, userInfo, loading, retrying, authError, logoutError, logout, forceLogout, retryGetMe, getIdToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,7 +6,7 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 
 export function ProtectedRoutes() {
-  const { user, userInfo, loading, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
+  const { user, userInfo, loading, retrying, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
 
   if (loading) {
     return (
@@ -27,8 +27,8 @@ export function ProtectedRoutes() {
         <p>{authError ?? "職員情報を取得できませんでした"}</p>
         {logoutError && <p className="error-text">{logoutError}</p>}
         <div className="auth-error-actions">
-          <button onClick={() => retryGetMe()}>再試行</button>
-          <button onClick={() => logout()}>ログアウト</button>
+          <button onClick={() => retryGetMe()} disabled={retrying}>再試行</button>
+          <button onClick={() => logout()} disabled={retrying}>ログアウト</button>
           {logoutError && <button onClick={() => forceLogout()}>強制ログアウト</button>}
         </div>
       </div>

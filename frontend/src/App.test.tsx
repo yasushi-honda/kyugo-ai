@@ -182,6 +182,47 @@ describe("Auth error handling", () => {
     });
   });
 
+  it("disables buttons while retryGetMe is in progress", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("再試行")).toBeInTheDocument();
+    });
+
+    // Make getMe hang (never resolve) to test loading state
+    let resolveGetMe!: (value: unknown) => void;
+    vi.mocked(api.getMe).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveGetMe = resolve; }),
+    );
+
+    fireEvent.click(screen.getByText("再試行"));
+
+    // Buttons should be disabled during loading
+    await waitFor(() => {
+      expect(screen.getByText("再試行")).toBeDisabled();
+      expect(screen.getByText("ログアウト")).toBeDisabled();
+    });
+
+    // Resolve to clean up
+    resolveGetMe({
+      uid: "test-uid",
+      email: "test@example.com",
+      role: "staff",
+      staffId: "test-staff-001",
+    });
+  });
+
   it("shows signOut error and force logout button when signOut fails", async () => {
     vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
     vi.mocked(signOut).mockRejectedValueOnce(new Error("Network error"));
