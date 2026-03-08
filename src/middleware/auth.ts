@@ -26,17 +26,32 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const idToken = authHeader.slice(7);
 
-  // Step 1: Firebase IDトークン検証（失敗 → 401）
+  // Step 1: Firebase IDトークン検証（revoke チェック有効、失敗 → 401）
   let decoded;
   try {
-    decoded = await firebaseAuth.verifyIdToken(idToken);
+    decoded = await firebaseAuth.verifyIdToken(idToken, true);
   } catch (err) {
+    const code = (err as Error & { code?: string }).code;
     const message = (err as Error).message;
-    if (message.includes("expired") || message.includes("Decoding Firebase ID token failed")) {
+    if (code === "auth/id-token-revoked" || message.includes("revoked")) {
+      res.status(401).json({ error: "Token has been revoked" });
+    } else if (message.includes("expired") || message.includes("Decoding Firebase ID token failed")) {
       res.status(401).json({ error: "Invalid or expired token" });
     } else {
       res.status(401).json({ error: "Authentication failed" });
     }
+    return;
+  }
+
+  // Step 1.5: ユーザーアカウントの無効化チェック
+  try {
+    const userRecord = await firebaseAuth.getUser(decoded.uid);
+    if (userRecord.disabled) {
+      res.status(401).json({ error: "User account is disabled" });
+      return;
+    }
+  } catch {
+    res.status(401).json({ error: "Authentication failed" });
     return;
   }
 

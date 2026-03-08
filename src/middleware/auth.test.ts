@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from "express";
 vi.mock("../config.js", () => ({
   firebaseAuth: {
     verifyIdToken: vi.fn(),
+    getUser: vi.fn(),
   },
   firestore: {
     collection: vi.fn(),
@@ -27,6 +28,9 @@ function mockReqResNext(authHeader?: string) {
 
 beforeEach(() => {
   vi.mocked(firebaseAuth.verifyIdToken).mockReset();
+  vi.mocked(firebaseAuth.getUser).mockReset();
+  // Default: user is not disabled
+  vi.mocked(firebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 });
 
 describe("requireAuth middleware", () => {
@@ -146,7 +150,7 @@ describe("requireAuth middleware", () => {
 
     vi.resetModules();
     vi.mock("../config.js", () => ({
-      firebaseAuth: { verifyIdToken: vi.fn() },
+      firebaseAuth: { verifyIdToken: vi.fn(), getUser: vi.fn() },
       firestore: { collection: vi.fn() },
     }));
     const { requireAuth: freshRequireAuth } = await import("./auth.js");
@@ -157,6 +161,7 @@ describe("requireAuth middleware", () => {
       email: "user@anydomain.com",
       email_verified: true,
     } as never);
+    vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
     const mockDoc = vi.fn().mockReturnValue({ id: "empty-env-uid", create: mockCreate });
@@ -199,7 +204,7 @@ describe("requireAuth middleware", () => {
     // Re-import to pick up env change
     vi.resetModules();
     vi.mock("../config.js", () => ({
-      firebaseAuth: { verifyIdToken: vi.fn() },
+      firebaseAuth: { verifyIdToken: vi.fn(), getUser: vi.fn() },
       firestore: { collection: vi.fn() },
     }));
     const { requireAuth: freshRequireAuth } = await import("./auth.js");
@@ -210,6 +215,7 @@ describe("requireAuth middleware", () => {
       email: "blocked@notallowed.com",
       email_verified: true,
     } as never);
+    vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
     const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
     const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
@@ -233,7 +239,7 @@ describe("requireAuth middleware", () => {
 
     vi.resetModules();
     vi.mock("../config.js", () => ({
-      firebaseAuth: { verifyIdToken: vi.fn() },
+      firebaseAuth: { verifyIdToken: vi.fn(), getUser: vi.fn() },
       firestore: { collection: vi.fn() },
     }));
     const { requireAuth: freshRequireAuth } = await import("./auth.js");
@@ -244,6 +250,7 @@ describe("requireAuth middleware", () => {
       email: "user@allowed.gov.jp",
       email_verified: true,
     } as never);
+    vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
     const mockDoc = vi.fn().mockReturnValue({ id: "allowed-uid", create: mockCreate });
@@ -461,6 +468,40 @@ describe("requireAuth middleware", () => {
       staffId: "staff-001",
     });
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when token has been revoked", async () => {
+    const revokedErr = new Error("Firebase ID token has been revoked");
+    (revokedErr as Error & { code: string }).code = "auth/id-token-revoked";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(revokedErr);
+
+    const { req, res, next } = mockReqResNext("Bearer revoked-token");
+
+    await requireAuth(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Token has been revoked" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when user account is disabled", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "disabled-uid",
+      email: "disabled@example.com",
+    } as never);
+
+    vi.mocked(firebaseAuth.getUser).mockResolvedValue({
+      uid: "disabled-uid",
+      disabled: true,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer disabled-user-token");
+
+    await requireAuth(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "User account is disabled" });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("sets admin role from staff document", async () => {
