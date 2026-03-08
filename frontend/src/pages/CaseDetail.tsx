@@ -166,7 +166,7 @@ export function CaseDetail() {
                           </div>
                         )}
 
-                        {con.aiStatus === "completed" && con.summary && (
+                        {(con.aiStatus === "completed" || !con.aiStatus) && con.summary && (
                           <div className="ai-panel">
                             <div className="ai-panel-header">
                               <div className="ai-panel-icon">AI</div>

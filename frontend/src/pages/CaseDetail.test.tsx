@@ -227,6 +227,21 @@ describe("CaseDetail", () => {
     expect(screen.queryByText("AI分析エラー")).not.toBeInTheDocument();
   });
 
+  it("shows AI results for legacy data without aiStatus field", async () => {
+    const legacyConsultation = {
+      ...mockConsultations[0],
+      id: "cons-legacy",
+      aiStatus: undefined as unknown as "completed",
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([legacyConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
+    });
+  });
+
   it("opens new consultation modal", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue([]);
