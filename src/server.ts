@@ -28,6 +28,11 @@ app.use("/api/cases", requireAuth, casesRouter);
 app.use("/api/support-menus", requireAuth, supportMenusRouter);
 app.use("/api/admin", adminRouter);
 
+// /api で始まる未知パスは404 JSON（SPAフォールバックに吸い込まれるのを防止）
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 // Frontend static files
 const frontendDir = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDir));
