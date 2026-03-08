@@ -931,9 +931,21 @@ describe("POST /api/admin/retry-ai", () => {
     expect(res.status).toBe(403);
   });
 
+  it("returns 403 when AI_RETRY_SECRET env var is not set", async () => {
+    vi.stubEnv("AI_RETRY_SECRET", "");
+    const noSecretApp = express();
+    noSecretApp.use(express.json());
+    noSecretApp.use("/api/admin", adminRouter);
+
+    const res = await request(noSecretApp)
+      .post("/api/admin/retry-ai")
+      .set("x-retry-secret", "any-value");
+    expect(res.status).toBe(403);
+  });
+
   it("executes retry and returns result with correct secret", async () => {
     vi.mocked(retryPendingConsultations).mockResolvedValue({
-      processed: 2, succeeded: 1, failed: 1, expired: 0,
+      processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0,
     });
 
     const res = await request(retryApp)
@@ -941,7 +953,7 @@ describe("POST /api/admin/retry-ai", () => {
       .set("x-retry-secret", RETRY_SECRET);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0 });
+    expect(res.body).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0 });
   });
 
   it("returns 500 when retry throws", async () => {

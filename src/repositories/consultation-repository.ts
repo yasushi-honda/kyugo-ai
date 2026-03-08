@@ -1,4 +1,4 @@
-import { Timestamp } from "@google-cloud/firestore";
+import { FieldValue, Timestamp } from "@google-cloud/firestore";
 import { firestore } from "../config.js";
 import { Consultation, AI_RETRY_CONFIG } from "../types.js";
 
@@ -45,9 +45,9 @@ export async function updateConsultationAIResults(
     summary,
     suggestedSupports,
     aiStatus: "completed",
-    aiErrorMessage: null,
-    aiRetryCount: null,
-    nextRetryAt: null,
+    aiErrorMessage: FieldValue.delete(),
+    aiRetryCount: FieldValue.delete(),
+    nextRetryAt: FieldValue.delete(),
     updatedAt: Timestamp.now(),
   });
 }
@@ -92,6 +92,33 @@ export async function listRetryPendingConsultations(): Promise<Consultation[]> {
   }
 
   return results;
+}
+
+// retrying のまま stuck したconsultationを retry_pending に差し戻す（プロセスクラッシュ復旧）
+const STUCK_RETRYING_THRESHOLD_MS = AI_RETRY_CONFIG.baseDelayMs * 2; // 10分
+
+export async function recoverStuckRetryingConsultations(): Promise<number> {
+  const threshold = Timestamp.fromMillis(Date.now() - STUCK_RETRYING_THRESHOLD_MS);
+  const casesSnapshot = await firestore.collection("cases").get();
+  let recoveredCount = 0;
+
+  for (const caseDoc of casesSnapshot.docs) {
+    const snapshot = await consultationsRef(caseDoc.id)
+      .where("aiStatus", "==", "retrying")
+      .where("updatedAt", "<", threshold)
+      .get();
+
+    for (const doc of snapshot.docs) {
+      await doc.ref.update({
+        aiStatus: "retry_pending",
+        aiErrorMessage: "Recovered from stuck retrying state",
+        updatedAt: Timestamp.now(),
+      });
+      recoveredCount++;
+    }
+  }
+
+  return recoveredCount;
 }
 
 // max retry超過のconsultationをerrorに遷移

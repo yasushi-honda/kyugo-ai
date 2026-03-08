@@ -10,10 +10,14 @@ export interface RetryResult {
   succeeded: number;
   failed: number;
   expired: number;
+  recovered: number;
 }
 
 export async function retryPendingConsultations(): Promise<RetryResult> {
-  const result: RetryResult = { processed: 0, succeeded: 0, failed: 0, expired: 0 };
+  const result: RetryResult = { processed: 0, succeeded: 0, failed: 0, expired: 0, recovered: 0 };
+
+  // retrying のまま stuck したレコードを復旧（プロセスクラッシュ対策）
+  result.recovered = await consultationRepo.recoverStuckRetryingConsultations();
 
   // max retry超過分をerrorに遷移
   result.expired = await consultationRepo.expireRetryPendingConsultations();
