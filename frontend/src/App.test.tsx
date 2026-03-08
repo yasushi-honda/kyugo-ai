@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoutes } from "./App";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { api } from "./api";
 
 function renderApp(path = "/") {
@@ -50,21 +51,6 @@ describe("App routing", () => {
   });
 });
 
-function ProtectedRoute() {
-  const { user, userInfo, loading, authError, logout } = useAuth();
-  if (loading) return <div data-testid="loading">Loading</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (authError || !userInfo) {
-    return (
-      <div>
-        <p>{authError ?? "職員情報を取得できませんでした"}</p>
-        <button onClick={() => logout()}>ログアウト</button>
-      </div>
-    );
-  }
-  return <div data-testid="protected">Protected</div>;
-}
-
 describe("Unauthenticated routing", () => {
   it("redirects to /login when user is not authenticated", async () => {
     vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
@@ -77,7 +63,7 @@ describe("Unauthenticated routing", () => {
         <MemoryRouter initialEntries={["/"]}>
           <Routes>
             <Route path="/login" element={<div data-testid="login-page">Login</div>} />
-            <Route path="/*" element={<ProtectedRoute />} />
+            <Route path="/*" element={<ProtectedRoutes />} />
           </Routes>
         </MemoryRouter>
       </AuthProvider>,
@@ -108,7 +94,7 @@ describe("Auth error handling", () => {
         <MemoryRouter initialEntries={["/"]}>
           <Routes>
             <Route path="/login" element={<div data-testid="login-page">Login</div>} />
-            <Route path="/*" element={<ProtectedRoute />} />
+            <Route path="/*" element={<ProtectedRoutes />} />
           </Routes>
         </MemoryRouter>
       </AuthProvider>,
@@ -117,5 +103,49 @@ describe("Auth error handling", () => {
     await waitFor(() => {
       expect(screen.getByText(/職員情報の取得に失敗しました/)).toBeInTheDocument();
     });
+  });
+
+  it("calls logout when logout button is clicked on auth error", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("ログアウト")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("ログアウト"));
+    expect(signOut).toHaveBeenCalled();
+  });
+
+  it("shows fallback message when userInfo is null without explicit error", async () => {
+    // getMe returns null (unexpected response) — userInfo stays null, no authError set
+    vi.mocked(api.getMe).mockResolvedValueOnce(null as never);
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("職員情報を取得できませんでした")).toBeInTheDocument();
+    });
+    // Should NOT show protected content (Dashboard)
+    expect(screen.queryByText("ケース一覧", { selector: "h1" })).not.toBeInTheDocument();
   });
 });
