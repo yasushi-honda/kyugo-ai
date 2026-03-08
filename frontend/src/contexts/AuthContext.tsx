@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "../firebase";
 import { api, type UserInfo } from "../api";
@@ -25,8 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const fetchIdRef = useRef(0);
 
   const fetchMe = async (isRetry = false) => {
+    const requestId = ++fetchIdRef.current;
     setAuthError(null);
     if (isRetry) {
       setRetrying(true);
@@ -35,11 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const info = await api.getMe();
+      if (requestId !== fetchIdRef.current) return;
       setUserInfo(info);
     } catch (err) {
+      if (requestId !== fetchIdRef.current) return;
       setUserInfo(null);
       setAuthError(`職員情報の取得に失敗しました: ${(err as Error).message}`);
     } finally {
+      if (requestId !== fetchIdRef.current) return;
       if (isRetry) {
         setRetrying(false);
       } else {
@@ -56,11 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         await fetchMe();
       } else {
+        fetchIdRef.current++;
         setUserInfo(null);
         setLoading(false);
       }
     });
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      fetchIdRef.current++;
+    };
   }, []);
 
   const logout = async () => {
