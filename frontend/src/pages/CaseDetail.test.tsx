@@ -66,13 +66,36 @@ describe("CaseDetail", () => {
     expect(screen.getByText("読み込み中...")).toBeInTheDocument();
   });
 
-  it("shows error state when case not found", async () => {
-    vi.mocked(api.getCase).mockRejectedValue(new Error("Not found"));
-    vi.mocked(api.listConsultations).mockRejectedValue(new Error("Not found"));
+  it("shows error state when API fails", async () => {
+    vi.mocked(api.getCase).mockRejectedValue(new Error("Internal Server Error"));
+    vi.mocked(api.listConsultations).mockRejectedValue(new Error("Internal Server Error"));
     renderCaseDetail();
 
     await waitFor(() => {
-      expect(screen.getByText("ケースが見つかりません")).toBeInTheDocument();
+      expect(screen.getByText("データの取得に失敗しました")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Internal Server Error")).toBeInTheDocument();
+    expect(screen.getByText("再試行")).toBeInTheDocument();
+    expect(screen.getByText("一覧に戻る")).toBeInTheDocument();
+  });
+
+  it("retries loading when retry button is clicked", async () => {
+    vi.mocked(api.getCase).mockRejectedValueOnce(new Error("timeout"));
+    vi.mocked(api.listConsultations).mockRejectedValueOnce(new Error("timeout"));
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("データの取得に失敗しました")).toBeInTheDocument();
+    });
+
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([]);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("再試行"));
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
     });
   });
 

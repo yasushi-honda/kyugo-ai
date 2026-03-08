@@ -12,11 +12,13 @@ export function CaseDetail() {
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showNewConsultation, setShowNewConsultation] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setError(null);
     try {
       const [c, cons] = await Promise.all([
         api.getCase(id),
@@ -26,6 +28,7 @@ export function CaseDetail() {
       setConsultations(cons);
     } catch (err) {
       console.error("Failed to load case:", err);
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,22 @@ export function CaseDetail() {
       <div className="loading-overlay">
         <div className="spinner" />
         <span>読み込み中...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-body">
+        <div className="empty-state">
+          <div className="empty-state-icon">⚠️</div>
+          <p className="empty-state-text">データの取得に失敗しました</p>
+          <p className="empty-state-subtext">{error}</p>
+          <div className="empty-state-actions">
+            <button className="btn btn-primary" onClick={loadData}>再試行</button>
+            <button className="btn btn-secondary" onClick={() => navigate("/")}>一覧に戻る</button>
+          </div>
+        </div>
       </div>
     );
   }
