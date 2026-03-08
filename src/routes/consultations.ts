@@ -61,9 +61,9 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
       consultationType: data.consultationType,
     });
 
-    // AI分析を非同期で実行（レスポンスは先に返す）
-    const menus = await supportMenuRepo.listSupportMenus();
-    analyzeConsultation({ content: data.content, transcript: data.transcript }, menus)
+    // AI分析を完全非同期で実行（レスポンスは先に返す）
+    supportMenuRepo.listSupportMenus()
+      .then((menus) => analyzeConsultation({ content: data.content, transcript: data.transcript }, menus))
       .then(async (aiResult) => {
         await consultationRepo.updateConsultationAIResults(
           caseId,

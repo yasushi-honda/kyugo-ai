@@ -35,11 +35,16 @@ service cloud.firestore {
     }
 
     // 職員情報: 読み取りは認証済み、書き込みは自分のドキュメントのみ、削除禁止
+    // roleフィールドはClient SDKから変更不可（権限昇格防止）
+    function isRoleUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+
     match /staff/{staffId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == staffId;
       allow update: if request.auth != null
-        && (isAdmin() || request.auth.uid == staffId);
+        && (isAdmin() || (request.auth.uid == staffId && isRoleUnchanged()));
       allow delete: if false;
     }
 
