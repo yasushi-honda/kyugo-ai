@@ -33,6 +33,8 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   listConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
+  listRetryPendingConsultations: vi.fn(),
+  expireRetryPendingConsultations: vi.fn(),
 }));
 
 vi.mock("./repositories/support-menu-repository.js", () => ({
@@ -45,9 +47,15 @@ vi.mock("./services/ai.js", () => ({
   analyzeAudioConsultation: vi.fn(),
 }));
 
+vi.mock("./services/ai-retry.js", () => ({
+  retryPendingConsultations: vi.fn(),
+}));
+
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
+import { adminRouter } from "./routes/admin.js";
 import { requireAuth } from "./middleware/auth.js";
+import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
@@ -582,6 +590,7 @@ describe("POST /api/cases/:id/consultations", () => {
       "retry_pending",
       "Too Many Requests",
       0,
+      expect.objectContaining({ _seconds: expect.any(Number) }),
     );
   });
 
@@ -620,6 +629,7 @@ describe("POST /api/cases/:id/consultations", () => {
       "error",
       "Invalid request",
       0,
+      undefined,
     );
   });
 
@@ -891,5 +901,57 @@ describe("GET /api/support-menus/:id", () => {
 
     const res = await request(app).get("/api/support-menus/nonexistent");
     expect(res.status).toBe(404);
+  });
+});
+
+// ============================================================
+// POST /api/admin/retry-ai
+// ============================================================
+describe("POST /api/admin/retry-ai", () => {
+  const RETRY_SECRET = "test-retry-secret";
+  let retryApp: ReturnType<typeof express>;
+
+  beforeEach(() => {
+    vi.stubEnv("AI_RETRY_SECRET", RETRY_SECRET);
+    // adminRouterは環境変数を起動時に読むため、テスト用appで直接マウント
+    retryApp = express();
+    retryApp.use(express.json());
+    retryApp.use("/api/admin", adminRouter);
+  });
+
+  it("returns 403 without secret header", async () => {
+    const res = await request(retryApp).post("/api/admin/retry-ai");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 with wrong secret", async () => {
+    const res = await request(retryApp)
+      .post("/api/admin/retry-ai")
+      .set("x-retry-secret", "wrong-secret");
+    expect(res.status).toBe(403);
+  });
+
+  it("executes retry and returns result with correct secret", async () => {
+    vi.mocked(retryPendingConsultations).mockResolvedValue({
+      processed: 2, succeeded: 1, failed: 1, expired: 0,
+    });
+
+    const res = await request(retryApp)
+      .post("/api/admin/retry-ai")
+      .set("x-retry-secret", RETRY_SECRET);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0 });
+  });
+
+  it("returns 500 when retry throws", async () => {
+    vi.mocked(retryPendingConsultations).mockRejectedValue(new Error("DB connection failed"));
+
+    const res = await request(retryApp)
+      .post("/api/admin/retry-ai")
+      .set("x-retry-secret", RETRY_SECRET);
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("DB connection failed");
   });
 });

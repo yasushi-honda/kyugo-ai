@@ -33,6 +33,12 @@ export const VALID_STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 // AI分析の処理状態
 export type AIStatus = "pending" | "completed" | "retry_pending" | "error";
 
+// AIリトライ設定
+export const AI_RETRY_CONFIG = {
+  maxRetryCount: 3,
+  baseDelayMs: 5 * 60 * 1000, // 5分
+} as const;
+
 // 相談記録
 export interface Consultation {
   id?: string;
@@ -46,6 +52,7 @@ export interface Consultation {
   aiStatus: AIStatus;
   aiErrorMessage?: string;
   aiRetryCount?: number;
+  nextRetryAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
