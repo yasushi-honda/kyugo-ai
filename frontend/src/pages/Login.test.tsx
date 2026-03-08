@@ -1,72 +1,71 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Login } from "./Login";
-import { signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 
 beforeEach(() => {
-  vi.mocked(signInWithRedirect).mockReset();
-  vi.mocked(getRedirectResult).mockReset().mockResolvedValue(null);
+  vi.mocked(signInWithPopup).mockReset();
 });
 
 describe("Login", () => {
-  it("renders Google login button", async () => {
+  it("renders Google login button", () => {
     render(<Login />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
-    });
     expect(screen.getByText("救護AI")).toBeInTheDocument();
     expect(screen.getByText("福祉相談業務AI支援システム")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeInTheDocument();
   });
 
-  it("calls signInWithRedirect on button click", async () => {
-    vi.mocked(signInWithRedirect).mockResolvedValue(undefined as never);
+  it("calls signInWithPopup on button click", async () => {
+    vi.mocked(signInWithPopup).mockResolvedValue({} as never);
     const user = userEvent.setup();
 
     render(<Login />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
-    });
-
     await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
 
-    expect(signInWithRedirect).toHaveBeenCalledWith(expect.anything(), expect.anything());
+    expect(signInWithPopup).toHaveBeenCalledWith(expect.anything(), expect.anything());
   });
 
   it("shows error on login failure", async () => {
-    vi.mocked(signInWithRedirect).mockRejectedValue(new Error("Network error"));
+    vi.mocked(signInWithPopup).mockRejectedValue(new Error("Network error"));
     const user = userEvent.setup();
 
     render(<Login />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
-    });
-
     await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(screen.getByText("ログインに失敗しました")).toBeInTheDocument();
     });
   });
 
-  it("shows error when getRedirectResult fails", async () => {
-    vi.mocked(getRedirectResult).mockRejectedValue(new Error("auth/internal-error"));
+  it("does not show error when popup is closed by user", async () => {
+    vi.mocked(signInWithPopup).mockRejectedValue(
+      new Error("Firebase: Error (auth/popup-closed-by-user)."),
+    );
+    const user = userEvent.setup();
 
     render(<Login />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/ログインに失敗しました/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
     });
+    expect(screen.queryByText("ログインに失敗しました")).not.toBeInTheDocument();
   });
 
-  it("shows loading state while checking redirect result", () => {
-    vi.mocked(getRedirectResult).mockReturnValue(new Promise(() => {}));
+  it("disables button and shows loading state while signing in", async () => {
+    vi.mocked(signInWithPopup).mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
 
     render(<Login />);
 
+    await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+    expect(screen.getByText("ログイン中...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ログイン中..." })).toBeDisabled();
   });
 });

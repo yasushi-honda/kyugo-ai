@@ -13,6 +13,12 @@ const PORT = parseInt(process.env.PORT ?? "8080", 10);
 
 app.use(express.json());
 
+// Firebase Auth signInWithPopup に必要（デフォルトの same-origin だとポップアップがブロックされる）
+app.use((_req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  next();
+});
+
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
