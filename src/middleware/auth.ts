@@ -1,6 +1,21 @@
 import { Request, Response, NextFunction } from "express";
 import { firebaseAuth } from "../config.js";
 import { firestore } from "../config.js";
+
+const allowedDomains = process.env.ALLOWED_EMAIL_DOMAINS
+  ? process.env.ALLOWED_EMAIL_DOMAINS.split(",").map((d) => d.trim().toLowerCase())
+  : null;
+
+if (!allowedDomains) {
+  console.warn("WARNING: ALLOWED_EMAIL_DOMAINS is not set. Any authenticated user can auto-provision as staff.");
+}
+
+function isEmailAllowed(email: string): boolean {
+  if (!allowedDomains) return true;
+  const domain = email.split("@")[1]?.toLowerCase();
+  return !!domain && allowedDomains.includes(domain);
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -36,6 +51,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     let role: "admin" | "staff";
 
     if (staffQuery.empty) {
+      // 未登録ユーザーのアクセス制御
+      if (!decoded.email_verified) {
+        res.status(403).json({ error: "Email not verified" });
+        return;
+      }
+      if (!isEmailAllowed(decoded.email ?? "")) {
+        res.status(403).json({ error: "Access denied: email domain not allowed" });
+        return;
+      }
+
       // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
       // firebaseUidをドキュメントIDに使い、create()で冪等に作成（競合対策）
       const newStaffRef = firestore.collection("staff").doc(decoded.uid);

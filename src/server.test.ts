@@ -150,6 +150,7 @@ describe("GET /api/me", () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "uid-new",
       email: "new@example.com",
+      email_verified: true,
       name: "New User",
     } as never);
 

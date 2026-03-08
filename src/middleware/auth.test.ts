@@ -77,10 +77,68 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("returns 403 when email is not verified (new user)", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "unverified-uid",
+      email: "unverified@example.com",
+      email_verified: false,
+    } as never);
+
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer unverified-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified" });
+  });
+
+  it("returns 403 when email domain is not allowed (new user)", async () => {
+    // Set allowed domains for this test
+    const originalEnv = process.env.ALLOWED_EMAIL_DOMAINS;
+    process.env.ALLOWED_EMAIL_DOMAINS = "allowed.gov.jp";
+
+    // Re-import to pick up env change
+    vi.resetModules();
+    vi.mock("../config.js", () => ({
+      firebaseAuth: { verifyIdToken: vi.fn() },
+      firestore: { collection: vi.fn() },
+    }));
+    const { requireAuth: freshRequireAuth } = await import("./auth.js");
+    const { firebaseAuth: freshFirebaseAuth, firestore: freshFirestore } = await import("../config.js");
+
+    vi.mocked(freshFirebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "blocked-uid",
+      email: "blocked@notallowed.com",
+      email_verified: true,
+    } as never);
+
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(freshFirestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer blocked-token");
+
+    await freshRequireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed" });
+
+    process.env.ALLOWED_EMAIL_DOMAINS = originalEnv;
+  });
+
   it("auto-provisions staff document on first login (idempotent create)", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "new-uid",
       email: "new@example.com",
+      email_verified: true,
       name: "New User",
     } as never);
 
@@ -117,6 +175,7 @@ describe("requireAuth middleware", () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "race-uid",
       email: "race@example.com",
+      email_verified: true,
     } as never);
 
     const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
@@ -153,6 +212,7 @@ describe("requireAuth middleware", () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "err-uid",
       email: "err@example.com",
+      email_verified: true,
     } as never);
 
     const firestoreErr = new Error("Permission denied") as Error & { code: number };
@@ -180,6 +240,7 @@ describe("requireAuth middleware", () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "nodata-uid",
       email: "nodata@example.com",
+      email_verified: true,
     } as never);
 
     const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
