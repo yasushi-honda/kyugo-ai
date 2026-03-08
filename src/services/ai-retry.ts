@@ -2,7 +2,7 @@ import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation } from "./ai.js";
-import { isTransientError } from "../routes/consultations.js";
+import { isTransientError } from "../utils/error.js";
 import { AI_RETRY_CONFIG } from "../types.js";
 
 export interface RetryResult {

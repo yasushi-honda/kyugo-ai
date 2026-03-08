@@ -6,6 +6,7 @@ import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
 import { SUPPORTED_AUDIO_MIME_TYPES, AI_RETRY_CONFIG } from "../types.js";
+import { isTransientError } from "../utils/error.js";
 import { requireCaseAccess } from "../middleware/authz.js";
 import {
   createConsultationSchema,
@@ -16,13 +17,6 @@ function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: 
   const result = schema.safeParse(data);
   if (result.success) return { success: true, data: result.data };
   return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
-}
-
-export function isTransientError(err: unknown): boolean {
-  const status = (err as { status?: number }).status ?? (err as { code?: number }).code;
-  if (status === 429 || status === 503) return true;
-  const message = (err as Error).message ?? "";
-  return /timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|socket hang up/i.test(message);
 }
 
 const upload = multer({
