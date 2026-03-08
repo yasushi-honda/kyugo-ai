@@ -57,63 +57,83 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   // Step 2: Firestoreからスタッフ情報取得/作成（失敗 → 500）
   try {
-    const staffQuery = await firestore
-      .collection("staff")
-      .where("firebaseUid", "==", decoded.uid)
-      .limit(1)
-      .get();
-
+    const staffCollection = firestore.collection("staff");
     let staffId: string;
     let role: "admin" | "staff";
 
-    if (staffQuery.empty) {
-      // 未登録ユーザーのアクセス制御
-      if (!decoded.email) {
-        res.status(403).json({ error: "Email is required for auto-provisioning" });
-        return;
-      }
-      if (!decoded.email_verified) {
-        res.status(403).json({ error: "Email not verified" });
-        return;
-      }
-      if (!isEmailAllowed(decoded.email)) {
-        res.status(403).json({ error: "Access denied: email domain not allowed" });
+    // Step 2a: doc(uid) を一次ソースとして検索（新規ユーザーはuid=docId）
+    const primaryDoc = await staffCollection.doc(decoded.uid).get();
+
+    if (primaryDoc.exists) {
+      const data = primaryDoc.data()!;
+      staffId = primaryDoc.id;
+      role = (data.role as "admin" | "staff") ?? "staff";
+    } else {
+      // Step 2b: レガシー互換 — firebaseUidフィールドで検索（limit なし）
+      const legacyQuery = await staffCollection
+        .where("firebaseUid", "==", decoded.uid)
+        .get();
+
+      if (legacyQuery.size > 1) {
+        // 重複レコード検出 → fail closed
+        console.error("Duplicate staff records for firebaseUid", {
+          uid: decoded.uid,
+          count: legacyQuery.size,
+          docIds: legacyQuery.docs.map((d) => d.id),
+        });
+        res.status(500).json({ error: "Internal server error" });
         return;
       }
 
-      // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
-      // firebaseUidをドキュメントIDに使い、create()で冪等に作成（競合対策）
-      const newStaffRef = firestore.collection("staff").doc(decoded.uid);
-      try {
-        await newStaffRef.create({
-          firebaseUid: decoded.uid,
-          email: decoded.email ?? "",
-          name: decoded.name ?? "",
-          role: "staff",
-          createdAt: new Date(),
-        });
-        staffId = newStaffRef.id;
-        role = "staff";
-      } catch (provisionErr: unknown) {
-        const code = (provisionErr as { code?: number }).code;
-        if (code === 6) {
-          // ALREADY_EXISTS: 同時リクエストが先に作成済み
-          const existingDoc = await newStaffRef.get();
-          const existingData = existingDoc.data();
-          if (!existingData) {
-            throw new Error("Staff document exists but has no data");
+      if (legacyQuery.size === 1) {
+        // レガシーレコード発見
+        const staffDoc = legacyQuery.docs[0];
+        staffId = staffDoc.id;
+        role = (staffDoc.data().role as "admin" | "staff") ?? "staff";
+      } else {
+        // 未登録ユーザーのアクセス制御
+        if (!decoded.email) {
+          res.status(403).json({ error: "Email is required for auto-provisioning" });
+          return;
+        }
+        if (!decoded.email_verified) {
+          res.status(403).json({ error: "Email not verified" });
+          return;
+        }
+        if (!isEmailAllowed(decoded.email)) {
+          res.status(403).json({ error: "Access denied: email domain not allowed" });
+          return;
+        }
+
+        // Auto-provision: 初回ログイン時にstaffドキュメントを自動作成
+        // firebaseUidをドキュメントIDに使い、create()で冪等に作成（競合対策）
+        const newStaffRef = staffCollection.doc(decoded.uid);
+        try {
+          await newStaffRef.create({
+            firebaseUid: decoded.uid,
+            email: decoded.email ?? "",
+            name: decoded.name ?? "",
+            role: "staff",
+            createdAt: new Date(),
+          });
+          staffId = newStaffRef.id;
+          role = "staff";
+        } catch (provisionErr: unknown) {
+          const code = (provisionErr as { code?: number }).code;
+          if (code === 6) {
+            // ALREADY_EXISTS: 同時リクエストが先に作成済み
+            const existingDoc = await newStaffRef.get();
+            const existingData = existingDoc.data();
+            if (!existingData) {
+              throw new Error("Staff document exists but has no data");
+            }
+            staffId = existingDoc.id;
+            role = (existingData.role as "admin" | "staff") ?? "staff";
+          } else {
+            throw provisionErr;
           }
-          staffId = existingDoc.id;
-          role = (existingData.role as "admin" | "staff") ?? "staff";
-        } else {
-          throw provisionErr;
         }
       }
-    } else {
-      const staffDoc = staffQuery.docs[0];
-      const staffData = staffDoc.data();
-      staffId = staffDoc.id;
-      role = (staffData.role as "admin" | "staff") ?? "staff";
     }
 
     req.user = {

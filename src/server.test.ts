@@ -126,10 +126,11 @@ describe("GET /api/me", () => {
       id: "staff-me-001",
       data: () => ({ role: "admin", name: "Me", email: "me@example.com" }),
     };
-    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: false, size: 1, docs: [staffDoc] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const res = await request(authApp)
       .get("/api/me")
@@ -158,11 +159,11 @@ describe("GET /api/me", () => {
     } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "uid-new", create: mockCreate });
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere, doc: mockDoc } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "uid-new", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const res = await request(authApp)
       .get("/api/me")
@@ -188,10 +189,9 @@ describe("GET /api/me", () => {
       email: "err@example.com",
     } as never);
 
-    const mockGet = vi.fn().mockRejectedValue(new Error("Firestore unavailable"));
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockRejectedValue(new Error("Firestore unavailable"));
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc } as never);
 
     const res = await request(authApp)
       .get("/api/me")
