@@ -149,7 +149,7 @@ describe("requireAuth middleware", () => {
     });
   });
 
-  it("returns 401 when create() fails with non-ALREADY_EXISTS error", async () => {
+  it("returns 500 when create() fails with non-ALREADY_EXISTS error", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "err-uid",
       email: "err@example.com",
@@ -172,11 +172,11 @@ describe("requireAuth middleware", () => {
     await requireAuth(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Authentication failed" });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
   });
 
-  it("returns 401 when ALREADY_EXISTS doc has no data", async () => {
+  it("returns 500 when ALREADY_EXISTS doc has no data", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "nodata-uid",
       email: "nodata@example.com",
@@ -203,8 +203,8 @@ describe("requireAuth middleware", () => {
     await requireAuth(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Authentication failed" });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
   });
 
   it("calls next() and sets req.user when authentication succeeds", async () => {

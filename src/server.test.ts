@@ -178,7 +178,7 @@ describe("GET /api/me", () => {
     }));
   });
 
-  it("returns 401 when Firestore query fails", async () => {
+  it("returns 500 when Firestore query fails", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "uid-err",
       email: "err@example.com",
@@ -193,8 +193,8 @@ describe("GET /api/me", () => {
       .get("/api/me")
       .set("Authorization", "Bearer valid-token");
 
-    expect(res.status).toBe(401);
-    expect(res.body.error).toBe("Authentication failed");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Internal server error");
   });
 });
 
