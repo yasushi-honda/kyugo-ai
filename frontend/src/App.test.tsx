@@ -114,6 +114,7 @@ describe("Auth fetchMe race condition", () => {
       .mockResolvedValueOnce({
         uid: "user-2",
         email: "second@example.com",
+        name: "Second User",
         role: "staff",
         staffId: "staff-002",
       });
@@ -144,6 +145,7 @@ describe("Auth fetchMe race condition", () => {
     resolveFirst({
       uid: "user-1",
       email: "stale@example.com",
+      name: "Stale User",
       role: "staff",
       staffId: "staff-001",
     });
@@ -241,6 +243,7 @@ describe("Auth error handling", () => {
     vi.mocked(api.getMe).mockResolvedValueOnce({
       uid: "test-uid",
       email: "test@example.com",
+      name: "テスト職員",
       role: "staff",
       staffId: "test-staff-001",
     });
@@ -288,6 +291,7 @@ describe("Auth error handling", () => {
     resolveGetMe({
       uid: "test-uid",
       email: "test@example.com",
+      name: "テスト職員",
       role: "staff",
       staffId: "test-staff-001",
     });
