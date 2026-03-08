@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserInfo(null);
     setAuthError(null);
     setLogoutError(null);
+    signOut(auth).catch(() => {});
   };
 
   const retryGetMe = async () => {
