@@ -32,7 +32,6 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   getConsultation: vi.fn(),
   listConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
-  updateConsultationAIResultsWithTranscript: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
   listRetryPendingConsultations: vi.fn(),
   expireRetryPendingConsultations: vi.fn(),

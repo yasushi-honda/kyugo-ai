@@ -35,6 +35,27 @@ function paramStr(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
+async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {
+  console.error(`AI analysis failed for consultation ${consultationId}:`, err);
+  const isTransient = isTransientError(err);
+  try {
+    const nextRetryAt = isTransient
+      ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
+      : undefined;
+    await consultationRepo.updateConsultationAIStatus(
+      caseId,
+      consultationId,
+      isTransient ? "retry_pending" : "error",
+      (err as Error).message,
+      0,
+      nextRetryAt,
+    );
+  } catch (statusErr) {
+    console.error(`Failed to update aiStatus for consultation ${consultationId}:`, statusErr);
+  }
+}
+
 // mergeParams: true で親ルートの :id パラメータにアクセス
 export const consultationsRouter = Router({ mergeParams: true });
 
@@ -68,25 +89,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
         );
         console.log(`AI analysis completed for consultation ${consultation.id}`);
       })
-      .catch(async (err) => {
-        console.error(`AI analysis failed for consultation ${consultation.id}:`, err);
-        const isTransient = isTransientError(err);
-        try {
-          const nextRetryAt = isTransient
-            ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
-            : undefined;
-          await consultationRepo.updateConsultationAIStatus(
-            caseId,
-            consultation.id!,
-            isTransient ? "retry_pending" : "error",
-            (err as Error).message,
-            0,
-            nextRetryAt,
-          );
-        } catch (statusErr) {
-          console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);
-        }
-      });
+      .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
     res.status(201).json(consultation);
   } catch (err) {
@@ -125,7 +128,7 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
     supportMenuRepo.listSupportMenus()
       .then((menus) => analyzeAudioConsultation(file.buffer, file.mimetype, data.context, menus))
       .then(async (aiResult) => {
-        await consultationRepo.updateConsultationAIResultsWithTranscript(
+        await consultationRepo.updateConsultationAIResults(
           caseId,
           consultation.id!,
           aiResult.summary,
@@ -134,25 +137,7 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
         );
         console.log(`Audio AI analysis completed for consultation ${consultation.id}`);
       })
-      .catch(async (err) => {
-        console.error(`Audio AI analysis failed for consultation ${consultation.id}:`, err);
-        const isTransient = isTransientError(err);
-        try {
-          const nextRetryAt = isTransient
-            ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
-            : undefined;
-          await consultationRepo.updateConsultationAIStatus(
-            caseId,
-            consultation.id!,
-            isTransient ? "retry_pending" : "error",
-            (err as Error).message,
-            0,
-            nextRetryAt,
-          );
-        } catch (statusErr) {
-          console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);
-        }
-      });
+      .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
     res.status(201).json(consultation);
   } catch (err) {
