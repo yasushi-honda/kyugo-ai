@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from "vitest";
-import type { AuthUser, Consultation, ConsultationType, AIStatus, SuggestedSupport } from "./types.js";
+import type { AuthUser, Case, CaseStatus, Consultation, ConsultationType, AIStatus, SuggestedSupport, SupportMenu } from "./types.js";
 
 // FE側のUserInfo型を再定義（frontend/src/api.ts:UserInfoと同一であること）
 // FE側はTimestamp→{_seconds}変換があるが、UserInfoはTimestamp不使用なので直接比較可能
@@ -27,6 +27,31 @@ interface FrontendConsultation {
   updatedAt: { _seconds: number };
 }
 
+// FE側のCase型を再定義（frontend/src/api.ts:Caseと同一であること）
+// Timestamp→{_seconds}変換、id必須化、householdInfo/incomeInfoはRecord<string, string>
+interface FrontendCase {
+  id: string;
+  clientName: string;
+  clientId: string;
+  dateOfBirth: { _seconds: number };
+  householdInfo: Record<string, string>;
+  incomeInfo: Record<string, string>;
+  status: "active" | "referred" | "closed";
+  assignedStaffId: string;
+  createdAt: { _seconds: number };
+  updatedAt: { _seconds: number };
+}
+
+// FE側のSupportMenu型を再定義（frontend/src/api.ts:SupportMenuと同一であること）
+// FEはrelatedLaws, updatedAtを使わないため省略
+interface FrontendSupportMenu {
+  id: string;
+  name: string;
+  category: string;
+  eligibility: string;
+  description: string;
+}
+
 interface FrontendSuggestedSupport {
   menuId: string;
   menuName: string;
@@ -45,6 +70,36 @@ describe("FE↔BE contract: UserInfo / AuthUser", () => {
 
   it("AuthUser has exactly the expected keys", () => {
     expectTypeOf<keyof AuthUser>().toEqualTypeOf<"uid" | "email" | "role" | "staffId">();
+  });
+});
+
+describe("FE↔BE contract: Case", () => {
+  it("BE CaseStatus matches FE status union", () => {
+    expectTypeOf<CaseStatus>().toEqualTypeOf<FrontendCase["status"]>();
+  });
+
+  it("FE Case shared fields exist in BE Case (excluding Timestamp/id/Record differences)", () => {
+    // Timestamp→{_seconds}、id optional→required、Record<string, unknown>→Record<string, string>を除外
+    type CaseSharedFields = Pick<Case,
+      "clientName" | "clientId" | "status" | "assignedStaffId"
+    >;
+    type FECaseSharedFields = Pick<FrontendCase,
+      "clientName" | "clientId" | "status" | "assignedStaffId"
+    >;
+    expectTypeOf<CaseSharedFields>().toMatchTypeOf<FECaseSharedFields>();
+  });
+});
+
+describe("FE↔BE contract: SupportMenu", () => {
+  it("FE SupportMenu fields are subset of BE SupportMenu", () => {
+    // FEはrelatedLaws, updatedAtを省略しているが、使うフィールドはBEに存在すること
+    type SupportMenuSharedFields = Pick<SupportMenu,
+      "name" | "category" | "eligibility" | "description"
+    >;
+    type FESupportMenuSharedFields = Pick<FrontendSupportMenu,
+      "name" | "category" | "eligibility" | "description"
+    >;
+    expectTypeOf<SupportMenuSharedFields>().toMatchTypeOf<FESupportMenuSharedFields>();
   });
 });
 
