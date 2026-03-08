@@ -12,6 +12,7 @@ vi.mock("./config.js", () => ({
   },
   firebaseAuth: {
     verifyIdToken: vi.fn(),
+    getUser: vi.fn(),
   },
   PROJECT_ID: "test-project",
   REGION: "asia-northeast1",
@@ -99,6 +100,8 @@ const OTHER_STAFF_CASE = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: user is not disabled
+  vi.mocked(firebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 });
 
 describe("GET /health", () => {
