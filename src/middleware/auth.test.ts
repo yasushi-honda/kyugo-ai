@@ -275,6 +275,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "allowed-uid",
       email: "user@allowed.gov.jp",
+      name: "",
       role: "staff",
       staffId: "allowed-uid",
     });
@@ -307,6 +308,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "existing-uid",
       email: "existing@notallowed.com",
+      name: "Existing",
       role: "staff",
       staffId: "existing-staff-001",
     });
@@ -344,6 +346,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "new-uid",
       email: "new@example.com",
+      name: "New User",
       role: "staff",
       staffId: "new-uid",
     });
@@ -383,6 +386,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "race-uid",
       email: "race@example.com",
+      name: "",
       role: "staff",
       staffId: "race-uid",
     });
@@ -474,6 +478,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "firebase-uid-1",
       email: "staff@example.com",
+      name: "Test Staff",
       role: "staff",
       staffId: "staff-001",
     });
@@ -571,6 +576,7 @@ describe("requireAuth middleware", () => {
     expect(req.user).toEqual({
       uid: "direct-uid",
       email: "direct@example.com",
+      name: "",
       role: "admin",
       staffId: "direct-uid",
     });

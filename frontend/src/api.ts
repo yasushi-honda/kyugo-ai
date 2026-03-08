@@ -65,6 +65,7 @@ export interface SupportMenu {
 export interface UserInfo {
   uid: string;
   email: string;
+  name: string;
   role: "admin" | "staff";
   staffId: string;
 }
