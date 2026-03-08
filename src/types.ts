@@ -30,6 +30,9 @@ export const VALID_STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   closed: [],
 };
 
+// AI分析の処理状態
+export type AIStatus = "pending" | "completed" | "retry_pending" | "error";
+
 // 相談記録
 export interface Consultation {
   id?: string;
@@ -40,6 +43,9 @@ export interface Consultation {
   summary: string;
   suggestedSupports: SuggestedSupport[];
   consultationType: ConsultationType;
+  aiStatus: AIStatus;
+  aiErrorMessage?: string;
+  aiRetryCount?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
