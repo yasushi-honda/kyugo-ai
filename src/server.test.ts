@@ -232,6 +232,42 @@ describe("POST /api/cases", () => {
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("Firestore unavailable");
   });
+
+  it("returns 400 for invalid dateOfBirth format", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "not-a-date",
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Date must be YYYY-MM-DD format");
+  });
+
+  it("returns 400 for impossible date (2025-13-45)", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+      dateOfBirth: "2025-13-45",
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when clientName is empty string", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "",
+      clientId: "client-001",
+      dateOfBirth: "1990-01-01",
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when dateOfBirth is missing", async () => {
+    const res = await request(app).post("/api/cases").send({
+      clientName: "テスト",
+      clientId: "client-001",
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("GET /api/cases", () => {
@@ -308,7 +344,7 @@ describe("PATCH /api/cases/:id/status", () => {
 
     const res = await request(app).patch("/api/cases/case-1/status").send({});
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain("required");
+    expect(res.body.error).toContain("status must be one of");
   });
 
   it("returns 404 if case not found", async () => {
@@ -323,6 +359,14 @@ describe("PATCH /api/cases/:id/status", () => {
 
     const res = await request(app).patch("/api/cases/case-other/status").send({ status: "closed" });
     expect(res.status).toBe(403);
+  });
+
+  it("returns 400 for invalid status enum value", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).patch("/api/cases/case-1/status").send({ status: "invalid_status" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("status must be one of");
   });
 });
 
@@ -395,6 +439,41 @@ describe("POST /api/cases/:id/consultations", () => {
     });
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("DB connection failed");
+  });
+
+  it("returns 400 for invalid consultationType", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "テスト",
+      consultationType: "email",
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("consultationType must be one of");
+  });
+
+  it("accepts online consultationType", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-2",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "オンライン相談内容",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "online",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    vi.mocked(analyzeConsultation).mockResolvedValue({ summary: "要約", suggestedSupports: [] });
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "オンライン相談内容",
+      consultationType: "online",
+    });
+    expect(res.status).toBe(201);
   });
 });
 
@@ -481,6 +560,18 @@ describe("POST /api/cases/:id/consultations/audio", () => {
       .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
 
     expect(res.status).toBe(403);
+  });
+
+  it("returns 400 for invalid consultationType in audio upload", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("consultationType", "invalid_type")
+      .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("consultationType must be one of");
   });
 });
 
