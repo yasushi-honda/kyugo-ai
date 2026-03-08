@@ -14,6 +14,7 @@ vi.mock("../repositories/consultation-repository.js", () => ({
   listRetryPendingConsultations: vi.fn(),
   expireRetryPendingConsultations: vi.fn(),
   recoverStuckRetryingConsultations: vi.fn(),
+  recoverStuckPendingConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
 }));
@@ -59,6 +60,7 @@ beforeEach(() => {
   vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue(MOCK_MENUS);
   vi.mocked(consultationRepo.expireRetryPendingConsultations).mockResolvedValue(0);
   vi.mocked(consultationRepo.recoverStuckRetryingConsultations).mockResolvedValue(0);
+  vi.mocked(consultationRepo.recoverStuckPendingConsultations).mockResolvedValue(0);
 });
 
 describe("retryPendingConsultations", () => {
@@ -67,7 +69,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 0, succeeded: 0, failed: 0, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 0, succeeded: 0, failed: 0, expired: 0, recovered: 0, recoveredPending: 0 });
     expect(analyzeConsultation).not.toHaveBeenCalled();
   });
 
@@ -81,7 +83,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 1, succeeded: 1, failed: 0, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 1, succeeded: 1, failed: 0, expired: 0, recovered: 0, recoveredPending: 0 });
     // retrying に遷移してからAI呼び出し
     expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledWith(
       "case-1", "cons-1", "retrying",
@@ -98,7 +100,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
     expect(analyzeConsultation).not.toHaveBeenCalled();
   });
 
@@ -111,7 +113,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
     // 1回目: retrying, 2回目: retry_pending（失敗後の状態復旧）
     expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledTimes(2);
     expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(1,
@@ -130,7 +132,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
     expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(1,
       "case-1", "cons-1", "retrying",
     );
@@ -148,7 +150,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
     expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(2,
       "case-1", "cons-1", "error", "Rate limit", 3, undefined,
     );
@@ -174,7 +176,7 @@ describe("retryPendingConsultations", () => {
 
     const result = await retryPendingConsultations();
 
-    expect(result).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0 });
+    expect(result).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
   });
 
   it("stuck retryingレコードを復旧してからリトライ処理する", async () => {
@@ -185,6 +187,16 @@ describe("retryPendingConsultations", () => {
 
     expect(result.recovered).toBe(3);
     expect(consultationRepo.recoverStuckRetryingConsultations).toHaveBeenCalled();
+  });
+
+  it("stuck pendingレコードを復旧してからリトライ処理する", async () => {
+    vi.mocked(consultationRepo.recoverStuckPendingConsultations).mockResolvedValue(5);
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([]);
+
+    const result = await retryPendingConsultations();
+
+    expect(result.recoveredPending).toBe(5);
+    expect(consultationRepo.recoverStuckPendingConsultations).toHaveBeenCalled();
   });
 
   it("retrying遷移をAI呼び出しより前に実行する", async () => {

@@ -52,6 +52,25 @@ export async function updateConsultationAIResults(
   });
 }
 
+export async function updateConsultationAIResultsWithTranscript(
+  caseId: string,
+  consultationId: string,
+  summary: string,
+  suggestedSupports: Consultation["suggestedSupports"],
+  transcript: string,
+): Promise<void> {
+  await consultationsRef(caseId).doc(consultationId).update({
+    summary,
+    suggestedSupports,
+    transcript,
+    aiStatus: "completed",
+    aiErrorMessage: FieldValue.delete(),
+    aiRetryCount: FieldValue.delete(),
+    nextRetryAt: FieldValue.delete(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
 export async function updateConsultationAIStatus(
   caseId: string,
   consultationId: string,
@@ -114,6 +133,34 @@ export async function recoverStuckRetryingConsultations(): Promise<number> {
         aiStatus: "retry_pending",
         aiErrorMessage: "Recovered from stuck retrying state",
         aiRetryCount: ((data.aiRetryCount as number) ?? 0) + 1,
+        updatedAt: Timestamp.now(),
+      });
+      recoveredCount++;
+    }
+  }
+
+  return recoveredCount;
+}
+
+// pending のまま stuck したconsultationを retry_pending に差し戻す（fire-and-forget失敗対策）
+const STUCK_PENDING_THRESHOLD_MS = AI_RETRY_CONFIG.baseDelayMs * 2; // 10分
+
+export async function recoverStuckPendingConsultations(): Promise<number> {
+  const threshold = Timestamp.fromMillis(Date.now() - STUCK_PENDING_THRESHOLD_MS);
+  const casesSnapshot = await firestore.collection("cases").get();
+  let recoveredCount = 0;
+
+  for (const caseDoc of casesSnapshot.docs) {
+    const snapshot = await consultationsRef(caseDoc.id)
+      .where("aiStatus", "==", "pending")
+      .where("createdAt", "<", threshold)
+      .get();
+
+    for (const doc of snapshot.docs) {
+      await doc.ref.update({
+        aiStatus: "retry_pending",
+        aiErrorMessage: "Recovered from stuck pending state",
+        aiRetryCount: 0,
         updatedAt: Timestamp.now(),
       });
       recoveredCount++;

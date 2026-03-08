@@ -32,6 +32,7 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   getConsultation: vi.fn(),
   listConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
+  updateConsultationAIResultsWithTranscript: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
   listRetryPendingConsultations: vi.fn(),
   expireRetryPendingConsultations: vi.fn(),
@@ -59,7 +60,7 @@ import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js";
+import { analyzeConsultation } from "./services/ai.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
@@ -686,23 +687,13 @@ describe("POST /api/cases/:id/consultations", () => {
 });
 
 describe("POST /api/cases/:id/consultations/audio", () => {
-  const MOCK_AUDIO_RESULT = {
-    transcript: "相談者: 家賃が払えなくて困っています。職員: 住居確保給付金という制度があります。",
-    summary: "家賃支払い困難の相談。住居確保給付金を案内。",
-    suggestedSupports: [
-      { menuId: "juukyo-kakuho-kyuufukin", menuName: "住居確保給付金", reason: "家賃支払い困難", relevanceScore: 0.95 },
-    ],
-  };
-
-  it("processes audio file and returns transcript + analysis", async () => {
+  it("saves consultation first and returns immediately (AI runs async)", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
-    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
-    vi.mocked(analyzeAudioConsultation).mockResolvedValue(MOCK_AUDIO_RESULT);
     vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
       id: "cons-audio-1",
       caseId: "case-1",
       staffId: "staff-1",
-      content: "",
+      content: "訪問相談",
       transcript: "",
       summary: "",
       suggestedSupports: [],
@@ -711,7 +702,6 @@ describe("POST /api/cases/:id/consultations/audio", () => {
       createdAt: NOW,
       updatedAt: NOW,
     });
-    vi.mocked(consultationRepo.updateConsultationAIResults).mockResolvedValue();
 
     const res = await request(app)
       .post("/api/cases/case-1/consultations/audio")
@@ -720,12 +710,13 @@ describe("POST /api/cases/:id/consultations/audio", () => {
       .attach("audio", Buffer.from("fake-audio-data"), { filename: "recording.wav", contentType: "audio/wav" });
 
     expect(res.status).toBe(201);
-    expect(res.body.transcript).toBe(MOCK_AUDIO_RESULT.transcript);
-    expect(res.body.summary).toBe(MOCK_AUDIO_RESULT.summary);
-    expect(res.body.suggestedSupports).toHaveLength(1);
+    // 非同期化: レスポンスはpending状態の相談記録（AI結果は後から更新）
+    expect(res.body.aiStatus).toBe("pending");
+    expect(res.body.transcript).toBe("");
+    expect(res.body.summary).toBe("");
     expect(vi.mocked(consultationRepo.createConsultation)).toHaveBeenCalledWith(
       "case-1",
-      expect.objectContaining({ staffId: "staff-1" }),
+      expect.objectContaining({ staffId: "staff-1", content: "訪問相談", transcript: "" }),
     );
   });
 
@@ -945,7 +936,7 @@ describe("POST /api/admin/retry-ai", () => {
 
   it("executes retry and returns result with correct secret", async () => {
     vi.mocked(retryPendingConsultations).mockResolvedValue({
-      processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0,
+      processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0, recoveredPending: 0,
     });
 
     const res = await request(retryApp)
@@ -953,7 +944,7 @@ describe("POST /api/admin/retry-ai", () => {
       .set("x-retry-secret", RETRY_SECRET);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0 });
+    expect(res.body).toEqual({ processed: 2, succeeded: 1, failed: 1, expired: 0, recovered: 0, recoveredPending: 0 });
   });
 
   it("returns 500 when retry throws", async () => {

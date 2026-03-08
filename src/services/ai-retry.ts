@@ -11,10 +11,14 @@ export interface RetryResult {
   failed: number;
   expired: number;
   recovered: number;
+  recoveredPending: number;
 }
 
 export async function retryPendingConsultations(): Promise<RetryResult> {
-  const result: RetryResult = { processed: 0, succeeded: 0, failed: 0, expired: 0, recovered: 0 };
+  const result: RetryResult = { processed: 0, succeeded: 0, failed: 0, expired: 0, recovered: 0, recoveredPending: 0 };
+
+  // pending のまま stuck したレコードを復旧（fire-and-forget失敗対策）
+  result.recoveredPending = await consultationRepo.recoverStuckPendingConsultations();
 
   // retrying のまま stuck したレコードを復旧（プロセスクラッシュ対策）
   result.recovered = await consultationRepo.recoverStuckRetryingConsultations();
