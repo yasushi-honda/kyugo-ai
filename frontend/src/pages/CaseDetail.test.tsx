@@ -214,6 +214,26 @@ describe("CaseDetail", () => {
     expect(screen.getByText("Model overloaded")).toBeInTheDocument();
   });
 
+  it("shows error without message when aiErrorMessage is undefined", async () => {
+    const errorNoMsg = {
+      ...mockConsultations[0],
+      id: "cons-error-nomsg",
+      summary: "",
+      suggestedSupports: [],
+      aiStatus: "error" as const,
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([errorNoMsg]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析エラー")).toBeInTheDocument();
+    });
+    // aiErrorMessageがないのでエラー詳細テキストは表示されない
+    const panel = screen.getByText("AI分析エラー").closest(".ai-panel-error");
+    expect(panel?.querySelector(".ai-error-message")).toBeNull();
+  });
+
   it("shows completed AI results with aiStatus completed", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
