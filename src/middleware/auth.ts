@@ -9,10 +9,23 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   const idToken = authHeader.slice(7);
-  try {
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
 
-    // Firestoreのstaffコレクションからユーザー情報を取得
+  // Step 1: Firebase IDトークン検証（失敗 → 401）
+  let decoded;
+  try {
+    decoded = await firebaseAuth.verifyIdToken(idToken);
+  } catch (err) {
+    const message = (err as Error).message;
+    if (message.includes("expired") || message.includes("Decoding Firebase ID token failed")) {
+      res.status(401).json({ error: "Invalid or expired token" });
+    } else {
+      res.status(401).json({ error: "Authentication failed" });
+    }
+    return;
+  }
+
+  // Step 2: Firestoreからスタッフ情報取得/作成（失敗 → 500）
+  try {
     const staffQuery = await firestore
       .collection("staff")
       .where("firebaseUid", "==", decoded.uid)
@@ -67,11 +80,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     next();
   } catch (err) {
-    const message = (err as Error).message;
-    if (message.includes("expired") || message.includes("Decoding Firebase ID token failed")) {
-      res.status(401).json({ error: "Invalid or expired token" });
-    } else {
-      res.status(401).json({ error: "Authentication failed" });
-    }
+    console.error("Staff lookup/provision failed", {
+      uid: decoded.uid,
+      error: (err as Error).message,
+      code: (err as { code?: number }).code,
+    });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
