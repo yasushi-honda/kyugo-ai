@@ -13,9 +13,9 @@ const PORT = parseInt(process.env.PORT ?? "8080", 10);
 
 app.use(express.json());
 
-// Firebase Auth signInWithPopup に必要（デフォルトの same-origin だとポップアップがブロックされる）
+// Firebase Auth signInWithPopup に必要（COOPがポップアップのwindow.closedアクセスをブロックする）
 app.use((_req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
   next();
 });
 
