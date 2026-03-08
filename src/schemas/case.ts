@@ -4,7 +4,11 @@ import { z } from "zod";
 const dateString = z
   .string({ error: "dateOfBirth must be a string" })
   .regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Date must be YYYY-MM-DD format" })
-  .refine((val) => !isNaN(new Date(val).getTime()), { error: "Invalid date" });
+  .refine((val) => {
+    const [y, m, d] = val.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+  }, { error: "Invalid date" });
 
 export const createCaseSchema = z.object({
   clientName: z.string({ error: "clientName is required" }).min(1, { error: "clientName is required" }).max(100),
