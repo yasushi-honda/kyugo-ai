@@ -1,26 +1,30 @@
-import { useState } from "react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { useState, useEffect } from "react";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../firebase";
 
 const googleProvider = new GoogleAuthProvider();
 
 export function Login() {
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getRedirectResult(auth)
+      .catch((e) => {
+        if (active) setError("ログインに失敗しました: " + (e as Error).message);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes("popup-closed-by-user")) {
-        setLoading(false);
-        return;
-      }
+      await signInWithRedirect(auth, googleProvider);
+    } catch {
       setError("ログインに失敗しました");
-    } finally {
       setLoading(false);
     }
   };
