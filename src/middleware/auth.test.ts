@@ -149,6 +149,64 @@ describe("requireAuth middleware", () => {
     });
   });
 
+  it("returns 401 when create() fails with non-ALREADY_EXISTS error", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "err-uid",
+      email: "err@example.com",
+    } as never);
+
+    const firestoreErr = new Error("Permission denied") as Error & { code: number };
+    firestoreErr.code = 7; // gRPC PERMISSION_DENIED
+    const mockCreate = vi.fn().mockRejectedValue(firestoreErr);
+    const mockDoc = vi.fn().mockReturnValue({ id: "err-uid", create: mockCreate });
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer err-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication failed" });
+  });
+
+  it("returns 401 when ALREADY_EXISTS doc has no data", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "nodata-uid",
+      email: "nodata@example.com",
+    } as never);
+
+    const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
+    alreadyExistsErr.code = 6;
+    const mockCreate = vi.fn().mockRejectedValue(alreadyExistsErr);
+    const mockDocGet = vi.fn().mockResolvedValue({
+      id: "nodata-uid",
+      data: () => undefined,
+    });
+    const mockDoc = vi.fn().mockReturnValue({ id: "nodata-uid", create: mockCreate, get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockQueryGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer nodata-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication failed" });
+  });
+
   it("calls next() and sets req.user when authentication succeeds", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "firebase-uid-1",
