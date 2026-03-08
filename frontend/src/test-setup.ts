@@ -41,8 +41,6 @@ vi.mock("firebase/auth", () => ({
   signOut: vi.fn().mockResolvedValue(undefined),
   signInWithEmailAndPassword: vi.fn(),
   signInWithPopup: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  getRedirectResult: vi.fn().mockResolvedValue(null),
   GoogleAuthProvider: vi.fn(),
   getAuth: vi.fn(),
 }));
