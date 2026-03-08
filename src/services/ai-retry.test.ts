@@ -80,9 +80,24 @@ describe("retryPendingConsultations", () => {
     const result = await retryPendingConsultations();
 
     expect(result).toEqual({ processed: 1, succeeded: 1, failed: 0, expired: 0 });
+    // retrying に遷移してからAI呼び出し
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledWith(
+      "case-1", "cons-1", "retrying",
+    );
     expect(consultationRepo.updateConsultationAIResults).toHaveBeenCalledWith(
       "case-1", "cons-1", "リトライ成功の要約", [],
     );
+  });
+
+  it("retrying遷移失敗時はスキップしてfailedカウント", async () => {
+    const consultation = mockConsultation();
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([consultation]);
+    vi.mocked(consultationRepo.updateConsultationAIStatus).mockRejectedValueOnce(new Error("Firestore down"));
+
+    const result = await retryPendingConsultations();
+
+    expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0 });
+    expect(analyzeConsultation).not.toHaveBeenCalled();
   });
 
   it("一時障害で再失敗時にretry_pendingを維持しカウントをインクリメント", async () => {
@@ -95,7 +110,12 @@ describe("retryPendingConsultations", () => {
     const result = await retryPendingConsultations();
 
     expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0 });
-    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledWith(
+    // 1回目: retrying, 2回目: retry_pending（失敗後の状態復旧）
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledTimes(2);
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(1,
+      "case-1", "cons-1", "retrying",
+    );
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(2,
       "case-1", "cons-1", "retry_pending", "Service unavailable", 2,
       expect.objectContaining({ _seconds: expect.any(Number) }),
     );
@@ -109,7 +129,10 @@ describe("retryPendingConsultations", () => {
     const result = await retryPendingConsultations();
 
     expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0 });
-    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledWith(
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(1,
+      "case-1", "cons-1", "retrying",
+    );
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(2,
       "case-1", "cons-1", "error", "Invalid request", 1, undefined,
     );
   });
@@ -124,7 +147,7 @@ describe("retryPendingConsultations", () => {
     const result = await retryPendingConsultations();
 
     expect(result).toEqual({ processed: 1, succeeded: 0, failed: 1, expired: 0 });
-    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenCalledWith(
+    expect(consultationRepo.updateConsultationAIStatus).toHaveBeenNthCalledWith(2,
       "case-1", "cons-1", "error", "Rate limit", 3, undefined,
     );
   });
@@ -163,7 +186,8 @@ describe("retryPendingConsultations", () => {
     await retryPendingConsultations();
     const after = Date.now();
 
-    const call = vi.mocked(consultationRepo.updateConsultationAIStatus).mock.calls[0];
+    // 2回目の呼び出し（1回目はretrying遷移）
+    const call = vi.mocked(consultationRepo.updateConsultationAIStatus).mock.calls[1];
     const nextRetryAt = call[5] as Timestamp;
     // retryCount=2 → baseDelay * 2^2 = 5min * 4 = 20min
     const expectedDelayMs = 5 * 60 * 1000 * 4;

@@ -28,6 +28,19 @@ export async function retryPendingConsultations(): Promise<RetryResult> {
     result.processed++;
     const currentRetryCount = (consultation.aiRetryCount ?? 0) + 1;
 
+    // 並行実行防止: retrying に遷移してからAI呼び出し
+    try {
+      await consultationRepo.updateConsultationAIStatus(
+        consultation.caseId,
+        consultation.id!,
+        "retrying",
+      );
+    } catch (lockErr) {
+      console.error(`Failed to lock consultation ${consultation.id} as retrying:`, lockErr);
+      result.failed++;
+      continue;
+    }
+
     try {
       const aiResult = await analyzeConsultation(
         { content: consultation.content, transcript: consultation.transcript },

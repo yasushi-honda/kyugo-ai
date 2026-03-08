@@ -31,7 +31,7 @@ export const VALID_STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 };
 
 // AI分析の処理状態
-export type AIStatus = "pending" | "completed" | "retry_pending" | "error";
+export type AIStatus = "pending" | "completed" | "retry_pending" | "retrying" | "error";
 
 // AIリトライ設定
 export const AI_RETRY_CONFIG = {

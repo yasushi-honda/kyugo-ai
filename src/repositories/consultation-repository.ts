@@ -45,6 +45,9 @@ export async function updateConsultationAIResults(
     summary,
     suggestedSupports,
     aiStatus: "completed",
+    aiErrorMessage: null,
+    aiRetryCount: null,
+    nextRetryAt: null,
     updatedAt: Timestamp.now(),
   });
 }
