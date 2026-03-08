@@ -67,6 +67,7 @@ describe("NewConsultationModal", () => {
       summary: "",
       suggestedSupports: [],
       consultationType: "counter",
+      aiStatus: "completed",
       createdAt: { _seconds: 1700000000 },
       updatedAt: { _seconds: 1700000000 },
     });
@@ -97,6 +98,7 @@ describe("NewConsultationModal", () => {
       summary: "summary",
       suggestedSupports: [],
       consultationType: "counter",
+      aiStatus: "completed",
       createdAt: { _seconds: 1700000000 },
       updatedAt: { _seconds: 1700000000 },
     });
@@ -130,6 +132,7 @@ describe("NewConsultationModal", () => {
         { menuId: "m1", menuName: "生活保護", reason: "収入が低い", relevanceScore: 0.9 },
       ],
       consultationType: "counter",
+      aiStatus: "completed",
       createdAt: { _seconds: 1700000000 },
       updatedAt: { _seconds: 1700000000 },
     });
