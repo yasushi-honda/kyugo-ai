@@ -98,6 +98,99 @@ describe("requireAuth middleware", () => {
     expect(res.json).toHaveBeenCalledWith({ error: "Email not verified" });
   });
 
+  it("returns 403 when email_verified is undefined (new user)", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "no-verified-field-uid",
+      email: "nofield@example.com",
+      // email_verified intentionally omitted (undefined)
+    } as never);
+
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer no-verified-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified" });
+  });
+
+  it("returns 403 when email is undefined (new user)", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "no-email-uid",
+      email_verified: true,
+      // email intentionally omitted
+    } as never);
+
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer no-email-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Email is required for auto-provisioning" });
+  });
+
+  it("treats empty ALLOWED_EMAIL_DOMAINS as unset (fail-open)", async () => {
+    const originalEnv = process.env.ALLOWED_EMAIL_DOMAINS;
+    process.env.ALLOWED_EMAIL_DOMAINS = "   ,  ,";
+
+    vi.resetModules();
+    vi.mock("../config.js", () => ({
+      firebaseAuth: { verifyIdToken: vi.fn() },
+      firestore: { collection: vi.fn() },
+    }));
+    const { requireAuth: freshRequireAuth } = await import("./auth.js");
+    const { firebaseAuth: freshFirebaseAuth, firestore: freshFirestore } = await import("../config.js");
+
+    vi.mocked(freshFirebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "empty-env-uid",
+      email: "user@anydomain.com",
+      email_verified: true,
+    } as never);
+
+    const mockCreate = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "empty-env-uid", create: mockCreate });
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(freshFirestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer empty-env-token");
+
+    await freshRequireAuth(req, res, next);
+
+    // fail-open: 空のドメインリストは未設定扱い → auto-provision成功
+    expect(next).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalled();
+
+    process.env.ALLOWED_EMAIL_DOMAINS = originalEnv;
+  });
+
+  it("returns 401 when Bearer token is empty string", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(
+      new Error("Decoding Firebase ID token failed"),
+    );
+    const { req, res, next } = mockReqResNext("Bearer ");
+
+    await requireAuth(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it("returns 403 when email domain is not allowed (new user)", async () => {
     // Set allowed domains for this test
     const originalEnv = process.env.ALLOWED_EMAIL_DOMAINS;
@@ -132,6 +225,79 @@ describe("requireAuth middleware", () => {
     expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed" });
 
     process.env.ALLOWED_EMAIL_DOMAINS = originalEnv;
+  });
+
+  it("auto-provisions when email domain matches ALLOWED_EMAIL_DOMAINS", async () => {
+    const originalEnv = process.env.ALLOWED_EMAIL_DOMAINS;
+    process.env.ALLOWED_EMAIL_DOMAINS = "allowed.gov.jp,another.org";
+
+    vi.resetModules();
+    vi.mock("../config.js", () => ({
+      firebaseAuth: { verifyIdToken: vi.fn() },
+      firestore: { collection: vi.fn() },
+    }));
+    const { requireAuth: freshRequireAuth } = await import("./auth.js");
+    const { firebaseAuth: freshFirebaseAuth, firestore: freshFirestore } = await import("../config.js");
+
+    vi.mocked(freshFirebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "allowed-uid",
+      email: "user@allowed.gov.jp",
+      email_verified: true,
+    } as never);
+
+    const mockCreate = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = vi.fn().mockReturnValue({ id: "allowed-uid", create: mockCreate });
+    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(freshFirestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer allowed-token");
+
+    await freshRequireAuth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalled();
+    expect(req.user).toEqual({
+      uid: "allowed-uid",
+      email: "user@allowed.gov.jp",
+      role: "staff",
+      staffId: "allowed-uid",
+    });
+
+    process.env.ALLOWED_EMAIL_DOMAINS = originalEnv;
+  });
+
+  it("existing user bypasses email_verified and domain checks", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "existing-uid",
+      email: "existing@notallowed.com",
+      email_verified: false,
+    } as never);
+
+    const staffDoc = {
+      id: "existing-staff-001",
+      data: () => ({ role: "staff", name: "Existing", email: "existing@notallowed.com" }),
+    };
+    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
+    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer existing-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.user).toEqual({
+      uid: "existing-uid",
+      email: "existing@notallowed.com",
+      role: "staff",
+      staffId: "existing-staff-001",
+    });
   });
 
   it("auto-provisions staff document on first login (idempotent create)", async () => {

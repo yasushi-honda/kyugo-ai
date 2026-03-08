@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { firebaseAuth } from "../config.js";
 import { firestore } from "../config.js";
 
-const allowedDomains = process.env.ALLOWED_EMAIL_DOMAINS
-  ? process.env.ALLOWED_EMAIL_DOMAINS.split(",").map((d) => d.trim().toLowerCase())
+const parsedDomains = process.env.ALLOWED_EMAIL_DOMAINS
+  ? process.env.ALLOWED_EMAIL_DOMAINS.split(",").map((d) => d.trim().toLowerCase()).filter((d) => d.length > 0)
   : null;
+const allowedDomains = parsedDomains && parsedDomains.length > 0 ? parsedDomains : null;
 
 if (!allowedDomains) {
   console.warn("WARNING: ALLOWED_EMAIL_DOMAINS is not set. Any authenticated user can auto-provision as staff.");
@@ -52,11 +53,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     if (staffQuery.empty) {
       // 未登録ユーザーのアクセス制御
+      if (!decoded.email) {
+        res.status(403).json({ error: "Email is required for auto-provisioning" });
+        return;
+      }
       if (!decoded.email_verified) {
         res.status(403).json({ error: "Email not verified" });
         return;
       }
-      if (!isEmailAllowed(decoded.email ?? "")) {
+      if (!isEmailAllowed(decoded.email)) {
         res.status(403).json({ error: "Access denied: email domain not allowed" });
         return;
       }
