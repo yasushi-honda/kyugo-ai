@@ -144,6 +144,18 @@ describe("cases", () => {
     await assertFails(updateDoc(doc(db, "cases", "case-1"), { status: "closed" }));
   });
 
+  it("担当者はassignedStaffIdを変更できる（Express層で制御、ルール層では許可）", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertSucceeds(updateDoc(doc(db, "cases", "case-1"), { assignedStaffId: OTHER_STAFF_UID }));
+  });
+
+  it("adminでもケースを削除できない", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = adminContext().firestore();
+    await assertFails(deleteDoc(doc(db, "cases", "case-1")));
+  });
+
   it("ケースの削除は禁止", async () => {
     await setupCaseData("case-1", STAFF_UID);
     const db = staffContext(STAFF_UID).firestore();
@@ -209,6 +221,18 @@ describe("consultations", () => {
     }));
   });
 
+  it("非担当者は相談記録を更新できない", async () => {
+    await setupConsultationData("case-1", "cons-1", STAFF_UID);
+    const db = staffContext(OTHER_STAFF_UID).firestore();
+    await assertFails(updateDoc(doc(db, "cases", "case-1", "consultations", "cons-1"), { content: "不正更新" }));
+  });
+
+  it("adminは相談記録を更新できる", async () => {
+    await setupConsultationData("case-1", "cons-1", STAFF_UID);
+    const db = adminContext().firestore();
+    await assertSucceeds(updateDoc(doc(db, "cases", "case-1", "consultations", "cons-1"), { content: "管理者更新" }));
+  });
+
   it("相談記録の削除は禁止", async () => {
     await setupConsultationData("case-1", "cons-1", STAFF_UID);
     const db = staffContext(STAFF_UID).firestore();
@@ -243,6 +267,27 @@ describe("staff", () => {
     }));
   });
 
+  it("staff作成時にrole:'admin'を指定すると拒否される（権限昇格防止）", async () => {
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(setDoc(doc(db, "staff", STAFF_UID), {
+      name: "昇格試行",
+      email: "escalate@example.com",
+      role: "admin",
+      firebaseUid: STAFF_UID,
+      createdAt: new Date(),
+    }));
+  });
+
+  it("staff作成時にroleフィールドが未指定だと拒否される", async () => {
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(setDoc(doc(db, "staff", STAFF_UID), {
+      name: "roleなし職員",
+      email: "norole@example.com",
+      firebaseUid: STAFF_UID,
+      createdAt: new Date(),
+    }));
+  });
+
   it("他人のstaffドキュメントは作成できない", async () => {
     const db = staffContext(STAFF_UID).firestore();
     await assertFails(setDoc(doc(db, "staff", OTHER_STAFF_UID), {
@@ -264,6 +309,12 @@ describe("staff", () => {
     await setupStaffData(STAFF_UID);
     const db = staffContext(STAFF_UID).firestore();
     await assertFails(updateDoc(doc(db, "staff", STAFF_UID), { role: "admin" }));
+  });
+
+  it("非adminがroleと他フィールドを同時更新しても拒否される", async () => {
+    await setupStaffData(STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(updateDoc(doc(db, "staff", STAFF_UID), { name: "更新", role: "admin" }));
   });
 
   it("adminは他人のroleフィールドを変更できる", async () => {

@@ -42,7 +42,8 @@ service cloud.firestore {
 
     match /staff/{staffId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == staffId;
+      allow create: if request.auth != null && request.auth.uid == staffId
+        && request.resource.data.role == 'staff';
       allow update: if request.auth != null
         && (isAdmin() || (request.auth.uid == staffId && isRoleUnchanged()));
       allow delete: if false;
