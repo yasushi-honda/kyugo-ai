@@ -206,23 +206,50 @@ describe("retryPendingConsultations", () => {
   });
 
   it("指数バックオフでnextRetryAtが増加する", async () => {
+    const FIXED_NOW = new Date("2026-03-08T00:00:00Z").getTime();
+    vi.setSystemTime(FIXED_NOW);
+
     const consultation = mockConsultation({ aiRetryCount: 1 });
     vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([consultation]);
     const transientErr = new Error("Timeout") as Error & { code: number };
     transientErr.code = 503;
     vi.mocked(analyzeConsultation).mockRejectedValue(transientErr);
 
-    const before = Date.now();
     await retryPendingConsultations();
-    const after = Date.now();
 
     // 2回目の呼び出し（1回目はretrying遷移）
     const call = vi.mocked(consultationRepo.updateConsultationAIStatus).mock.calls[1];
     const nextRetryAt = call[5] as Timestamp;
     // retryCount=2 → baseDelay * 2^2 = 5min * 4 = 20min
-    const expectedDelayMs = 5 * 60 * 1000 * 4;
-    const actualDelay = nextRetryAt.toMillis() - before;
-    expect(actualDelay).toBeGreaterThanOrEqual(expectedDelayMs - 1000);
-    expect(actualDelay).toBeLessThanOrEqual(expectedDelayMs + (after - before) + 1000);
+    const expectedMs = FIXED_NOW + 5 * 60 * 1000 * 4;
+    expect(nextRetryAt.toMillis()).toBe(expectedMs);
+
+    vi.useRealTimers();
+  });
+
+  it("listSupportMenus失敗時は例外を上位に伝播する", async () => {
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([mockConsultation()]);
+    vi.mocked(supportMenuRepo.listSupportMenus).mockRejectedValue(new Error("Firestore down"));
+
+    await expect(retryPendingConsultations()).rejects.toThrow("Firestore down");
+  });
+
+  it("状態復旧のFirestore書き込みが失敗してもループが継続する", async () => {
+    const cons1 = mockConsultation({ id: "cons-1", caseId: "case-1" });
+    const cons2 = mockConsultation({ id: "cons-2", caseId: "case-2" });
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([cons1, cons2]);
+    vi.mocked(analyzeConsultation).mockRejectedValue(new Error("AI down"));
+    // cons-1: retrying成功 → 状態復旧失敗, cons-2: retrying成功 → 状態復旧成功
+    vi.mocked(consultationRepo.updateConsultationAIStatus)
+      .mockResolvedValueOnce(undefined) // cons-1 retrying
+      .mockRejectedValueOnce(new Error("Firestore down")) // cons-1 状態復旧失敗
+      .mockResolvedValueOnce(undefined) // cons-2 retrying
+      .mockResolvedValueOnce(undefined); // cons-2 状態復旧成功
+
+    const result = await retryPendingConsultations();
+
+    expect(result.processed).toBe(2);
+    expect(result.failed).toBe(2);
+    // 例外が上位に伝播せず、2件とも処理されること
   });
 });

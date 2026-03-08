@@ -109,9 +109,11 @@ export async function recoverStuckRetryingConsultations(): Promise<number> {
       .get();
 
     for (const doc of snapshot.docs) {
+      const data = doc.data();
       await doc.ref.update({
         aiStatus: "retry_pending",
         aiErrorMessage: "Recovered from stuck retrying state",
+        aiRetryCount: ((data.aiRetryCount as number) ?? 0) + 1,
         updatedAt: Timestamp.now(),
       });
       recoveredCount++;
