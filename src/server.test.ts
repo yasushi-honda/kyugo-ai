@@ -31,6 +31,7 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   getConsultation: vi.fn(),
   listConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
+  updateConsultationAIStatus: vi.fn(),
 }));
 
 vi.mock("./repositories/support-menu-repository.js", () => ({
@@ -404,6 +405,7 @@ describe("POST /api/cases/:id/consultations", () => {
       summary: "",
       suggestedSupports: [],
       consultationType: "counter",
+      aiStatus: "pending",
       createdAt: NOW,
       updatedAt: NOW,
     });
@@ -474,6 +476,109 @@ describe("POST /api/cases/:id/consultations", () => {
     expect(res.body.error).toContain("consultationType must be one of");
   });
 
+  it("sets aiStatus to retry_pending on transient AI error (429)", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-transient",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "テスト",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    const transientErr = new Error("Too Many Requests") as Error & { status: number };
+    transientErr.status = 429;
+    vi.mocked(analyzeConsultation).mockRejectedValue(transientErr);
+    vi.mocked(consultationRepo.updateConsultationAIStatus).mockResolvedValue();
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "テスト",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(201);
+
+    // fire-and-forgetのPromiseが解決するのを待つ
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(vi.mocked(consultationRepo.updateConsultationAIStatus)).toHaveBeenCalledWith(
+      "case-1",
+      "cons-transient",
+      "retry_pending",
+      "Too Many Requests",
+      0,
+    );
+  });
+
+  it("sets aiStatus to error on permanent AI error (400)", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-permanent",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "テスト",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    const permanentErr = new Error("Invalid request") as Error & { status: number };
+    permanentErr.status = 400;
+    vi.mocked(analyzeConsultation).mockRejectedValue(permanentErr);
+    vi.mocked(consultationRepo.updateConsultationAIStatus).mockResolvedValue();
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "テスト",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(201);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(vi.mocked(consultationRepo.updateConsultationAIStatus)).toHaveBeenCalledWith(
+      "case-1",
+      "cons-permanent",
+      "error",
+      "Invalid request",
+      0,
+    );
+  });
+
+  it("returns consultation with aiStatus pending", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-status",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "テスト",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    vi.mocked(analyzeConsultation).mockResolvedValue({ summary: "要約", suggestedSupports: [] });
+
+    const res = await request(app).post("/api/cases/case-1/consultations").send({
+      content: "テスト",
+      consultationType: "counter",
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.aiStatus).toBe("pending");
+  });
+
   it("accepts online consultationType", async () => {
     vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
     vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
@@ -485,6 +590,7 @@ describe("POST /api/cases/:id/consultations", () => {
       summary: "",
       suggestedSupports: [],
       consultationType: "online",
+      aiStatus: "pending",
       createdAt: NOW,
       updatedAt: NOW,
     });
@@ -521,6 +627,7 @@ describe("POST /api/cases/:id/consultations/audio", () => {
       summary: "",
       suggestedSupports: [],
       consultationType: "visit",
+      aiStatus: "pending",
       createdAt: NOW,
       updatedAt: NOW,
     });
@@ -635,6 +742,7 @@ describe("GET /api/cases/:id/consultations/:consultationId", () => {
       summary: "",
       suggestedSupports: [],
       consultationType: "counter",
+      aiStatus: "pending",
       createdAt: NOW,
       updatedAt: NOW,
     });

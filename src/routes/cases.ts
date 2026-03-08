@@ -21,6 +21,13 @@ function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: 
   return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
 }
 
+function isTransientError(err: unknown): boolean {
+  const status = (err as { status?: number }).status ?? (err as { code?: number }).code;
+  if (status === 429 || status === 503) return true;
+  const message = (err as Error).message ?? "";
+  return /timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|socket hang up/i.test(message);
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB（Cloud Run 32MBリクエスト上限を考慮、ヘッダ・メタデータ分のマージン確保）
@@ -141,8 +148,20 @@ casesRouter.post("/:id/consultations", requireCaseAccess, async (req: Request, r
         );
         console.log(`AI analysis completed for consultation ${consultation.id}`);
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.error(`AI analysis failed for consultation ${consultation.id}:`, err);
+        const isTransient = isTransientError(err);
+        try {
+          await consultationRepo.updateConsultationAIStatus(
+            caseId,
+            consultation.id!,
+            isTransient ? "retry_pending" : "error",
+            (err as Error).message,
+            0,
+          );
+        } catch (statusErr) {
+          console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);
+        }
       });
 
     res.status(201).json(consultation);

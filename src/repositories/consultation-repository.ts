@@ -8,7 +8,7 @@ function consultationsRef(caseId: string) {
 
 export async function createConsultation(
   caseId: string,
-  data: Omit<Consultation, "id" | "caseId" | "createdAt" | "updatedAt" | "summary" | "suggestedSupports">,
+  data: Omit<Consultation, "id" | "caseId" | "createdAt" | "updatedAt" | "summary" | "suggestedSupports" | "aiStatus" | "aiErrorMessage" | "aiRetryCount">,
 ): Promise<Consultation> {
   const now = Timestamp.now();
   const consultationData: Omit<Consultation, "id"> = {
@@ -16,6 +16,7 @@ export async function createConsultation(
     caseId,
     summary: "",
     suggestedSupports: [],
+    aiStatus: "pending",
     createdAt: now,
     updatedAt: now,
   };
@@ -43,6 +44,23 @@ export async function updateConsultationAIResults(
   await consultationsRef(caseId).doc(consultationId).update({
     summary,
     suggestedSupports,
+    aiStatus: "completed",
     updatedAt: Timestamp.now(),
   });
+}
+
+export async function updateConsultationAIStatus(
+  caseId: string,
+  consultationId: string,
+  aiStatus: Consultation["aiStatus"],
+  aiErrorMessage?: string,
+  aiRetryCount?: number,
+): Promise<void> {
+  const update: Record<string, unknown> = {
+    aiStatus,
+    updatedAt: Timestamp.now(),
+  };
+  if (aiErrorMessage !== undefined) update.aiErrorMessage = aiErrorMessage;
+  if (aiRetryCount !== undefined) update.aiRetryCount = aiRetryCount;
+  await consultationsRef(caseId).doc(consultationId).update(update);
 }

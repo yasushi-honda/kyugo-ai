@@ -48,6 +48,8 @@ export interface Consultation {
   summary: string;
   suggestedSupports: SuggestedSupport[];
   consultationType: "visit" | "counter" | "phone" | "online";
+  aiStatus: "pending" | "completed" | "retry_pending" | "error";
+  aiErrorMessage?: string;
   createdAt: { _seconds: number };
   updatedAt: { _seconds: number };
 }
