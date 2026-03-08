@@ -88,10 +88,11 @@ describe("requireAuth middleware", () => {
       email_verified: false,
     } as never);
 
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer unverified-token");
 
@@ -109,10 +110,11 @@ describe("requireAuth middleware", () => {
       // email_verified intentionally omitted (undefined)
     } as never);
 
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer no-verified-token");
 
@@ -130,10 +132,11 @@ describe("requireAuth middleware", () => {
       // email intentionally omitted
     } as never);
 
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer no-email-token");
 
@@ -164,10 +167,10 @@ describe("requireAuth middleware", () => {
     vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "empty-env-uid", create: mockCreate });
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "empty-env-uid", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(freshFirestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -217,10 +220,11 @@ describe("requireAuth middleware", () => {
     } as never);
     vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(freshFirestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(freshFirestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer blocked-token");
 
@@ -253,10 +257,10 @@ describe("requireAuth middleware", () => {
     vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "allowed-uid", create: mockCreate });
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "allowed-uid", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(freshFirestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -289,10 +293,11 @@ describe("requireAuth middleware", () => {
       id: "existing-staff-001",
       data: () => ({ role: "staff", name: "Existing", email: "existing@notallowed.com" }),
     };
-    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: false, size: 1, docs: [staffDoc] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer existing-token");
 
@@ -316,10 +321,10 @@ describe("requireAuth middleware", () => {
     } as never);
 
     const mockCreate = vi.fn().mockResolvedValue(undefined);
-    const mockDoc = vi.fn().mockReturnValue({ id: "new-uid", create: mockCreate });
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "new-uid", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(firestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -354,14 +359,16 @@ describe("requireAuth middleware", () => {
     const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
     alreadyExistsErr.code = 6; // gRPC ALREADY_EXISTS
     const mockCreate = vi.fn().mockRejectedValue(alreadyExistsErr);
-    const mockDocGet = vi.fn().mockResolvedValue({
-      id: "race-uid",
-      data: () => ({ role: "staff", email: "race@example.com", name: "" }),
-    });
+    // First get() returns not found (primary lookup), second get() returns the doc (after ALREADY_EXISTS)
+    const mockDocGet = vi.fn()
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({
+        id: "race-uid",
+        data: () => ({ role: "staff", email: "race@example.com", name: "" }),
+      });
     const mockDoc = vi.fn().mockReturnValue({ id: "race-uid", create: mockCreate, get: mockDocGet });
-    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockQueryGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(firestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -391,10 +398,10 @@ describe("requireAuth middleware", () => {
     const firestoreErr = new Error("Permission denied") as Error & { code: number };
     firestoreErr.code = 7; // gRPC PERMISSION_DENIED
     const mockCreate = vi.fn().mockRejectedValue(firestoreErr);
-    const mockDoc = vi.fn().mockReturnValue({ id: "err-uid", create: mockCreate });
-    const mockGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "err-uid", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(firestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -419,14 +426,16 @@ describe("requireAuth middleware", () => {
     const alreadyExistsErr = new Error("Document already exists") as Error & { code: number };
     alreadyExistsErr.code = 6;
     const mockCreate = vi.fn().mockRejectedValue(alreadyExistsErr);
-    const mockDocGet = vi.fn().mockResolvedValue({
-      id: "nodata-uid",
-      data: () => undefined,
-    });
+    // First get() → not found (primary), second get() → doc with no data (ALREADY_EXISTS recovery)
+    const mockDocGet = vi.fn()
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({
+        id: "nodata-uid",
+        data: () => undefined,
+      });
     const mockDoc = vi.fn().mockReturnValue({ id: "nodata-uid", create: mockCreate, get: mockDocGet });
-    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, docs: [] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockQueryGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
     vi.mocked(firestore.collection).mockReturnValue({
       where: mockWhere,
       doc: mockDoc,
@@ -451,10 +460,11 @@ describe("requireAuth middleware", () => {
       id: "staff-001",
       data: () => ({ role: "staff", name: "Test Staff", email: "staff@example.com" }),
     };
-    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: false, size: 1, docs: [staffDoc] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer valid-token");
 
@@ -504,6 +514,68 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("returns 500 when duplicate firebaseUid records found in legacy lookup", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "dup-uid",
+      email: "dup@example.com",
+    } as never);
+
+    const staffDoc1 = { id: "staff-dup-001", data: () => ({ role: "staff" }) };
+    const staffDoc2 = { id: "staff-dup-002", data: () => ({ role: "staff" }) };
+    // doc(uid) returns not found → falls back to legacy where query
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    // Legacy query finds 2 duplicates → should fail closed
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: false, size: 2, docs: [staffDoc1, staffDoc2] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: mockDoc,
+      where: mockWhere,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer dup-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
+  });
+
+  it("uses doc(uid) as primary lookup for staff", async () => {
+    vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "direct-uid",
+      email: "direct@example.com",
+    } as never);
+
+    // doc(uid).get() returns found → should use directly without where query
+    const mockDocGet = vi.fn().mockResolvedValue({
+      exists: true,
+      id: "direct-uid",
+      data: () => ({ role: "admin", firebaseUid: "direct-uid", email: "direct@example.com" }),
+    });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockWhere = vi.fn();
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: mockDoc,
+      where: mockWhere,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer direct-token");
+
+    await requireAuth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(mockDoc).toHaveBeenCalledWith("direct-uid");
+    expect(mockWhere).not.toHaveBeenCalled(); // No fallback needed
+    expect(req.user).toEqual({
+      uid: "direct-uid",
+      email: "direct@example.com",
+      role: "admin",
+      staffId: "direct-uid",
+    });
+  });
+
   it("sets admin role from staff document", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "firebase-uid-admin",
@@ -514,10 +586,11 @@ describe("requireAuth middleware", () => {
       id: "admin-001",
       data: () => ({ role: "admin", name: "Admin", email: "admin@example.com" }),
     };
-    const mockGet = vi.fn().mockResolvedValue({ empty: false, docs: [staffDoc] });
-    const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-    const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit });
-    vi.mocked(firestore.collection).mockReturnValue({ where: mockWhere } as never);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: false, size: 1, docs: [staffDoc] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(firestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
 
     const { req, res, next } = mockReqResNext("Bearer admin-token");
 
