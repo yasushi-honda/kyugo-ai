@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { api } from "./api";
+import type { UserInfo } from "./api";
 
 function renderApp(path = "/") {
   return render(
@@ -201,9 +202,9 @@ describe("Auth error handling", () => {
     });
 
     // Make getMe hang (never resolve) to test loading state
-    let resolveGetMe!: (value: unknown) => void;
+    let resolveGetMe!: (value: UserInfo | PromiseLike<UserInfo>) => void;
     vi.mocked(api.getMe).mockImplementationOnce(
-      () => new Promise((resolve) => { resolveGetMe = resolve; }),
+      () => new Promise<UserInfo>((resolve) => { resolveGetMe = resolve; }),
     );
 
     fireEvent.click(screen.getByText("再試行"));
