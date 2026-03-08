@@ -276,7 +276,11 @@ describe("Auth error handling", () => {
       expect(screen.getByText("強制ログアウト")).toBeInTheDocument();
     });
 
+    vi.mocked(signOut).mockClear();
+
     fireEvent.click(screen.getByText("強制ログアウト"));
+
+    expect(signOut).toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.getByTestId("login-page")).toBeInTheDocument();
