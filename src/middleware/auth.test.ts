@@ -55,10 +55,10 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when token is invalid", async () => {
-    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(
-      new Error("Decoding Firebase ID token failed"),
-    );
+  it("returns 401 when token is invalid (auth/argument-error)", async () => {
+    const err = new Error("Decoding Firebase ID token failed") as Error & { code: string };
+    err.code = "auth/argument-error";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
     const { req, res, next } = mockReqResNext("Bearer invalid-token");
 
     await requireAuth(req, res, next);
@@ -68,10 +68,10 @@ describe("requireAuth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when token is expired", async () => {
-    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(
-      new Error("Firebase ID token has expired"),
-    );
+  it("returns 401 when token is expired (auth/id-token-expired)", async () => {
+    const err = new Error("Firebase ID token has expired") as Error & { code: string };
+    err.code = "auth/id-token-expired";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
     const { req, res, next } = mockReqResNext("Bearer expired-token");
 
     await requireAuth(req, res, next);
@@ -188,9 +188,9 @@ describe("requireAuth middleware", () => {
   });
 
   it("returns 401 when Bearer token is empty string", async () => {
-    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(
-      new Error("Decoding Firebase ID token failed"),
-    );
+    const err = new Error("Decoding Firebase ID token failed") as Error & { code: string };
+    err.code = "auth/argument-error";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
     const { req, res, next } = mockReqResNext("Bearer ");
 
     await requireAuth(req, res, next);

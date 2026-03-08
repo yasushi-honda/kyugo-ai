@@ -35,6 +35,15 @@ export async function listCasesByStaff(staffId: string, status?: CaseStatus): Pr
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Case);
 }
 
+export async function listAllCases(status?: CaseStatus): Promise<Case[]> {
+  let query: FirebaseFirestore.Query = casesRef();
+  if (status) {
+    query = query.where("status", "==", status);
+  }
+  const snapshot = await query.orderBy("updatedAt", "desc").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Case);
+}
+
 export async function updateCaseStatus(id: string, newStatus: CaseStatus): Promise<Case> {
   const current = await getCase(id);
   if (!current) throw new Error(`Case ${id} not found`);
