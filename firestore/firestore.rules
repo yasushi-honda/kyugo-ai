@@ -7,24 +7,40 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ケースファイル: 認証済み + 担当職員 or admin
-    match /cases/{caseId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+    // ヘルパー: 認証済みかつCustom Claims admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
 
-      // 相談記録（サブコレクション）: 認証済みユーザーのみ
+    // ケースファイル: 担当職員 or admin
+    match /cases/{caseId} {
+      allow read: if request.auth != null
+        && (isAdmin() || resource.data.assignedStaffId == request.auth.uid);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (isAdmin() || resource.data.assignedStaffId == request.auth.uid);
+      // delete禁止（論理削除のみ）
+      allow delete: if false;
+
+      // 相談記録（サブコレクション）: 親ケースの担当職員 or admin
       match /consultations/{consultationId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null;
-        allow update: if request.auth != null;
+        allow read: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow create: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow update: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow delete: if false;
       }
     }
 
-    // 職員情報: 認証済みユーザーのみ読み取り可
+    // 職員情報: 読み取りは認証済み、書き込みは自分のドキュメントのみ、削除禁止
     match /staff/{staffId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == staffId;
+      allow update: if request.auth != null
+        && (isAdmin() || request.auth.uid == staffId);
+      allow delete: if false;
     }
 
     // 支援メニューマスタ: 読み取り専用

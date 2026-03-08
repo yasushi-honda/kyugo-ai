@@ -23,6 +23,7 @@ vi.mock("./repositories/case-repository.js", () => ({
   createCase: vi.fn(),
   getCase: vi.fn(),
   listCasesByStaff: vi.fn(),
+  listAllCases: vi.fn(),
   updateCaseStatus: vi.fn(),
 }));
 
@@ -201,6 +202,58 @@ describe("GET /api/me", () => {
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("Internal server error");
   });
+
+  it("returns 401 with revoked message for auth/id-token-revoked", async () => {
+    const err = new Error("Token revoked") as Error & { code: string };
+    err.code = "auth/id-token-revoked";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer revoked-token");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Token has been revoked");
+  });
+
+  it("returns 401 with expired message for auth/id-token-expired", async () => {
+    const err = new Error("Token expired") as Error & { code: string };
+    err.code = "auth/id-token-expired";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer expired-token");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Invalid or expired token");
+  });
+
+  it("returns 401 with invalid message for auth/argument-error", async () => {
+    const err = new Error("Invalid token") as Error & { code: string };
+    err.code = "auth/argument-error";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer malformed-token");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Invalid or expired token");
+  });
+
+  it("returns 401 with generic message for unknown auth errors", async () => {
+    const err = new Error("Network error") as Error & { code: string };
+    err.code = "auth/internal-error";
+    vi.mocked(firebaseAuth.verifyIdToken).mockRejectedValue(err);
+
+    const res = await request(authApp)
+      .get("/api/me")
+      .set("Authorization", "Bearer bad-token");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Authentication failed");
+  });
 });
 
 describe("POST /api/cases", () => {
@@ -310,6 +363,15 @@ describe("GET /api/cases", () => {
     expect(res.status).toBe(200);
     expect(vi.mocked(caseRepo.listCasesByStaff)).toHaveBeenCalledWith("staff-1");
   });
+
+  it("admin gets all cases when no staffId specified", async () => {
+    vi.mocked(caseRepo.listAllCases).mockResolvedValue([MOCK_CASE, OTHER_STAFF_CASE]);
+
+    const res = await request(adminApp).get("/api/cases");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(vi.mocked(caseRepo.listAllCases)).toHaveBeenCalledWith();
+  });
 });
 
 describe("GET /api/cases/:id", () => {
@@ -341,6 +403,14 @@ describe("GET /api/cases/:id", () => {
 
     const res = await request(adminApp).get("/api/cases/case-other");
     expect(res.status).toBe(200);
+  });
+
+  it("returns 500 when getCase throws in requireCaseAccess", async () => {
+    vi.mocked(caseRepo.getCase).mockRejectedValue(new Error("Firestore unavailable"));
+
+    const res = await request(app).get("/api/cases/case-1");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Firestore unavailable");
   });
 });
 

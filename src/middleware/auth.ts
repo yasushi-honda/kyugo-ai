@@ -32,12 +32,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     decoded = await firebaseAuth.verifyIdToken(idToken, true);
   } catch (err) {
     const code = (err as Error & { code?: string }).code;
-    const message = (err as Error).message;
-    if (code === "auth/id-token-revoked" || message.includes("revoked")) {
+    if (code === "auth/id-token-revoked") {
       res.status(401).json({ error: "Token has been revoked" });
-    } else if (message.includes("expired") || message.includes("Decoding Firebase ID token failed")) {
+    } else if (code === "auth/id-token-expired") {
+      res.status(401).json({ error: "Invalid or expired token" });
+    } else if (code === "auth/argument-error" || code === "auth/invalid-id-token") {
       res.status(401).json({ error: "Invalid or expired token" });
     } else {
+      // auth/internal-error, auth/project-not-found, network errors, etc.
+      console.error("Token verification failed", { code, message: (err as Error).message });
       res.status(401).json({ error: "Authentication failed" });
     }
     return;
