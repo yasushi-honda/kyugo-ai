@@ -59,7 +59,7 @@ import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation } from "./services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
@@ -759,6 +759,90 @@ describe("POST /api/cases/:id/consultations/audio", () => {
       .attach("audio", Buffer.from("fake"), { filename: "test.wav", contentType: "audio/wav" });
 
     expect(res.status).toBe(403);
+  });
+
+  it("calls updateConsultationAIResults with transcript on AI success", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-audio-ok",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "訪問相談",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "visit",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    vi.mocked(analyzeAudioConsultation).mockResolvedValue({
+      transcript: "文字起こし結果",
+      summary: "要約結果",
+      suggestedSupports: [],
+    });
+    vi.mocked(consultationRepo.updateConsultationAIResults).mockResolvedValue();
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("consultationType", "visit")
+      .field("context", "訪問相談")
+      .attach("audio", Buffer.from("fake-audio"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(201);
+
+    // fire-and-forgetのPromiseが解決するのを待つ
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(vi.mocked(consultationRepo.updateConsultationAIResults)).toHaveBeenCalledWith(
+      "case-1",
+      "cons-audio-ok",
+      "要約結果",
+      [],
+      "文字起こし結果",
+    );
+  });
+
+  it("sets aiStatus to retry_pending on transient audio AI error", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.createConsultation).mockResolvedValue({
+      id: "cons-audio-err",
+      caseId: "case-1",
+      staffId: "staff-1",
+      content: "訪問相談",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "visit",
+      aiStatus: "pending",
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+    const transientErr = new Error("Service Unavailable") as Error & { status: number };
+    transientErr.status = 503;
+    vi.mocked(analyzeAudioConsultation).mockRejectedValue(transientErr);
+    vi.mocked(consultationRepo.updateConsultationAIStatus).mockResolvedValue();
+
+    const res = await request(app)
+      .post("/api/cases/case-1/consultations/audio")
+      .field("consultationType", "visit")
+      .field("context", "訪問相談")
+      .attach("audio", Buffer.from("fake-audio"), { filename: "test.wav", contentType: "audio/wav" });
+
+    expect(res.status).toBe(201);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(vi.mocked(consultationRepo.updateConsultationAIStatus)).toHaveBeenCalledWith(
+      "case-1",
+      "cons-audio-err",
+      "retry_pending",
+      "Service Unavailable",
+      0,
+      expect.objectContaining({ _seconds: expect.any(Number) }),
+    );
   });
 
   it("returns 400 for invalid consultationType in audio upload", async () => {
