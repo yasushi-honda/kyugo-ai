@@ -35,6 +35,27 @@ function paramStr(value: string | string[]): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
+async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {
+  console.error(`AI analysis failed for consultation ${consultationId}:`, err);
+  const isTransient = isTransientError(err);
+  try {
+    const nextRetryAt = isTransient
+      ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
+      : undefined;
+    await consultationRepo.updateConsultationAIStatus(
+      caseId,
+      consultationId,
+      isTransient ? "retry_pending" : "error",
+      (err as Error).message,
+      0,
+      nextRetryAt,
+    );
+  } catch (statusErr) {
+    console.error(`Failed to update aiStatus for consultation ${consultationId}:`, statusErr);
+  }
+}
+
 // mergeParams: true で親ルートの :id パラメータにアクセス
 export const consultationsRouter = Router({ mergeParams: true });
 
@@ -68,25 +89,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
         );
         console.log(`AI analysis completed for consultation ${consultation.id}`);
       })
-      .catch(async (err) => {
-        console.error(`AI analysis failed for consultation ${consultation.id}:`, err);
-        const isTransient = isTransientError(err);
-        try {
-          const nextRetryAt = isTransient
-            ? Timestamp.fromMillis(Date.now() + AI_RETRY_CONFIG.baseDelayMs)
-            : undefined;
-          await consultationRepo.updateConsultationAIStatus(
-            caseId,
-            consultation.id!,
-            isTransient ? "retry_pending" : "error",
-            (err as Error).message,
-            0,
-            nextRetryAt,
-          );
-        } catch (statusErr) {
-          console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);
-        }
-      });
+      .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
     res.status(201).json(consultation);
   } catch (err) {
@@ -95,6 +98,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
 });
 
 // POST /api/cases/:id/consultations/audio - 音声付き相談記録作成（staffIdはreq.userから強制）
+// 相談記録を先に保存し、AI分析は非同期で実行（AI障害時の入力消失を防止）
 consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), async (req: Request, res: Response) => {
   try {
     const caseId = paramStr(req.params.id);
@@ -112,38 +116,30 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
     }
     const data = parsed.data;
 
-    // Gemini 2.5 Flash で音声分析（文字起こし + 要約 + 支援提案を1回で）
-    const menus = await supportMenuRepo.listSupportMenus();
-    const aiResult = await analyzeAudioConsultation(
-      file.buffer,
-      file.mimetype,
-      data.context,
-      menus,
-    );
-
-    // 分析結果を含めて相談記録を作成
-    const consultationData = {
+    // 先に相談記録を保存（AI障害でも入力を保全）
+    const consultation = await consultationRepo.createConsultation(caseId, {
       staffId: req.user!.staffId,
       content: data.context,
-      transcript: aiResult.transcript,
+      transcript: "",
       consultationType: data.consultationType,
-    };
-    const consultation = await consultationRepo.createConsultation(caseId, consultationData);
-
-    // AI結果を即座に反映
-    await consultationRepo.updateConsultationAIResults(
-      caseId,
-      consultation.id!,
-      aiResult.summary,
-      aiResult.suggestedSupports,
-    );
-
-    res.status(201).json({
-      ...consultation,
-      transcript: aiResult.transcript,
-      summary: aiResult.summary,
-      suggestedSupports: aiResult.suggestedSupports,
     });
+
+    // 音声AI分析を非同期で実行（レスポンスは先に返す）
+    supportMenuRepo.listSupportMenus()
+      .then((menus) => analyzeAudioConsultation(file.buffer, file.mimetype, data.context, menus))
+      .then(async (aiResult) => {
+        await consultationRepo.updateConsultationAIResults(
+          caseId,
+          consultation.id!,
+          aiResult.summary,
+          aiResult.suggestedSupports,
+          aiResult.transcript,
+        );
+        console.log(`Audio AI analysis completed for consultation ${consultation.id}`);
+      })
+      .catch((err) => handleAIFailure(caseId, consultation.id!, err));
+
+    res.status(201).json(consultation);
   } catch (err) {
     const message = (err as Error).message;
     if (message.includes("Unsupported audio format")) {
