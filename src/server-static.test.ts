@@ -57,6 +57,10 @@ beforeAll(() => {
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/cases", casesRouter);
   app.use("/api/support-menus", supportMenusRouter);
+  // /api で始まるパスはSPAフォールバック対象外
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "Not found" });
+  });
   app.use(express.static(tmpDir));
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(tmpDir, "index.html"));
@@ -92,5 +96,18 @@ describe("Static file serving", () => {
     const res = await request(app).get("/assets/app.js");
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/javascript/);
+  });
+
+  it("returns 404 JSON for unknown /api/* paths instead of SPA fallback", async () => {
+    const res = await request(app).get("/api/nonexistent");
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.body.error).toBe("Not found");
+  });
+
+  it("returns 404 JSON for /api/cases/unknown/nonexistent subpath", async () => {
+    const res = await request(app).get("/api/unknown-endpoint/sub");
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/json/);
   });
 });

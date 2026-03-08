@@ -6,14 +6,7 @@ import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { onAuthStateChanged } from "firebase/auth";
-
-vi.mock("./api", () => ({
-  api: {
-    listCases: vi.fn().mockResolvedValue([]),
-    getCase: vi.fn().mockResolvedValue(null),
-    listConsultations: vi.fn().mockResolvedValue([]),
-  },
-}));
+import { api } from "./api";
 
 function renderApp(path = "/") {
   return render(
@@ -58,9 +51,17 @@ describe("App routing", () => {
 });
 
 function ProtectedRoute() {
-  const { user, loading } = useAuth();
+  const { user, userInfo, loading, authError, logout } = useAuth();
   if (loading) return <div data-testid="loading">Loading</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (authError || !userInfo) {
+    return (
+      <div>
+        <p>{authError ?? "職員情報を取得できませんでした"}</p>
+        <button onClick={() => logout()}>ログアウト</button>
+      </div>
+    );
+  }
   return <div data-testid="protected">Protected</div>;
 }
 
@@ -94,6 +95,27 @@ describe("Unauthenticated routing", () => {
         getIdToken: vi.fn().mockResolvedValue("mock-token"),
       });
       return vi.fn();
+    });
+  });
+});
+
+describe("Auth error handling", () => {
+  it("shows error message when getMe fails (half-login prevention)", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/職員情報の取得に失敗しました/)).toBeInTheDocument();
     });
   });
 });

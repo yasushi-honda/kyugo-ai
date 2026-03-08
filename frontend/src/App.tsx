@@ -6,7 +6,7 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 
 function ProtectedRoutes() {
-  const { user, loading } = useAuth();
+  const { user, userInfo, loading, authError, logout } = useAuth();
 
   if (loading) {
     return (
@@ -19,6 +19,15 @@ function ProtectedRoutes() {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (authError || !userInfo) {
+    return (
+      <div className="loading-overlay">
+        <p>{authError ?? "職員情報を取得できませんでした"}</p>
+        <button onClick={() => logout()}>ログアウト</button>
+      </div>
+    );
   }
 
   return (
