@@ -5,7 +5,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 
-function ProtectedRoutes() {
+export function ProtectedRoutes() {
   const { user, userInfo, loading, authError, logout } = useAuth();
 
   if (loading) {

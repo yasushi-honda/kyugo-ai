@@ -105,9 +105,16 @@ describe("Static file serving", () => {
     expect(res.body.error).toBe("Not found");
   });
 
-  it("returns 404 JSON for /api/cases/unknown/nonexistent subpath", async () => {
+  it("returns 404 JSON for nested unknown /api subpath", async () => {
     const res = await request(app).get("/api/unknown-endpoint/sub");
     expect(res.status).toBe(404);
     expect(res.headers["content-type"]).toMatch(/json/);
+  });
+
+  it("returns 404 JSON for POST to unknown /api/* path", async () => {
+    const res = await request(app).post("/api/nonexistent").send({ data: "test" });
+    expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.body.error).toBe("Not found");
   });
 });
