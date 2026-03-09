@@ -5,6 +5,7 @@ import { casesRouter } from "./routes/cases.js";
 import { staffRouter } from "./routes/staff.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
 import { adminRouter } from "./routes/admin.js";
+import { adminSettingsRouter } from "./routes/admin-settings.js";
 import { requireAuth } from "./middleware/auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ app.use("/api/cases", requireAuth, casesRouter);
 app.use("/api/staff", requireAuth, staffRouter);
 app.use("/api/support-menus", requireAuth, supportMenusRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin-settings", requireAuth, adminSettingsRouter);
 
 // /api で始まる未知パスは404 JSON（SPAフォールバックに吸い込まれるのを防止）
 app.use("/api", (_req, res) => {

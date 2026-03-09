@@ -4,8 +4,10 @@ import express from "express";
 
 // Mock dependencies before importing routes
 vi.mock("./config.js", () => ({
+  ALLOWED_EMAILS_CONFIG_DOC: "config/allowedEmails",
   firestore: {
     collection: vi.fn(),
+    doc: vi.fn(),
   },
   generativeModel: {
     generateContent: vi.fn(),
@@ -55,6 +57,7 @@ import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
 import { staffRouter } from "./routes/staff.js";
 import { adminRouter } from "./routes/admin.js";
+import { adminSettingsRouter } from "./routes/admin-settings.js";
 import { requireAuth } from "./middleware/auth.js";
 import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
@@ -74,12 +77,14 @@ app.use((req, _res, next) => { req.user = FAKE_USER; next(); });
 app.use("/api/cases", casesRouter);
 app.use("/api/staff", staffRouter);
 app.use("/api/support-menus", supportMenusRouter);
+app.use("/api/admin-settings", adminSettingsRouter);
 
 // App with admin user
 const adminApp = express();
 adminApp.use(express.json());
 adminApp.use((req, _res, next) => { req.user = FAKE_ADMIN; next(); });
 adminApp.use("/api/cases", casesRouter);
+adminApp.use("/api/admin-settings", adminSettingsRouter);
 
 // App with auth middleware for integration tests
 const authApp = express();
@@ -1123,5 +1128,109 @@ describe("POST /api/admin/retry-ai", () => {
 
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("DB connection failed");
+  });
+});
+
+// ============================================================
+// GET /api/admin-settings/allowed-emails
+// ============================================================
+describe("GET /api/admin-settings/allowed-emails", () => {
+  it("returns 403 for non-admin user", async () => {
+    const res = await request(app).get("/api/admin-settings/allowed-emails");
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("Admin access required");
+  });
+
+  it("returns empty lists when config doc does not exist", async () => {
+    const mockGet = vi.fn().mockResolvedValue({ exists: false });
+    vi.mocked(firestore.doc).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(adminApp).get("/api/admin-settings/allowed-emails");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ emails: [], domains: [] });
+  });
+
+  it("returns emails and domains from Firestore config", async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ emails: ["user@example.com"], domains: ["example.com"] }),
+    });
+    vi.mocked(firestore.doc).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(adminApp).get("/api/admin-settings/allowed-emails");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ emails: ["user@example.com"], domains: ["example.com"] });
+  });
+
+  it("returns 500 when Firestore fails", async () => {
+    const mockGet = vi.fn().mockRejectedValue(new Error("Firestore unavailable"));
+    vi.mocked(firestore.doc).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(adminApp).get("/api/admin-settings/allowed-emails");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Internal server error");
+  });
+});
+
+// ============================================================
+// PUT /api/admin-settings/allowed-emails
+// ============================================================
+describe("PUT /api/admin-settings/allowed-emails", () => {
+  it("returns 403 for non-admin user", async () => {
+    const res = await request(app)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: [], domains: [] });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 when emails is not an array", async () => {
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: "not-array", domains: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when domains is not an array", async () => {
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: [], domains: "not-array" });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when array contains non-string", async () => {
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: [123], domains: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it("normalizes and saves to Firestore", async () => {
+    const mockSet = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(firestore.doc).mockReturnValue({ set: mockSet } as never);
+
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: ["  User@Example.COM  ", "user@example.com"], domains: ["Example.COM", ""] });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      emails: ["user@example.com"],
+      domains: ["example.com"],
+    });
+    expect(mockSet).toHaveBeenCalledWith(
+      expect.objectContaining({ emails: ["user@example.com"], domains: ["example.com"] }),
+    );
+  });
+
+  it("returns 500 when Firestore write fails", async () => {
+    const mockSet = vi.fn().mockRejectedValue(new Error("Write failed"));
+    vi.mocked(firestore.doc).mockReturnValue({ set: mockSet } as never);
+
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: ["test@test.com"], domains: [] });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Internal server error");
   });
 });

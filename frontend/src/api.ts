@@ -122,4 +122,13 @@ export const api = {
 
   listSupportMenus: () =>
     request<SupportMenu[]>("/api/support-menus"),
+
+  getAllowedEmails: () =>
+    request<{ emails: string[]; domains: string[] }>("/api/admin-settings/allowed-emails"),
+
+  updateAllowedEmails: (data: { emails: string[]; domains: string[] }) =>
+    request<{ emails: string[]; domains: string[] }>("/api/admin-settings/allowed-emails", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };

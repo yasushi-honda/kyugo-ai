@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { firebaseAuth, firestore } from "../config.js";
+import { firebaseAuth, firestore, ALLOWED_EMAILS_CONFIG_DOC } from "../config.js";
 
 function parseAllowedList(envValue: string | undefined): string[] | null {
   if (!envValue) return null;
@@ -14,15 +14,39 @@ if (!allowedDomains && !allowedEmails) {
   console.warn("WARNING: ALLOWED_EMAIL_DOMAINS and ALLOWED_EMAILS are not set. Any authenticated user can auto-provision as staff.");
 }
 
-function isEmailAllowed(email: string): boolean {
+function isEmailAllowedByEnv(email: string): boolean {
   const lowerEmail = email.toLowerCase();
-  // 個別メール許可リストに一致
   if (allowedEmails?.includes(lowerEmail)) return true;
-  // ドメイン制限なし → 個別メールリストがなければ全許可、あれば拒否
   if (!allowedDomains) return !allowedEmails;
-  // ドメイン許可リストに一致
   const domain = lowerEmail.split("@")[1];
   return !!domain && allowedDomains.includes(domain);
+}
+
+async function isEmailAllowed(email: string): Promise<boolean> {
+  const lowerEmail = email.toLowerCase();
+
+  // Firestoreの設定を優先チェック
+  try {
+    const doc = await firestore.doc(ALLOWED_EMAILS_CONFIG_DOC).get();
+    if (doc.exists) {
+      const data = doc.data()!;
+      const fsEmails = (data.emails as string[]) ?? [];
+      const fsDomains = (data.domains as string[]) ?? [];
+
+      // 片方でも設定がある場合はFirestore設定を使用（両方空の場合は環境変数にフォールバック）
+      if (fsEmails.length > 0 || fsDomains.length > 0) {
+        if (fsEmails.includes(lowerEmail)) return true;
+        const domain = lowerEmail.split("@")[1];
+        return !!domain && fsDomains.includes(domain);
+      }
+      // Firestoreドキュメントは存在するが両方空 → 環境変数にフォールバック
+    }
+  } catch (err) {
+    console.error("Failed to read Firestore allowed emails config, falling back to env", (err as Error).message);
+  }
+
+  // Firestoreに設定がない場合は環境変数にフォールバック
+  return isEmailAllowedByEnv(email);
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -114,7 +138,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
           res.status(403).json({ error: "Email not verified" });
           return;
         }
-        if (!isEmailAllowed(decoded.email)) {
+        if (!(await isEmailAllowed(decoded.email))) {
           res.status(403).json({ error: "Access denied: email domain not allowed" });
           return;
         }
