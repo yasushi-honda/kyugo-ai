@@ -22,6 +22,12 @@ export function formatDateTime(ts: FirestoreTimestamp): string {
   return d.toLocaleDateString("ja-JP") + " " + d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
+export function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export function getScoreClass(score: number): string {
   if (score >= 0.8) return "score-high";
   if (score >= 0.5) return "score-mid";

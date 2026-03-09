@@ -1,0 +1,202 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useAudioRecorder } from "./useAudioRecorder";
+
+// Mock MediaRecorder
+class MockMediaRecorder {
+  state: "inactive" | "recording" | "paused" = "inactive";
+  ondataavailable: ((e: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+
+  constructor(
+    public stream: MediaStream,
+    public options?: { mimeType?: string },
+  ) {}
+
+  start() {
+    this.state = "recording";
+  }
+
+  stop() {
+    this.state = "inactive";
+    // Simulate async ondataavailable + onstop
+    if (this.ondataavailable) {
+      this.ondataavailable({ data: new Blob(["audio-data"], { type: "audio/webm" }) });
+    }
+    if (this.onstop) {
+      this.onstop();
+    }
+  }
+
+  pause() {
+    this.state = "paused";
+  }
+
+  resume() {
+    this.state = "recording";
+  }
+
+  static isTypeSupported(type: string): boolean {
+    return type === "audio/webm;codecs=opus";
+  }
+}
+
+// Mock MediaStream
+class MockMediaStream {
+  getTracks() {
+    return [{ stop: vi.fn() }];
+  }
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+
+  // Mock navigator.mediaDevices.getUserMedia
+  Object.defineProperty(navigator, "mediaDevices", {
+    value: {
+      getUserMedia: vi.fn().mockResolvedValue(new MockMediaStream()),
+    },
+    writable: true,
+    configurable: true,
+  });
+
+  // Mock MediaRecorder globally
+  vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+describe("useAudioRecorder", () => {
+  it("initializes with idle state", () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.isPaused).toBe(false);
+    expect(result.current.elapsedSeconds).toBe(0);
+    expect(result.current.recordedFile).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("starts recording and updates state", async () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.isRecording).toBe(true);
+    expect(result.current.isPaused).toBe(false);
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: true });
+  });
+
+  it("increments elapsed time during recording", async () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(result.current.elapsedSeconds).toBeGreaterThanOrEqual(1);
+  });
+
+  it("stops recording and produces a file", async () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.recordedFile).not.toBeNull();
+    expect(result.current.recordedFile?.type).toBe("audio/webm");
+  });
+
+  it("pauses and resumes recording", async () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    act(() => {
+      result.current.pause();
+    });
+
+    expect(result.current.isPaused).toBe(true);
+    expect(result.current.isRecording).toBe(true);
+
+    act(() => {
+      result.current.resume();
+    });
+
+    expect(result.current.isPaused).toBe(false);
+    expect(result.current.isRecording).toBe(true);
+  });
+
+  it("resets state and does not produce a file", async () => {
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.recordedFile).toBeNull();
+    expect(result.current.elapsedSeconds).toBe(0);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("sets error when microphone permission is denied", async () => {
+    const permissionError = new DOMException("Permission denied", "NotAllowedError");
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce(permissionError);
+
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.error).toBe("マイクへのアクセスが許可されていません。ブラウザの設定を確認してください。");
+  });
+
+  it("sets generic error for non-permission failures", async () => {
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce(new Error("Device error"));
+
+    const { result } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.error).toBe("マイクの初期化に失敗しました。");
+  });
+
+  it("cleans up on unmount during recording", async () => {
+    const { result, unmount } = renderHook(() => useAudioRecorder());
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.isRecording).toBe(true);
+
+    // Should not throw
+    unmount();
+  });
+});

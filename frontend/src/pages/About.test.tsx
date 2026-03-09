@@ -32,7 +32,7 @@ describe("About", () => {
     expect(screen.getByText("相談記録のデジタル化")).toBeInTheDocument();
     expect(screen.getByText("AIによる自動分析・要約")).toBeInTheDocument();
     expect(screen.getByText("支援メニューの自動提案")).toBeInTheDocument();
-    expect(screen.getByText("音声ファイルからの自動文字起こし")).toBeInTheDocument();
+    expect(screen.getByText("音声からの自動文字起こし")).toBeInTheDocument();
   });
 
   it("renders 5 security points", () => {
@@ -88,9 +88,9 @@ describe("About", () => {
     expect(screen.getByText("実際の操作画面をご覧ください")).toBeInTheDocument();
     expect(screen.getByAltText("ダッシュボード画面")).toBeInTheDocument();
     expect(screen.getByAltText("AI分析結果画面")).toBeInTheDocument();
-    expect(screen.getByAltText("音声ファイル入力画面")).toBeInTheDocument();
+    expect(screen.getByAltText("音声入力画面")).toBeInTheDocument();
     expect(screen.getByText("AI分析・支援メニュー提案")).toBeInTheDocument();
-    expect(screen.getByText("音声ファイルからの記録")).toBeInTheDocument();
+    expect(screen.getByText("音声からの記録")).toBeInTheDocument();
   });
 
   it("renders help guide link section", () => {
