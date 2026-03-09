@@ -1147,7 +1147,7 @@ a:hover { color: var(--ai-600); }
   text-decoration: none;
   font-family: var(--font-body);
   font-size: var(--text-base);
-  transition: color var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .help-toc a:hover {
@@ -1353,8 +1353,8 @@ a:hover { color: var(--ai-600); }
 }
 
 @keyframes aboutFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50%      { transform: translateY(-12px) rotate(1deg); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
 }
 
 .about-page {
@@ -1568,6 +1568,9 @@ a:hover { color: var(--ai-600); }
   animation: aboutFadeUp 0.6s var(--ease-out) both;
 }
 
+.about-feature-card:nth-child(2) { animation-delay: 120ms; }
+.about-feature-card:nth-child(3) { animation-delay: 240ms; }
+
 .about-feature-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
@@ -1617,6 +1620,11 @@ a:hover { color: var(--ai-600); }
   animation: aboutFadeUp 0.5s var(--ease-out) both;
   transition: border-color var(--duration-fast) var(--ease-out);
 }
+
+.about-security-card:nth-child(2) { animation-delay: 100ms; }
+.about-security-card:nth-child(3) { animation-delay: 200ms; }
+.about-security-card:nth-child(4) { animation-delay: 300ms; }
+.about-security-card:nth-child(5) { animation-delay: 400ms; }
 
 .about-security-card:hover {
   border-color: var(--ai-300);
@@ -1846,14 +1854,6 @@ a:hover { color: var(--ai-600); }
 .about-footer p {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
-}
-
-/* ── Button extensions for About ── */
-
-.btn-lg {
-  padding: var(--space-3) var(--space-7);
-  font-size: var(--text-base);
-  font-weight: 700;
 }
 
 .btn-outline {

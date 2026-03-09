@@ -1,23 +1,14 @@
 import { useNavigate } from "react-router-dom";
 
-interface Feature {
-  icon: string;
+interface ContentItem {
+  icon?: string;
   title: string;
   description: string;
 }
 
-interface SecurityPoint {
-  icon: string;
-  title: string;
-  description: string;
-}
+const CURRENT_YEAR = new Date().getFullYear();
 
-interface AiPoint {
-  title: string;
-  description: string;
-}
-
-const FEATURES: Feature[] = [
+const FEATURES: ContentItem[] = [
   {
     icon: "📝",
     title: "相談記録のデジタル化",
@@ -38,7 +29,7 @@ const FEATURES: Feature[] = [
   },
 ];
 
-const SECURITY_POINTS: SecurityPoint[] = [
+const SECURITY_POINTS: ContentItem[] = [
   {
     icon: "🇯🇵",
     title: "データは日本国内のみで保管",
@@ -71,7 +62,7 @@ const SECURITY_POINTS: SecurityPoint[] = [
   },
 ];
 
-const AI_POINTS: AiPoint[] = [
+const AI_POINTS: ContentItem[] = [
   {
     title: "あくまで「参考情報」として提示",
     description:
@@ -89,9 +80,9 @@ const AI_POINTS: AiPoint[] = [
   },
 ];
 
-function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
+function FeatureCard({ feature }: { feature: ContentItem }) {
   return (
-    <div className="about-feature-card" style={{ animationDelay: `${index * 120}ms` }}>
+    <div className="about-feature-card">
       <div className="about-feature-icon">{feature.icon}</div>
       <h3>{feature.title}</h3>
       <p>{feature.description}</p>
@@ -99,9 +90,9 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   );
 }
 
-function SecurityCard({ point, index }: { point: SecurityPoint; index: number }) {
+function SecurityCard({ point }: { point: ContentItem }) {
   return (
-    <div className="about-security-card" style={{ animationDelay: `${index * 100}ms` }}>
+    <div className="about-security-card">
       <div className="about-security-icon">{point.icon}</div>
       <div>
         <h4>{point.title}</h4>
@@ -113,6 +104,7 @@ function SecurityCard({ point, index }: { point: SecurityPoint; index: number })
 
 export function About() {
   const navigate = useNavigate();
+  const goToLogin = () => navigate("/login");
 
   return (
     <div className="about-page">
@@ -123,7 +115,7 @@ export function About() {
             <div className="about-nav-brand-icon">救</div>
             <span>救護AI</span>
           </div>
-          <button className="btn btn-primary about-nav-login" onClick={() => navigate("/login")}>
+          <button className="btn btn-primary about-nav-login" onClick={goToLogin}>
             ログイン
           </button>
         </div>
@@ -143,7 +135,7 @@ export function About() {
             個人情報を安全に取り扱いながら、職員の業務負担を軽減し、支援の質を高めます。
           </p>
           <div className="about-hero-actions">
-            <button className="btn btn-primary btn-lg" onClick={() => navigate("/login")}>
+            <button className="btn btn-primary btn-lg" onClick={goToLogin}>
               システムにログイン
             </button>
             <a href="#features" className="btn btn-outline btn-lg">
@@ -163,8 +155,8 @@ export function About() {
             <p>日々の福祉相談業務を3つの柱でサポートします。</p>
           </div>
           <div className="about-features-grid">
-            {FEATURES.map((f, i) => (
-              <FeatureCard key={f.title} feature={f} index={i} />
+            {FEATURES.map((f) => (
+              <FeatureCard key={f.title} feature={f} />
             ))}
           </div>
         </div>
@@ -184,8 +176,8 @@ export function About() {
             </p>
           </div>
           <div className="about-security-grid">
-            {SECURITY_POINTS.map((p, i) => (
-              <SecurityCard key={p.title} point={p} index={i} />
+            {SECURITY_POINTS.map((p) => (
+              <SecurityCard key={p.title} point={p} />
             ))}
           </div>
           <div className="about-compliance-note">
@@ -250,7 +242,7 @@ export function About() {
                 詳細なガイドをご用意しています。
               </p>
             </div>
-            <button className="btn btn-outline" onClick={() => navigate("/login")}>
+            <button className="btn btn-outline" onClick={goToLogin}>
               ログインしてガイドを見る
             </button>
           </div>
@@ -265,7 +257,7 @@ export function About() {
             救護AIの導入に関するご質問・ご相談は、システム管理者までお問い合わせください。
           </p>
           <div className="about-cta-actions">
-            <button className="btn btn-primary btn-lg" onClick={() => navigate("/login")}>
+            <button className="btn btn-primary btn-lg" onClick={goToLogin}>
               システムにログイン
             </button>
           </div>
@@ -275,7 +267,7 @@ export function About() {
       {/* ── Footer ── */}
       <footer className="about-footer">
         <p>
-          &copy; {new Date().getFullYear()} 救護AI — 福祉相談業務AI支援システム
+          &copy; {CURRENT_YEAR} 救護AI — 福祉相談業務AI支援システム
         </p>
       </footer>
     </div>

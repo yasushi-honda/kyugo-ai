@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Help } from "./pages/Help";
+import { About } from "./pages/About";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { api } from "./api";
 import type { UserInfo } from "./api";
@@ -20,6 +21,7 @@ function renderApp(path = "/") {
             <Route path="/" element={<Dashboard />} />
             <Route path="/cases/:id" element={<CaseDetail />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/about" element={<About />} />
           </Routes>
         </Layout>
       </MemoryRouter>
@@ -49,6 +51,14 @@ describe("App routing", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "使い方ガイド" })).toBeInTheDocument();
+    });
+  });
+
+  it("renders About on /about", async () => {
+    renderApp("/about");
+
+    await waitFor(() => {
+      expect(screen.getByText("安心して使えるAI")).toBeInTheDocument();
     });
   });
 
