@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import * as caseRepo from "../repositories/case-repository.js";
 
-/** admin role 必須ミドルウェア */
+/** admin role 必須ミドルウェア（requireAuth 適用後に使用すること） */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (req.user.role !== "admin") {
     res.status(403).json({ error: "Admin access required" });
     return;
   }

@@ -33,7 +33,7 @@ async function isEmailAllowed(email: string): Promise<boolean> {
       const fsEmails = (data.emails as string[]) ?? [];
       const fsDomains = (data.domains as string[]) ?? [];
 
-      // Firestoreに設定が存在する場合（空配列でも「設定済み」と扱う）
+      // 片方でも設定がある場合はFirestore設定を使用（両方空の場合は環境変数にフォールバック）
       if (fsEmails.length > 0 || fsDomains.length > 0) {
         if (fsEmails.includes(lowerEmail)) return true;
         const domain = lowerEmail.split("@")[1];

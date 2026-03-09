@@ -68,7 +68,8 @@ export default function App() {
 
 function AdminRoute({ children }: { children: ReactNode }) {
   const { userInfo } = useAuth();
-  if (userInfo?.role !== "admin") return <Navigate to="/" replace />;
+  if (!userInfo) return null;
+  if (userInfo.role !== "admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

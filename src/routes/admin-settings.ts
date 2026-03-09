@@ -47,7 +47,6 @@ adminSettingsRouter.put("/allowed-emails", async (req: Request, res: Response) =
   try {
     await firestore.doc(ALLOWED_EMAILS_CONFIG_DOC).set(
       { emails: normalizedEmails, domains: normalizedDomains, updatedAt: new Date() },
-      { merge: true },
     );
     res.json({ emails: normalizedEmails, domains: normalizedDomains });
   } catch (err) {

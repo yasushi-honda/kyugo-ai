@@ -1219,7 +1219,6 @@ describe("PUT /api/admin-settings/allowed-emails", () => {
     });
     expect(mockSet).toHaveBeenCalledWith(
       expect.objectContaining({ emails: ["user@example.com"], domains: ["example.com"] }),
-      { merge: true },
     );
   });
 
