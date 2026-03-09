@@ -80,7 +80,7 @@ ${buildMenuList(availableMenus)}
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.3,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 4096,
     },
   });
 
