@@ -1599,7 +1599,7 @@ a:hover { color: var(--ai-600); }
 /* ── Screenshots ── */
 
 .about-screenshots-section {
-  background: var(--bg-surface);
+  background: var(--bg-primary);
 }
 
 .about-screenshots-grid {

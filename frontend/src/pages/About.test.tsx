@@ -82,13 +82,15 @@ describe("About", () => {
     expect(screen.getByText(/救護AI — 福祉相談業務AI支援システム/)).toBeInTheDocument();
   });
 
-  it("renders screenshots section with 3 images", () => {
+  it("renders screenshots section with 3 images and titles", () => {
     renderAbout();
 
     expect(screen.getByText("実際の操作画面をご覧ください")).toBeInTheDocument();
     expect(screen.getByAltText("ダッシュボード画面")).toBeInTheDocument();
     expect(screen.getByAltText("AI分析結果画面")).toBeInTheDocument();
     expect(screen.getByAltText("音声ファイル入力画面")).toBeInTheDocument();
+    expect(screen.getByText("AI分析・支援メニュー提案")).toBeInTheDocument();
+    expect(screen.getByText("音声ファイルからの記録")).toBeInTheDocument();
   });
 
   it("renders help guide link section", () => {

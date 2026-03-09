@@ -68,11 +68,9 @@ const SECURITY_POINTS: ContentItem[] = [
   },
 ];
 
-interface Screenshot {
+interface Screenshot extends ContentItem {
   src: string;
   alt: string;
-  title: string;
-  description: string;
 }
 
 const SCREENSHOTS: Screenshot[] = [
@@ -131,6 +129,20 @@ function SecurityCard({ point }: { point: ContentItem }) {
       <div>
         <h4>{point.title}</h4>
         <p>{point.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ScreenshotCard({ item, index }: { item: Screenshot; index: number }) {
+  return (
+    <div className="about-screenshot-card">
+      <div className="about-screenshot-image">
+        <img src={item.src} alt={item.alt} loading={index === 0 ? "eager" : "lazy"} />
+      </div>
+      <div className="about-screenshot-body">
+        <h3>{item.title}</h3>
+        <p>{item.description}</p>
       </div>
     </div>
   );
@@ -205,16 +217,8 @@ export function About() {
             <p>シンプルで直感的なインターフェースで、すぐにお使いいただけます。</p>
           </div>
           <div className="about-screenshots-grid">
-            {SCREENSHOTS.map((s) => (
-              <div key={s.title} className="about-screenshot-card">
-                <div className="about-screenshot-image">
-                  <img src={s.src} alt={s.alt} loading="lazy" />
-                </div>
-                <div className="about-screenshot-body">
-                  <h3>{s.title}</h3>
-                  <p>{s.description}</p>
-                </div>
-              </div>
+            {SCREENSHOTS.map((s, i) => (
+              <ScreenshotCard key={s.title} item={s} index={i} />
             ))}
           </div>
         </div>
