@@ -1570,6 +1570,7 @@ a:hover { color: var(--ai-600); }
 
 .about-feature-card:nth-child(2) { animation-delay: 120ms; }
 .about-feature-card:nth-child(3) { animation-delay: 240ms; }
+.about-feature-card:nth-child(4) { animation-delay: 360ms; }
 
 .about-feature-card:hover {
   transform: translateY(-4px);
@@ -1593,6 +1594,68 @@ a:hover { color: var(--ai-600); }
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.75;
+}
+
+/* ── Screenshots ── */
+
+.about-screenshots-section {
+  background: var(--bg-surface);
+}
+
+.about-screenshots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-7);
+}
+
+.about-screenshot-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: aboutFadeUp 0.6s var(--ease-out) both;
+  transition: transform var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.about-screenshot-card:nth-child(2) { animation-delay: 150ms; }
+.about-screenshot-card:nth-child(3) { animation-delay: 300ms; }
+
+.about-screenshot-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.about-screenshot-image {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-primary);
+}
+
+.about-screenshot-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.about-screenshot-body {
+  padding: var(--space-5) var(--space-6);
+}
+
+.about-screenshot-body h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--ai-700);
+  margin-bottom: var(--space-2);
+}
+
+.about-screenshot-body p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
 }
 
 /* ── Security ── */
@@ -1897,6 +1960,7 @@ a:hover { color: var(--ai-600); }
     padding: var(--space-8) var(--space-4);
   }
 
+  .about-screenshots-grid,
   .about-security-grid {
     grid-template-columns: 1fr;
   }
@@ -1923,7 +1987,8 @@ a:hover { color: var(--ai-600); }
 
 @media (prefers-reduced-motion: reduce) {
   .about-feature-card,
-  .about-security-card {
+  .about-security-card,
+  .about-screenshot-card {
     animation: none;
   }
 

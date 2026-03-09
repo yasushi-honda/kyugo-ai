@@ -26,12 +26,13 @@ describe("About", () => {
     expect(screen.getByText("福祉相談業務AI支援システム")).toBeInTheDocument();
   });
 
-  it("renders 3 feature cards", () => {
+  it("renders 4 feature cards", () => {
     renderAbout();
 
     expect(screen.getByText("相談記録のデジタル化")).toBeInTheDocument();
     expect(screen.getByText("AIによる自動分析・要約")).toBeInTheDocument();
     expect(screen.getByText("支援メニューの自動提案")).toBeInTheDocument();
+    expect(screen.getByText("音声ファイルからの自動文字起こし")).toBeInTheDocument();
   });
 
   it("renders 5 security points", () => {
@@ -79,6 +80,15 @@ describe("About", () => {
     renderAbout();
 
     expect(screen.getByText(/救護AI — 福祉相談業務AI支援システム/)).toBeInTheDocument();
+  });
+
+  it("renders screenshots section with 3 images", () => {
+    renderAbout();
+
+    expect(screen.getByText("実際の操作画面をご覧ください")).toBeInTheDocument();
+    expect(screen.getByAltText("ダッシュボード画面")).toBeInTheDocument();
+    expect(screen.getByAltText("AI分析結果画面")).toBeInTheDocument();
+    expect(screen.getByAltText("音声ファイル入力画面")).toBeInTheDocument();
   });
 
   it("renders help guide link section", () => {

@@ -27,6 +27,12 @@ const FEATURES: ContentItem[] = [
     description:
       "相談内容に基づき、活用可能な公的制度や支援メニューをAIが関連度スコア付きで提案。制度の見落としを防ぎ、適切な支援につなげます。",
   },
+  {
+    icon: "🎙️",
+    title: "音声ファイルからの自動文字起こし",
+    description:
+      "相談の録音ファイルをアップロードするだけで、AIが自動で文字起こし。テキスト入力の手間を省き、相談者との対話に集中できます。",
+  },
 ];
 
 const SECURITY_POINTS: ContentItem[] = [
@@ -59,6 +65,34 @@ const SECURITY_POINTS: ContentItem[] = [
     title: "監査ログの記録",
     description:
       "誰がいつどのデータにアクセスしたかを自動記録。不正なアクセスがあった場合に追跡が可能です。",
+  },
+];
+
+interface Screenshot {
+  src: string;
+  alt: string;
+  title: string;
+  description: string;
+}
+
+const SCREENSHOTS: Screenshot[] = [
+  {
+    src: "/help/dashboard.png",
+    alt: "ダッシュボード画面",
+    title: "ダッシュボード",
+    description: "担当ケースの一覧とステータス統計をひと目で把握。直感的な操作で業務を開始できます。",
+  },
+  {
+    src: "/help/ai-analysis.png",
+    alt: "AI分析結果画面",
+    title: "AI分析・支援メニュー提案",
+    description: "相談内容をAIが自動要約し、関連度スコア付きで活用可能な公的制度を提案します。",
+  },
+  {
+    src: "/help/audio-consultation.png",
+    alt: "音声ファイル入力画面",
+    title: "音声ファイルからの記録",
+    description: "録音ファイルをアップロードするだけで、AIが自動で文字起こし・分析まで実行します。",
   },
 ];
 
@@ -152,11 +186,35 @@ export function About() {
           <div className="about-section-header">
             <span className="about-section-label">主な機能</span>
             <h2>救護AIでできること</h2>
-            <p>日々の福祉相談業務を3つの柱でサポートします。</p>
+            <p>日々の福祉相談業務を4つの柱でサポートします。</p>
           </div>
           <div className="about-features-grid">
             {FEATURES.map((f) => (
               <FeatureCard key={f.title} feature={f} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Screenshots Section ── */}
+      <section id="screenshots" className="about-section about-screenshots-section">
+        <div className="about-section-inner">
+          <div className="about-section-header">
+            <span className="about-section-label">画面イメージ</span>
+            <h2>実際の操作画面をご覧ください</h2>
+            <p>シンプルで直感的なインターフェースで、すぐにお使いいただけます。</p>
+          </div>
+          <div className="about-screenshots-grid">
+            {SCREENSHOTS.map((s) => (
+              <div key={s.title} className="about-screenshot-card">
+                <div className="about-screenshot-image">
+                  <img src={s.src} alt={s.alt} loading="lazy" />
+                </div>
+                <div className="about-screenshot-body">
+                  <h3>{s.title}</h3>
+                  <p>{s.description}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
