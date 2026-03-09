@@ -738,8 +738,51 @@ a:hover { color: var(--ai-600); }
 }
 
 .audio-icon { font-size: var(--text-3xl); margin-bottom: var(--space-3); }
-.audio-label { font-size: var(--text-sm); color: var(--text-secondary); }
+.audio-label { font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--space-2); }
 .audio-filename { font-size: var(--text-sm); font-weight: 700; color: var(--matcha-600); margin-top: var(--space-2); }
+.audio-error { color: var(--status-error); font-size: var(--text-sm); margin-bottom: var(--space-3); }
+
+/* Recording active state */
+.audio-recorder.is-recording {
+  border-color: var(--status-error); border-style: solid;
+  background: color-mix(in srgb, var(--status-error) 5%, var(--bg-surface));
+}
+
+.btn-record {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+}
+
+.record-dot {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; background: currentColor;
+}
+
+/* Recording indicator */
+.recording-indicator {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.recording-pulse {
+  display: inline-block; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--status-error);
+  animation: pulse-recording 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-recording {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+.recording-time {
+  font-size: var(--text-2xl); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.recording-actions {
+  display: flex; gap: var(--space-2); justify-content: center;
+}
 
 /* ═══════════════════════════════════════
    Detail Layout (Golden Ratio)
@@ -1599,7 +1642,7 @@ a:hover { color: var(--ai-600); }
 /* ── Screenshots ── */
 
 .about-screenshots-section {
-  background: var(--bg-surface);
+  background: var(--bg-primary);
 }
 
 .about-screenshots-grid {

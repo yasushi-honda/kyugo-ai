@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { api } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import { SuggestedSupports } from "./SuggestedSupports";
+import { useAudioRecorder } from "../hooks/useAudioRecorder";
+import { formatDuration } from "../constants";
 
 interface Props {
   caseId: string;
@@ -10,10 +12,13 @@ interface Props {
 }
 
 type Mode = "text" | "audio";
+type AudioSource = "record" | "file";
 
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
+  const [audioSource, setAudioSource] = useState<AudioSource>("record");
+  // Fall back to file upload when browser doesn't support recording
   const [form, setForm] = useState({
     content: "",
     consultationType: "counter",
@@ -27,6 +32,11 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     suggestedSupports?: Array<{ menuName: string; reason: string; relevanceScore: number }>;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recorder = useAudioRecorder();
+  const effectiveAudioSource = recorder.isSupported ? audioSource : "file";
+
+  // Use recorded file or uploaded file
+  const activeAudioFile = effectiveAudioSource === "record" ? recorder.recordedFile : audioFile;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -37,9 +47,9 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           consultationType: form.consultationType,
         });
         onCreated();
-      } else if (audioFile) {
+      } else if (activeAudioFile) {
         const formData = new FormData();
-        formData.append("audio", audioFile);
+        formData.append("audio", activeAudioFile);
         formData.append("consultationType", form.consultationType);
         formData.append("context", form.context);
 
@@ -107,7 +117,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           <div className="mode-toggle">
             <button
               className={`btn ${mode === "text" ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => setMode("text")}
+              onClick={() => { setMode("text"); recorder.reset(); setAudioFile(null); setAudioSource("record"); }}
             >
               テキスト入力
             </button>
@@ -115,7 +125,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
               className={`btn ${mode === "audio" ? "btn-primary" : "btn-secondary"}`}
               onClick={() => setMode("audio")}
             >
-              音声ファイル
+              音声
             </button>
           </div>
 
@@ -162,33 +172,114 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                   rows={3}
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">音声ファイル *</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-                />
-                <div
-                  className={`audio-recorder ${audioFile ? "has-file" : ""}`}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <div className="audio-icon">{audioFile ? "✅" : "🎙️"}</div>
-                  <div className="audio-label">
-                    {audioFile
-                      ? "ファイルが選択されています"
-                      : "クリックして音声ファイルを選択"
-                    }
+
+              {/* Audio Source Toggle */}
+              {recorder.isSupported && (
+                <div className="form-group">
+                  <label className="form-label">音声入力方法 *</label>
+                  <div className="mode-toggle">
+                    <button
+                      className={`btn btn-sm ${effectiveAudioSource === "record" ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => { setAudioSource("record"); setAudioFile(null); }}
+                      type="button"
+                    >
+                      🎙️ 録音する
+                    </button>
+                    <button
+                      className={`btn btn-sm ${effectiveAudioSource === "file" ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => { setAudioSource("file"); if (recorder.isRecording || recorder.recordedFile) recorder.reset(); }}
+                      type="button"
+                    >
+                      📁 ファイルを選択
+                    </button>
                   </div>
-                  {audioFile && (
-                    <div className="audio-filename">
-                      {audioFile.name} ({(audioFile.size / 1024 / 1024).toFixed(1)} MB)
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
+
+              {effectiveAudioSource === "record" ? (
+                <div className="form-group">
+                  <div className={`audio-recorder ${recorder.isRecording ? "is-recording" : ""} ${recorder.recordedFile ? "has-file" : ""}`}>
+                    {recorder.error && (
+                      <div className="audio-error">{recorder.error}</div>
+                    )}
+
+                    {!recorder.isRecording && !recorder.recordedFile && (
+                      <>
+                        <button className="btn btn-primary btn-record" onClick={recorder.start} type="button">
+                          <span className="record-dot" />
+                          録音開始
+                        </button>
+                        <div className="audio-label">
+                          ボタンを押してマイクから録音を開始します
+                        </div>
+                      </>
+                    )}
+
+                    {recorder.isRecording && (
+                      <>
+                        <div className="recording-indicator">
+                          <span className="recording-pulse" />
+                          <span className="recording-time">{formatDuration(recorder.elapsedSeconds)}</span>
+                        </div>
+                        <div className="recording-actions">
+                          {recorder.isPaused ? (
+                            <button className="btn btn-secondary btn-sm" onClick={recorder.resume} type="button">
+                              ▶ 再開
+                            </button>
+                          ) : (
+                            <button className="btn btn-secondary btn-sm" onClick={recorder.pause} type="button">
+                              ⏸ 一時停止
+                            </button>
+                          )}
+                          <button className="btn btn-primary btn-sm" onClick={recorder.stop} type="button">
+                            ⏹ 録音停止
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {!recorder.isRecording && recorder.recordedFile && (
+                      <>
+                        <div className="audio-icon">✅</div>
+                        <div className="audio-label">録音が完了しました</div>
+                        <div className="audio-filename">
+                          {formatDuration(recorder.elapsedSeconds)} / {(recorder.recordedFile.size / 1024 / 1024).toFixed(1)} MB
+                        </div>
+                        <button className="btn btn-ghost btn-sm" onClick={recorder.reset} type="button">
+                          やり直す
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                  />
+                  <div
+                    className={`audio-recorder ${audioFile ? "has-file" : ""}`}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="audio-icon">{audioFile ? "✅" : "📁"}</div>
+                    <div className="audio-label">
+                      {audioFile
+                        ? "ファイルが選択されています"
+                        : "クリックして音声ファイルを選択"
+                      }
+                    </div>
+                    {audioFile && (
+                      <div className="audio-filename">
+                        {audioFile.name} ({(audioFile.size / 1024 / 1024).toFixed(1)} MB)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -200,7 +291,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
             disabled={
               submitting ||
               (mode === "text" && !form.content) ||
-              (mode === "audio" && !audioFile)
+              (mode === "audio" && !activeAudioFile)
             }
           >
             {submitting ? (

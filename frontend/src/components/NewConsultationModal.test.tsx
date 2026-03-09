@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewConsultationModal } from "./NewConsultationModal";
@@ -6,9 +6,28 @@ import { TestAuthWrapper } from "../test-utils";
 
 import { api } from "../api";
 
+// Minimal MediaRecorder mock so isSupported=true in tests
+class MockMediaRecorder {
+  state = "inactive";
+  ondataavailable: ((e: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(stream: MediaStream, options?: { mimeType?: string }) {}
+  start() { this.state = "recording"; }
+  stop() { this.state = "inactive"; }
+  pause() { this.state = "paused"; }
+  resume() { this.state = "recording"; }
+  static isTypeSupported(type: string) { return type === "audio/webm;codecs=opus"; }
+}
+
 beforeEach(() => {
   vi.mocked(api.createConsultation).mockReset();
   vi.mocked(api.createAudioConsultation).mockReset();
+  vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function renderModal(props?: Partial<{ caseId: string; onClose: () => void; onCreated: () => void }>) {
@@ -30,14 +49,25 @@ describe("NewConsultationModal", () => {
     expect(screen.getByPlaceholderText(/相談者の状況/)).toBeInTheDocument();
   });
 
-  it("switches to audio mode", async () => {
+  it("switches to audio mode and shows record option by default", async () => {
     renderModal();
     const user = userEvent.setup();
 
-    await user.click(screen.getByText(/音声ファイル/));
+    await user.click(screen.getByText("音声"));
+
+    expect(screen.getByText("録音開始")).toBeInTheDocument();
+    expect(screen.getByText(/ボタンを押してマイクから録音を開始します/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/相談者の状況/)).not.toBeInTheDocument();
+  });
+
+  it("switches to file upload sub-mode", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("音声"));
+    await user.click(screen.getByText(/ファイルを選択/));
 
     expect(screen.getByText(/クリックして音声ファイルを選択/)).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/相談者の状況/)).not.toBeInTheDocument();
   });
 
   it("disables submit when text content is empty", () => {
@@ -106,7 +136,8 @@ describe("NewConsultationModal", () => {
     renderModal();
     const user = userEvent.setup();
 
-    await user.click(screen.getByText(/音声ファイル/));
+    await user.click(screen.getByText("音声"));
+    await user.click(screen.getByText(/ファイルを選択/));
     const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, file);
@@ -140,8 +171,9 @@ describe("NewConsultationModal", () => {
     renderModal();
     const user = userEvent.setup();
 
-    // Switch to audio mode
-    await user.click(screen.getByText(/音声ファイル/));
+    // Switch to audio mode, then file sub-mode
+    await user.click(screen.getByText("音声"));
+    await user.click(screen.getByText(/ファイルを選択/));
 
     // Simulate file selection
     const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
@@ -167,5 +199,53 @@ describe("NewConsultationModal", () => {
 
     await user.click(screen.getByText("キャンセル"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows audio source toggle buttons in audio mode", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("音声"));
+
+    expect(screen.getByText(/録音する/)).toBeInTheDocument();
+    expect(screen.getByText(/ファイルを選択/)).toBeInTheDocument();
+  });
+
+  it("disables submit in audio record mode when no recording", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("音声"));
+
+    expect(screen.getByText("音声を分析・記録")).toBeDisabled();
+  });
+
+  it("falls back to file upload when MediaRecorder is unavailable", async () => {
+    vi.stubGlobal("MediaRecorder", undefined);
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText("音声"));
+
+    // Should show file upload directly without toggle
+    expect(screen.getByText(/クリックして音声ファイルを選択/)).toBeInTheDocument();
+    expect(screen.queryByText(/録音する/)).not.toBeInTheDocument();
+  });
+
+  it("resets audioSource to record when switching back to text then audio", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    // Switch to audio → file sub-mode
+    await user.click(screen.getByText("音声"));
+    await user.click(screen.getByText(/ファイルを選択/));
+    expect(screen.getByText(/クリックして音声ファイルを選択/)).toBeInTheDocument();
+
+    // Switch to text
+    await user.click(screen.getByText("テキスト入力"));
+
+    // Switch back to audio → should default to record, not file
+    await user.click(screen.getByText("音声"));
+    expect(screen.getByText("録音開始")).toBeInTheDocument();
   });
 });

@@ -29,9 +29,9 @@ const FEATURES: ContentItem[] = [
   },
   {
     icon: "🎙️",
-    title: "音声ファイルからの自動文字起こし",
+    title: "音声からの自動文字起こし",
     description:
-      "相談の録音ファイルをアップロードするだけで、AIが自動で文字起こし。テキスト入力の手間を省き、相談者との対話に集中できます。",
+      "タブレットやスマートフォン、PCのマイクから直接録音、または録音ファイルのアップロードで、AIが自動で文字起こし。テキスト入力の手間を省き、相談者との対話に集中できます。",
   },
 ];
 
@@ -68,11 +68,9 @@ const SECURITY_POINTS: ContentItem[] = [
   },
 ];
 
-interface Screenshot {
+interface Screenshot extends ContentItem {
   src: string;
   alt: string;
-  title: string;
-  description: string;
 }
 
 const SCREENSHOTS: Screenshot[] = [
@@ -90,9 +88,9 @@ const SCREENSHOTS: Screenshot[] = [
   },
   {
     src: "/help/audio-consultation.png",
-    alt: "音声ファイル入力画面",
-    title: "音声ファイルからの記録",
-    description: "録音ファイルをアップロードするだけで、AIが自動で文字起こし・分析まで実行します。",
+    alt: "音声入力画面",
+    title: "音声からの記録",
+    description: "ブラウザから直接録音、またはファイルをアップロードするだけで、AIが自動で文字起こし・分析まで実行します。",
   },
 ];
 
@@ -131,6 +129,20 @@ function SecurityCard({ point }: { point: ContentItem }) {
       <div>
         <h4>{point.title}</h4>
         <p>{point.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ScreenshotCard({ item, index }: { item: Screenshot; index: number }) {
+  return (
+    <div className="about-screenshot-card">
+      <div className="about-screenshot-image">
+        <img src={item.src} alt={item.alt} loading={index === 0 ? "eager" : "lazy"} />
+      </div>
+      <div className="about-screenshot-body">
+        <h3>{item.title}</h3>
+        <p>{item.description}</p>
       </div>
     </div>
   );
@@ -205,16 +217,8 @@ export function About() {
             <p>シンプルで直感的なインターフェースで、すぐにお使いいただけます。</p>
           </div>
           <div className="about-screenshots-grid">
-            {SCREENSHOTS.map((s) => (
-              <div key={s.title} className="about-screenshot-card">
-                <div className="about-screenshot-image">
-                  <img src={s.src} alt={s.alt} loading="lazy" />
-                </div>
-                <div className="about-screenshot-body">
-                  <h3>{s.title}</h3>
-                  <p>{s.description}</p>
-                </div>
-              </div>
+            {SCREENSHOTS.map((s, i) => (
+              <ScreenshotCard key={s.title} item={s} index={i} />
             ))}
           </div>
         </div>
