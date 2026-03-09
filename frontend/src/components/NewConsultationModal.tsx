@@ -18,6 +18,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
   const [audioSource, setAudioSource] = useState<AudioSource>("record");
+  // Fall back to file upload when browser doesn't support recording
   const [form, setForm] = useState({
     content: "",
     consultationType: "counter",
@@ -32,9 +33,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorder = useAudioRecorder();
+  const effectiveAudioSource = recorder.isSupported ? audioSource : "file";
 
   // Use recorded file or uploaded file
-  const activeAudioFile = audioSource === "record" ? recorder.recordedFile : audioFile;
+  const activeAudioFile = effectiveAudioSource === "record" ? recorder.recordedFile : audioFile;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -115,7 +117,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           <div className="mode-toggle">
             <button
               className={`btn ${mode === "text" ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => { setMode("text"); recorder.reset(); setAudioFile(null); }}
+              onClick={() => { setMode("text"); recorder.reset(); setAudioFile(null); setAudioSource("record"); }}
             >
               テキスト入力
             </button>
@@ -172,27 +174,29 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
               </div>
 
               {/* Audio Source Toggle */}
-              <div className="form-group">
-                <label className="form-label">音声入力方法 *</label>
-                <div className="mode-toggle">
-                  <button
-                    className={`btn btn-sm ${audioSource === "record" ? "btn-primary" : "btn-secondary"}`}
-                    onClick={() => { setAudioSource("record"); setAudioFile(null); }}
-                    type="button"
-                  >
-                    🎙️ 録音する
-                  </button>
-                  <button
-                    className={`btn btn-sm ${audioSource === "file" ? "btn-primary" : "btn-secondary"}`}
-                    onClick={() => { setAudioSource("file"); if (recorder.isRecording || recorder.recordedFile) recorder.reset(); }}
-                    type="button"
-                  >
-                    📁 ファイルを選択
-                  </button>
+              {recorder.isSupported && (
+                <div className="form-group">
+                  <label className="form-label">音声入力方法 *</label>
+                  <div className="mode-toggle">
+                    <button
+                      className={`btn btn-sm ${effectiveAudioSource === "record" ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => { setAudioSource("record"); setAudioFile(null); }}
+                      type="button"
+                    >
+                      🎙️ 録音する
+                    </button>
+                    <button
+                      className={`btn btn-sm ${effectiveAudioSource === "file" ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => { setAudioSource("file"); if (recorder.isRecording || recorder.recordedFile) recorder.reset(); }}
+                      type="button"
+                    >
+                      📁 ファイルを選択
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {audioSource === "record" ? (
+              {effectiveAudioSource === "record" ? (
                 <div className="form-group">
                   <div className={`audio-recorder ${recorder.isRecording ? "is-recording" : ""} ${recorder.recordedFile ? "has-file" : ""}`}>
                     {recorder.error && (

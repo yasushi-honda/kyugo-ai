@@ -6,6 +6,7 @@ export interface AudioRecorderState {
   elapsedSeconds: number;
   recordedFile: File | null;
   error: string | null;
+  isSupported: boolean;
 }
 
 export interface AudioRecorderActions {
@@ -14,6 +15,17 @@ export interface AudioRecorderActions {
   pause: () => void;
   resume: () => void;
   reset: () => void;
+}
+
+function getSupportedMimeType(): string | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? null;
 }
 
 export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
@@ -30,6 +42,9 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
   const startTimeRef = useRef<number>(0);
   const pausedElapsedRef = useRef<number>(0);
   const isResettingRef = useRef(false);
+  const sessionIdRef = useRef(0);
+
+  const isSupported = typeof MediaRecorder !== "undefined" && getSupportedMimeType() !== null;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -54,6 +69,16 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
   }, []);
 
   const start = useCallback(async () => {
+    // Clean up any existing session before starting a new one
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    releaseStream();
+    clearTimer();
+
+    const currentSession = ++sessionIdRef.current;
     setError(null);
     setRecordedFile(null);
     isResettingRef.current = false;
@@ -62,11 +87,18 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Abort if session was superseded during getUserMedia (e.g. unmount/reset)
+      if (sessionIdRef.current !== currentSession) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       streamRef.current = stream;
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
+      const mimeType = getSupportedMimeType() ?? "audio/webm";
+      const ext = mimeType.startsWith("audio/mp4") ? "m4a" : "webm";
+      const fileType = mimeType.startsWith("audio/mp4") ? "audio/mp4" : "audio/webm";
 
       const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
@@ -76,13 +108,13 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
       };
 
       recorder.onstop = () => {
-        if (isResettingRef.current) {
+        if (isResettingRef.current || sessionIdRef.current !== currentSession) {
           releaseStream();
           return;
         }
         const blob = new Blob(chunksRef.current, { type: mimeType });
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const file = new File([blob], `recording-${timestamp}.webm`, { type: "audio/webm" });
+        const file = new File([blob], `recording-${timestamp}.${ext}`, { type: fileType });
         setRecordedFile(file);
         releaseStream();
       };
@@ -93,13 +125,15 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
       setElapsedSeconds(0);
       startTimer();
     } catch (err) {
+      // Abort if session was superseded
+      if (sessionIdRef.current !== currentSession) return;
       const msg = err instanceof DOMException && err.name === "NotAllowedError"
         ? "マイクへのアクセスが許可されていません。ブラウザの設定を確認してください。"
         : "マイクの初期化に失敗しました。";
       setError(msg);
       releaseStream();
     }
-  }, [releaseStream, startTimer]);
+  }, [releaseStream, startTimer, clearTimer]);
 
   const stop = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -129,6 +163,7 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
 
   const reset = useCallback(() => {
     isResettingRef.current = true;
+    sessionIdRef.current++;
     stop();
     setRecordedFile(null);
     setElapsedSeconds(0);
@@ -157,6 +192,7 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
     elapsedSeconds,
     recordedFile,
     error,
+    isSupported,
     start,
     stop,
     pause,

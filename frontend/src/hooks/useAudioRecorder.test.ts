@@ -199,4 +199,48 @@ describe("useAudioRecorder", () => {
     // Should not throw
     unmount();
   });
+
+  it("reports isSupported true when MediaRecorder is available", () => {
+    const { result } = renderHook(() => useAudioRecorder());
+    expect(result.current.isSupported).toBe(true);
+  });
+
+  it("reports isSupported false when MediaRecorder is unavailable", () => {
+    vi.stubGlobal("MediaRecorder", undefined);
+    const { result } = renderHook(() => useAudioRecorder());
+    expect(result.current.isSupported).toBe(false);
+  });
+
+  it("aborts stale session when reset during getUserMedia", async () => {
+    // Simulate slow getUserMedia that resolves after reset
+    const mockStream = new MockMediaStream();
+    let resolveGetUserMedia: (stream: MockMediaStream) => void;
+    const slowPromise = new Promise<MockMediaStream>((resolve) => {
+      resolveGetUserMedia = resolve;
+    });
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(slowPromise as Promise<MediaStream>);
+
+    const { result } = renderHook(() => useAudioRecorder());
+
+    // Start recording (getUserMedia is pending)
+    let startPromise: Promise<void>;
+    act(() => {
+      startPromise = result.current.start();
+    });
+
+    // Reset while getUserMedia is still pending
+    act(() => {
+      result.current.reset();
+    });
+
+    // Now resolve getUserMedia — should be ignored (stale session)
+    await act(async () => {
+      resolveGetUserMedia!(mockStream);
+      await startPromise!;
+    });
+
+    // Should NOT be recording because the session was invalidated
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.recordedFile).toBeNull();
+  });
 });
