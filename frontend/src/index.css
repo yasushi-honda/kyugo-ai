@@ -1664,6 +1664,16 @@ a:hover { color: var(--ai-600); }
   color: var(--text-secondary);
 }
 
+.about-compliance-note a {
+  color: var(--ai-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.about-compliance-note a:hover {
+  color: var(--ai-700);
+}
+
 /* ── AI Section ── */
 
 .about-ai-section {

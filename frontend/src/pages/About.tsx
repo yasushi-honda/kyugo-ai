@@ -182,7 +182,15 @@ export function About() {
           </div>
           <div className="about-compliance-note">
             <strong>準拠基準:</strong>{" "}
-            総務省「地方公共団体における情報セキュリティポリシーに関するガイドライン」（2024年10月改正）
+            総務省
+            <a
+              href="https://www.soumu.go.jp/denshijiti/jyouhou_policy/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              「地方公共団体における情報セキュリティポリシーに関するガイドライン」
+            </a>
+            （2025年3月改定）
           </div>
         </div>
       </section>
