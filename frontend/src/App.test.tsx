@@ -6,6 +6,7 @@ import { ProtectedRoutes } from "./App";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
+import { Help } from "./pages/Help";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { api } from "./api";
 import type { UserInfo } from "./api";
@@ -18,6 +19,7 @@ function renderApp(path = "/") {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/cases/:id" element={<CaseDetail />} />
+            <Route path="/help" element={<Help />} />
           </Routes>
         </Layout>
       </MemoryRouter>
@@ -39,6 +41,14 @@ describe("App routing", () => {
 
     await waitFor(() => {
       expect(screen.getByText("ケースが見つかりません")).toBeInTheDocument();
+    });
+  });
+
+  it("renders Help on /help", async () => {
+    renderApp("/help");
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "使い方ガイド" })).toBeInTheDocument();
     });
   });
 
