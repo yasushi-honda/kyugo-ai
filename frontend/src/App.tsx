@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
+import { Help } from "./pages/Help";
 
 export function ProtectedRoutes() {
   const { user, userInfo, loading, retrying, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
@@ -40,6 +41,7 @@ export function ProtectedRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/cases/:id" element={<CaseDetail />} />
+        <Route path="/help" element={<Help />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
