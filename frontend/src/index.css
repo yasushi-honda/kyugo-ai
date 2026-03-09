@@ -1234,20 +1234,32 @@ a:hover { color: var(--ai-600); }
   border-radius: var(--radius-md);
 }
 
-.help-point-icon {
+/* Shared badge base for annotation icons */
+.help-badge {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  background: var(--kaki-500);
   color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 700;
+}
+
+.help-badge--point {
+  width: 28px;
+  height: 28px;
+  background: var(--kaki-500);
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: 700;
   text-transform: uppercase;
+}
+
+.help-badge--step {
+  width: 24px;
+  height: 24px;
+  background: var(--ai-500);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
 }
 
 .help-point strong {
@@ -1285,20 +1297,6 @@ a:hover { color: var(--ai-600); }
   border-radius: var(--radius-sm);
 }
 
-.help-step-number {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  background: var(--ai-500);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 700;
-}
 
 .help-step p {
   margin: 0;
