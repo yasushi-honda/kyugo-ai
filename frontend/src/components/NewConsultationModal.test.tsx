@@ -5,22 +5,7 @@ import { NewConsultationModal } from "./NewConsultationModal";
 import { TestAuthWrapper } from "../test-utils";
 
 import { api } from "../api";
-
-// Minimal MediaRecorder mock so isSupported=true in tests
-class MockMediaRecorder {
-  state = "inactive";
-  ondataavailable: ((e: { data: Blob }) => void) | null = null;
-  onstop: (() => void) | null = null;
-  constructor(_stream: MediaStream, _options?: { mimeType?: string }) {
-    void _stream;
-    void _options;
-  }
-  start() { this.state = "recording"; }
-  stop() { this.state = "inactive"; }
-  pause() { this.state = "paused"; }
-  resume() { this.state = "recording"; }
-  static isTypeSupported(type: string) { return type === "audio/webm;codecs=opus"; }
-}
+import { MockMediaRecorder } from "../__mocks__/MockMediaRecorder";
 
 beforeEach(() => {
   vi.mocked(api.createConsultation).mockReset();
