@@ -5,6 +5,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 import { Help } from "./pages/Help";
+import { About } from "./pages/About";
 
 export function ProtectedRoutes() {
   const { user, userInfo, loading, retrying, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
@@ -54,6 +55,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginRoute />} />
+          <Route path="/about" element={<About />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
