@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, buildStaffMap } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,9 +23,7 @@ export function Dashboard() {
         api.listStaff(),
       ]);
       setCases(data);
-      const map: Record<string, string> = {};
-      for (const s of staff) { map[s.id] = s.name; }
-      setStaffMap(map);
+      setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load cases:", err);
     } finally {
@@ -115,7 +113,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {staffMap[c.assignedStaffId] || c.assignedStaffId}
+                      👤 {staffMap[c.assignedStaffId] ?? c.assignedStaffId}
                     </div>
                   </div>
                 </div>

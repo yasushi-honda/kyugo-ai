@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, buildStaffMap } from "../api";
 import type { Case, Consultation } from "../api";
 import { NewConsultationModal } from "../components/NewConsultationModal";
 import { SuggestedSupports } from "../components/SuggestedSupports";
@@ -28,9 +28,7 @@ export function CaseDetail() {
       ]);
       setCaseData(c);
       setConsultations(cons);
-      const map: Record<string, string> = {};
-      for (const s of staff) { map[s.id] = s.name; }
-      setStaffMap(map);
+      setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load case:", err);
       setError((err as Error).message);
@@ -126,7 +124,7 @@ export function CaseDetail() {
                           <span className="consultation-type-badge">
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
-                          <span className="consultation-staff">{staffMap[con.staffId] || con.staffId}</span>
+                          <span className="consultation-staff">{staffMap[con.staffId] ?? con.staffId}</span>
                         </div>
 
                         {con.content && (
@@ -202,7 +200,7 @@ export function CaseDetail() {
                   </div>
                   <div>
                     <div className="info-item-label">担当職員</div>
-                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || caseData.assignedStaffId}</div>
+                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] ?? caseData.assignedStaffId}</div>
                   </div>
                   <div>
                     <div className="info-item-label">生年月日</div>

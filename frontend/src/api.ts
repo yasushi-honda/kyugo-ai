@@ -75,6 +75,13 @@ export interface UserInfo {
   staffId: string;
 }
 
+/** StaffSummary[] → { [id]: name } マップに変換 */
+export function buildStaffMap(staff: StaffSummary[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const s of staff) { map[s.id] = s.name; }
+  return map;
+}
+
 export const api = {
   getMe: () => request<UserInfo>("/api/me"),
 
