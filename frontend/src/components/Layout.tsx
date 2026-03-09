@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
   { path: "/", icon: "📋", label: "ケース一覧" },
+  { path: "/help", icon: "❓", label: "使い方ガイド" },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
