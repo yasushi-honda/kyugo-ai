@@ -75,6 +75,15 @@ export interface UserInfo {
   staffId: string;
 }
 
+export interface StaffDetail {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "staff";
+  disabled: boolean;
+  createdAt: { _seconds: number } | null;
+}
+
 /** StaffSummary[] → { [id]: name } マップに変換 */
 export function buildStaffMap(staff: StaffSummary[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -129,6 +138,15 @@ export const api = {
   updateAllowedEmails: (data: { emails: string[]; domains: string[] }) =>
     request<{ emails: string[]; domains: string[] }>("/api/admin-settings/allowed-emails", {
       method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  listAdminStaff: () =>
+    request<StaffDetail[]>("/api/admin-settings/staff"),
+
+  updateStaff: (id: string, data: { role?: "admin" | "staff"; disabled?: boolean }) =>
+    request<StaffDetail>(`/api/admin-settings/staff/${id}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 };

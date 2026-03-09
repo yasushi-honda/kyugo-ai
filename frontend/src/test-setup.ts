@@ -25,6 +25,8 @@ vi.mock("./api", async (importOriginal) => {
       listSupportMenus: vi.fn().mockResolvedValue([]),
       getAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
       updateAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
+      listAdminStaff: vi.fn().mockResolvedValue([]),
+      updateStaff: vi.fn(),
     },
   };
 });

@@ -102,6 +102,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     if (primaryDoc.exists) {
       const data = primaryDoc.data()!;
+      if (data.disabled) {
+        res.status(403).json({ error: "Your account has been disabled" });
+        return;
+      }
       staffId = primaryDoc.id;
       role = (data.role as "admin" | "staff") ?? "staff";
       staffName = (data.name as string) ?? "";
@@ -125,6 +129,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       if (legacyQuery.size === 1) {
         // レガシーレコード発見
         const staffDoc = legacyQuery.docs[0];
+        if (staffDoc.data().disabled) {
+          res.status(403).json({ error: "Your account has been disabled" });
+          return;
+        }
         staffId = staffDoc.id;
         role = (staffDoc.data().role as "admin" | "staff") ?? "staff";
         staffName = (staffDoc.data().name as string) ?? "";
@@ -165,6 +173,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             const existingData = existingDoc.data();
             if (!existingData) {
               throw new Error("Staff document exists but has no data");
+            }
+            if (existingData.disabled) {
+              res.status(403).json({ error: "Your account has been disabled" });
+              return;
             }
             staffId = existingDoc.id;
             role = (existingData.role as "admin" | "staff") ?? "staff";
