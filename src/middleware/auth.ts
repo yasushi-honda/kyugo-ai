@@ -1,16 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { firebaseAuth } from "../config.js";
-import { firestore } from "../config.js";
+import { firebaseAuth, firestore } from "../config.js";
 
-const parsedDomains = process.env.ALLOWED_EMAIL_DOMAINS
-  ? process.env.ALLOWED_EMAIL_DOMAINS.split(",").map((d) => d.trim().toLowerCase()).filter((d) => d.length > 0)
-  : null;
-const allowedDomains = parsedDomains && parsedDomains.length > 0 ? parsedDomains : null;
+function parseAllowedList(envValue: string | undefined): string[] | null {
+  if (!envValue) return null;
+  const parsed = envValue.split(",").map((s) => s.trim().toLowerCase()).filter((s) => s.length > 0);
+  return parsed.length > 0 ? parsed : null;
+}
 
-const parsedEmails = process.env.ALLOWED_EMAILS
-  ? process.env.ALLOWED_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter((e) => e.length > 0)
-  : null;
-const allowedEmails = parsedEmails && parsedEmails.length > 0 ? parsedEmails : null;
+const allowedDomains = parseAllowedList(process.env.ALLOWED_EMAIL_DOMAINS);
+const allowedEmails = parseAllowedList(process.env.ALLOWED_EMAILS);
 
 if (!allowedDomains && !allowedEmails) {
   console.warn("WARNING: ALLOWED_EMAIL_DOMAINS and ALLOWED_EMAILS are not set. Any authenticated user can auto-provision as staff.");
@@ -18,8 +16,11 @@ if (!allowedDomains && !allowedEmails) {
 
 function isEmailAllowed(email: string): boolean {
   const lowerEmail = email.toLowerCase();
-  if (allowedEmails && allowedEmails.includes(lowerEmail)) return true;
+  // 個別メール許可リストに一致
+  if (allowedEmails?.includes(lowerEmail)) return true;
+  // ドメイン制限なし → 個別メールリストがなければ全許可、あれば拒否
   if (!allowedDomains) return !allowedEmails;
+  // ドメイン許可リストに一致
   const domain = lowerEmail.split("@")[1];
   return !!domain && allowedDomains.includes(domain);
 }
