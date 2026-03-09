@@ -3,14 +3,15 @@ import type { ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
-  { path: "/", icon: "📋", label: "ケース一覧" },
-  { path: "/help", icon: "❓", label: "使い方ガイド" },
+  { path: "/", icon: "📋", label: "ケース一覧", adminOnly: false },
+  { path: "/help", icon: "❓", label: "使い方ガイド", adminOnly: false },
+  { path: "/settings", icon: "⚙", label: "アクセス設定", adminOnly: true },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, userInfo, logout } = useAuth();
 
   return (
     <div className="app-layout">
@@ -22,7 +23,9 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS
+            .filter((item) => !item.adminOnly || userInfo?.role === "admin")
+            .map((item) => (
             <div
               key={item.path}
               className={`sidebar-nav-item ${location.pathname === item.path ? "active" : ""}`}

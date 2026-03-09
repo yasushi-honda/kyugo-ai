@@ -28,3 +28,5 @@ const firebaseAdminApp = initializeApp({
 });
 
 export const firebaseAuth = getAuth(firebaseAdminApp);
+
+export const ALLOWED_EMAILS_CONFIG_DOC = "config/allowedEmails";

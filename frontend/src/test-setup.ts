@@ -23,6 +23,8 @@ vi.mock("./api", async (importOriginal) => {
       createAudioConsultation: vi.fn(),
       listStaff: vi.fn().mockResolvedValue([]),
       listSupportMenus: vi.fn().mockResolvedValue([]),
+      getAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
+      updateAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
     },
   };
 });

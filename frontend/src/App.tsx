@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
@@ -6,6 +7,7 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 import { Help } from "./pages/Help";
 import { About } from "./pages/About";
+import { Settings } from "./pages/Settings";
 
 export function ProtectedRoutes() {
   const { user, userInfo, loading, retrying, authError, logoutError, logout, forceLogout, retryGetMe } = useAuth();
@@ -43,6 +45,7 @@ export function ProtectedRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/cases/:id" element={<CaseDetail />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -61,6 +64,12 @@ export default function App() {
       </BrowserRouter>
     </AuthProvider>
   );
+}
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { userInfo } = useAuth();
+  if (userInfo?.role !== "admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function LoginRoute() {
