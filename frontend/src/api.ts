@@ -62,12 +62,24 @@ export interface SupportMenu {
   description: string;
 }
 
+export interface StaffSummary {
+  id: string;
+  name: string;
+}
+
 export interface UserInfo {
   uid: string;
   email: string;
   name: string;
   role: "admin" | "staff";
   staffId: string;
+}
+
+/** StaffSummary[] → { [id]: name } マップに変換 */
+export function buildStaffMap(staff: StaffSummary[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const s of staff) { map[s.id] = s.name; }
+  return map;
 }
 
 export const api = {
@@ -104,6 +116,9 @@ export const api = {
       `/api/cases/${caseId}/consultations/audio`,
       { method: "POST", body: formData },
     ),
+
+  listStaff: () =>
+    request<StaffSummary[]>("/api/staff"),
 
   listSupportMenus: () =>
     request<SupportMenu[]>("/api/support-menus"),

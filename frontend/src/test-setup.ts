@@ -2,25 +2,30 @@ import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
 // Mock api module (individual tests can override specific methods)
-vi.mock("./api", () => ({
-  api: {
-    getMe: vi.fn().mockResolvedValue({
-      uid: "test-uid",
-      email: "test@example.com",
-      name: "テスト職員",
-      role: "staff",
-      staffId: "test-staff-001",
-    }),
-    listCases: vi.fn().mockResolvedValue([]),
-    getCase: vi.fn(),
-    createCase: vi.fn(),
-    updateCaseStatus: vi.fn(),
-    listConsultations: vi.fn().mockResolvedValue([]),
-    createConsultation: vi.fn(),
-    createAudioConsultation: vi.fn(),
-    listSupportMenus: vi.fn().mockResolvedValue([]),
-  },
-}));
+vi.mock("./api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./api")>();
+  return {
+    ...actual,
+    api: {
+      getMe: vi.fn().mockResolvedValue({
+        uid: "test-uid",
+        email: "test@example.com",
+        name: "テスト職員",
+        role: "staff",
+        staffId: "test-staff-001",
+      }),
+      listCases: vi.fn().mockResolvedValue([]),
+      getCase: vi.fn(),
+      createCase: vi.fn(),
+      updateCaseStatus: vi.fn(),
+      listConsultations: vi.fn().mockResolvedValue([]),
+      createConsultation: vi.fn(),
+      createAudioConsultation: vi.fn(),
+      listStaff: vi.fn().mockResolvedValue([]),
+      listSupportMenus: vi.fn().mockResolvedValue([]),
+    },
+  };
+});
 
 // Mock Firebase Auth SDK
 vi.mock("./firebase", () => ({

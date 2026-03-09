@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, buildStaffMap } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,6 +10,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { user, userInfo, authError } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
+  const [staffMap, setStaffMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showNewCase, setShowNewCase] = useState(false);
 
@@ -19,6 +20,9 @@ export function Dashboard() {
     try {
       const data = await api.listCases();
       setCases(data);
+      // staffは補助情報。失敗しても主データの表示を妨げない
+      const staff = await api.listStaff().catch(() => [] as never);
+      setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load cases:", err);
     } finally {
@@ -108,9 +112,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {c.assignedStaffId === userInfo?.staffId
-                        ? (userInfo.name || userInfo.email)
-                        : c.assignedStaffId}
+                      👤 {staffMap[c.assignedStaffId] || c.assignedStaffId}
                     </div>
                   </div>
                 </div>
