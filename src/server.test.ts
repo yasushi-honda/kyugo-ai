@@ -1234,3 +1234,168 @@ describe("PUT /api/admin-settings/allowed-emails", () => {
     expect(res.body.error).toBe("Internal server error");
   });
 });
+
+// ============================================================
+// GET /api/admin-settings/staff
+// ============================================================
+describe("GET /api/admin-settings/staff", () => {
+  it("returns 403 for non-admin", async () => {
+    const res = await request(app).get("/api/admin-settings/staff");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns staff list with all fields for admin", async () => {
+    const mockDocs = [
+      { id: "s1", data: () => ({ name: "職員A", email: "a@test.com", role: "staff", disabled: false, createdAt: new Date() }) },
+      { id: "s2", data: () => ({ name: "管理者B", email: "b@test.com", role: "admin", disabled: true, createdAt: new Date() }) },
+    ];
+    const mockGet = vi.fn().mockResolvedValue({ docs: mockDocs });
+    vi.mocked(firestore.collection).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(adminApp).get("/api/admin-settings/staff");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0]).toEqual(expect.objectContaining({ id: "s1", name: "職員A", email: "a@test.com", role: "staff", disabled: false }));
+    expect(res.body[1]).toEqual(expect.objectContaining({ id: "s2", name: "管理者B", email: "b@test.com", role: "admin", disabled: true }));
+  });
+
+  it("returns 500 when Firestore fails", async () => {
+    const mockGet = vi.fn().mockRejectedValue(new Error("Firestore error"));
+    vi.mocked(firestore.collection).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(adminApp).get("/api/admin-settings/staff");
+    expect(res.status).toBe(500);
+  });
+});
+
+// ============================================================
+// PATCH /api/admin-settings/staff/:id
+// ============================================================
+describe("PATCH /api/admin-settings/staff/:id", () => {
+  const mockUpdate = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    mockUpdate.mockClear();
+  });
+
+  it("returns 403 for non-admin", async () => {
+    const res = await request(app).patch("/api/admin-settings/staff/s1").send({ role: "admin" });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 for invalid role", async () => {
+    const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ role: "superadmin" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("role must be 'admin' or 'staff'");
+  });
+
+  it("returns 400 for invalid disabled", async () => {
+    const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ disabled: "yes" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("disabled must be a boolean");
+  });
+
+  it("returns 400 when no fields provided", async () => {
+    const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("At least one of role or disabled is required");
+  });
+
+  it("returns 404 for nonexistent staff", async () => {
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+        update: mockUpdate,
+      }),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/nonexistent").send({ role: "admin" });
+    expect(res.status).toBe(404);
+  });
+
+  it("prevents admin from demoting themselves", async () => {
+    const staffData = { name: "管理者", role: "admin" };
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: true, id: "admin-staff", data: () => staffData }),
+        update: mockUpdate,
+      }),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/admin-staff").send({ role: "staff" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Cannot demote yourself");
+  });
+
+  it("prevents admin from disabling themselves", async () => {
+    const staffData = { name: "管理者", role: "admin" };
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: true, id: "admin-staff", data: () => staffData }),
+        update: mockUpdate,
+      }),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/admin-staff").send({ disabled: true });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Cannot disable yourself");
+  });
+
+  it("prevents demoting the last admin", async () => {
+    const staffData = { name: "唯一の管理者", role: "admin", email: "other@test.com" };
+    const adminQueryDocs = [{ id: "other-admin", data: () => ({ role: "admin", disabled: false }) }];
+
+    const mockWhereChain = {
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({ docs: adminQueryDocs }),
+        }),
+      }),
+    };
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: true, id: "other-admin", data: () => staffData }),
+        update: mockUpdate,
+      }),
+      where: vi.fn().mockReturnValue(mockWhereChain),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/other-admin").send({ role: "staff" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Cannot demote the last admin");
+  });
+
+  it("successfully updates role", async () => {
+    const staffData = { name: "職員A", email: "a@test.com", role: "staff", disabled: false, createdAt: new Date() };
+    const updatedData = { ...staffData, role: "admin" };
+    const mockGet = vi.fn()
+      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => staffData })
+      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => updatedData });
+    const mockRef = { get: mockGet, update: mockUpdate };
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockRef),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ role: "admin" });
+    expect(res.status).toBe(200);
+    expect(res.body.role).toBe("admin");
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ role: "admin" }));
+  });
+
+  it("successfully toggles disabled", async () => {
+    const staffData = { name: "職員A", email: "a@test.com", role: "staff", disabled: false, createdAt: new Date() };
+    const updatedData = { ...staffData, disabled: true };
+    const mockGet = vi.fn()
+      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => staffData })
+      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => updatedData });
+    const mockRef = { get: mockGet, update: mockUpdate };
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockRef),
+    } as never);
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ disabled: true });
+    expect(res.status).toBe(200);
+    expect(res.body.disabled).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ disabled: true }));
+  });
+});

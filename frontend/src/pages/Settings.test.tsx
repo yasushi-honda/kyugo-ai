@@ -10,6 +10,8 @@ import { api } from "../api";
 beforeEach(() => {
   vi.mocked(api.getAllowedEmails).mockReset();
   vi.mocked(api.updateAllowedEmails).mockReset();
+  vi.mocked(api.listAdminStaff).mockReset();
+  vi.mocked(api.updateStaff).mockReset();
 });
 
 function renderSettings() {
@@ -22,7 +24,11 @@ function renderSettings() {
   );
 }
 
-describe("Settings", () => {
+describe("Settings - Whitelist tab", () => {
+  beforeEach(() => {
+    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
+  });
+
   it("shows loading state initially", () => {
     vi.mocked(api.getAllowedEmails).mockReturnValue(new Promise(() => {}));
     renderSettings();
@@ -31,7 +37,6 @@ describe("Settings", () => {
   });
 
   it("shows empty state when no config exists", async () => {
-    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
     renderSettings();
 
     await waitFor(() => {
@@ -54,7 +59,6 @@ describe("Settings", () => {
   });
 
   it("adds a new email", async () => {
-    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
     renderSettings();
 
     await waitFor(() => {
@@ -70,7 +74,6 @@ describe("Settings", () => {
   });
 
   it("adds a new domain", async () => {
-    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
     renderSettings();
 
     await waitFor(() => {
@@ -120,7 +123,6 @@ describe("Settings", () => {
   });
 
   it("saves changes and shows success message", async () => {
-    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
     vi.mocked(api.updateAllowedEmails).mockResolvedValue({
       emails: ["saved@test.com"],
       domains: [],
@@ -156,7 +158,6 @@ describe("Settings", () => {
   });
 
   it("shows error when saving fails", async () => {
-    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
     vi.mocked(api.updateAllowedEmails).mockRejectedValue(new Error("Save failed"));
     renderSettings();
 
@@ -208,5 +209,164 @@ describe("Settings", () => {
     await user.click(screen.getAllByText("追加")[1]);
 
     expect(screen.getByText("このドメインは既に登録されています")).toBeInTheDocument();
+  });
+});
+
+describe("Settings - Account management tab", () => {
+  const mockStaffList = [
+    { id: "test-staff-001", name: "テスト管理者", email: "test@example.com", role: "admin" as const, disabled: false, createdAt: null },
+    { id: "staff-2", name: "職員A", email: "a@test.com", role: "staff" as const, disabled: false, createdAt: null },
+    { id: "staff-3", name: "無効職員", email: "disabled@test.com", role: "staff" as const, disabled: true, createdAt: null },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(api.getAllowedEmails).mockResolvedValue({ emails: [], domains: [] });
+    vi.mocked(api.listAdminStaff).mockResolvedValue(mockStaffList);
+  });
+
+  it("shows tab navigation", async () => {
+    renderSettings();
+    await waitFor(() => {
+      expect(screen.getByText("ログイン許可")).toBeInTheDocument();
+    });
+    expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+  });
+
+  it("switches to account management tab and shows staff list", async () => {
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("職員A")).toBeInTheDocument();
+    });
+    expect(screen.getByText("a@test.com")).toBeInTheDocument();
+    expect(screen.getByText("無効職員")).toBeInTheDocument();
+  });
+
+  it("shows self badge for current user", async () => {
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("自分")).toBeInTheDocument();
+    });
+  });
+
+  it("disables role select and disable button for self", async () => {
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("テスト管理者")).toBeInTheDocument();
+    });
+
+    // Find the row with self badge - the select and button should be disabled
+    const selects = screen.getAllByRole("combobox");
+    // First select (self) should be disabled
+    expect(selects[0]).toBeDisabled();
+  });
+
+  it("changes role via select", async () => {
+    vi.mocked(api.updateStaff).mockResolvedValue({
+      ...mockStaffList[1],
+      role: "admin",
+    });
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("職員A")).toBeInTheDocument();
+    });
+
+    const selects = screen.getAllByRole("combobox");
+    // Second select is for staff-2
+    await user.selectOptions(selects[1], "admin");
+
+    await waitFor(() => {
+      expect(api.updateStaff).toHaveBeenCalledWith("staff-2", { role: "admin" });
+    });
+  });
+
+  it("toggles disabled status", async () => {
+    vi.mocked(api.updateStaff).mockResolvedValue({
+      ...mockStaffList[1],
+      disabled: true,
+    });
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("職員A")).toBeInTheDocument();
+    });
+
+    // Find enabled "無効化" buttons (self button is disabled)
+    const disableButtons = screen.getAllByText("無効化").filter((btn) => !(btn as HTMLButtonElement).disabled);
+    await user.click(disableButtons[0]);
+
+    await waitFor(() => {
+      expect(api.updateStaff).toHaveBeenCalledWith("staff-2", { disabled: true });
+    });
+  });
+
+  it("shows error from API", async () => {
+    vi.mocked(api.listAdminStaff).mockRejectedValue(new Error("Failed to load staff"));
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load staff")).toBeInTheDocument();
+    });
+  });
+
+  it("shows update error", async () => {
+    vi.mocked(api.updateStaff).mockRejectedValue(new Error("Cannot demote the last admin"));
+    renderSettings();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("アカウント管理")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("アカウント管理"));
+
+    await waitFor(() => {
+      expect(screen.getByText("職員A")).toBeInTheDocument();
+    });
+
+    const disableButtons = screen.getAllByText("無効化").filter((btn) => !(btn as HTMLButtonElement).disabled);
+    await user.click(disableButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Cannot demote the last admin")).toBeInTheDocument();
+    });
   });
 });
