@@ -84,7 +84,15 @@ ${buildMenuList(availableMenus)}
     },
   });
 
-  const responseText = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = result.response.candidates?.[0];
+  const responseText = candidate?.content?.parts?.[0]?.text;
+  if (!responseText) {
+    console.error("Vertex AI empty response", JSON.stringify({
+      finishReason: candidate?.finishReason,
+      safetyRatings: candidate?.safetyRatings,
+      candidatesCount: result.response.candidates?.length ?? 0,
+    }));
+  }
   return parseAIResponse<AISummaryResult>(responseText, ["summary", "suggestedSupports"]);
 }
 
@@ -123,6 +131,14 @@ ${buildMenuList(availableMenus)}
     },
   });
 
-  const responseText = result.response.candidates?.[0]?.content?.parts?.[0]?.text;
+  const audioCandidate = result.response.candidates?.[0];
+  const responseText = audioCandidate?.content?.parts?.[0]?.text;
+  if (!responseText) {
+    console.error("Vertex AI empty audio response", JSON.stringify({
+      finishReason: audioCandidate?.finishReason,
+      safetyRatings: audioCandidate?.safetyRatings,
+      candidatesCount: result.response.candidates?.length ?? 0,
+    }));
+  }
   return parseAIResponse<AudioAnalysisResult>(responseText, ["transcript", "summary", "suggestedSupports"]);
 }
