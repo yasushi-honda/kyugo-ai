@@ -18,6 +18,7 @@ vi.mock("./api", () => ({
     listConsultations: vi.fn().mockResolvedValue([]),
     createConsultation: vi.fn(),
     createAudioConsultation: vi.fn(),
+    listStaff: vi.fn().mockResolvedValue([]),
     listSupportMenus: vi.fn().mockResolvedValue([]),
   },
 }));

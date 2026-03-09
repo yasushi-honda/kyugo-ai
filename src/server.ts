@@ -2,6 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
 import { casesRouter } from "./routes/cases.js";
+import { staffRouter } from "./routes/staff.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
 import { adminRouter } from "./routes/admin.js";
 import { requireAuth } from "./middleware/auth.js";
@@ -31,6 +32,7 @@ app.get("/api/me", requireAuth, (req, res) => {
 
 // API routes (protected by Firebase Auth)
 app.use("/api/cases", requireAuth, casesRouter);
+app.use("/api/staff", requireAuth, staffRouter);
 app.use("/api/support-menus", requireAuth, supportMenusRouter);
 app.use("/api/admin", adminRouter);
 

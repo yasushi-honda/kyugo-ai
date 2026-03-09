@@ -62,6 +62,11 @@ export interface SupportMenu {
   description: string;
 }
 
+export interface StaffSummary {
+  id: string;
+  name: string;
+}
+
 export interface UserInfo {
   uid: string;
   email: string;
@@ -104,6 +109,9 @@ export const api = {
       `/api/cases/${caseId}/consultations/audio`,
       { method: "POST", body: formData },
     ),
+
+  listStaff: () =>
+    request<StaffSummary[]>("/api/staff"),
 
   listSupportMenus: () =>
     request<SupportMenu[]>("/api/support-menus"),

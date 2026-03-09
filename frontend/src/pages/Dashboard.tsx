@@ -10,6 +10,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { user, userInfo, authError } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
+  const [staffMap, setStaffMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showNewCase, setShowNewCase] = useState(false);
 
@@ -17,8 +18,14 @@ export function Dashboard() {
     if (!userInfo) return;
     setLoading(true);
     try {
-      const data = await api.listCases();
+      const [data, staff] = await Promise.all([
+        api.listCases(),
+        api.listStaff(),
+      ]);
       setCases(data);
+      const map: Record<string, string> = {};
+      for (const s of staff) { map[s.id] = s.name; }
+      setStaffMap(map);
     } catch (err) {
       console.error("Failed to load cases:", err);
     } finally {
@@ -108,9 +115,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {c.assignedStaffId === userInfo?.staffId
-                        ? (userInfo.name || userInfo.email)
-                        : c.assignedStaffId}
+                      👤 {staffMap[c.assignedStaffId] || c.assignedStaffId}
                     </div>
                   </div>
                 </div>

@@ -38,10 +38,16 @@ const mockConsultations = [
   },
 ];
 
+const mockStaff = [
+  { id: "staff-001", name: "山田職員" },
+  { id: "staff-002", name: "佐藤職員" },
+];
+
 beforeEach(() => {
   vi.mocked(api.getCase).mockReset();
   vi.mocked(api.listConsultations).mockReset();
   vi.mocked(api.updateCaseStatus).mockReset();
+  vi.mocked(api.listStaff).mockReset().mockResolvedValue(mockStaff);
 });
 
 function renderCaseDetail(caseId = "case-1") {
@@ -110,7 +116,7 @@ describe("CaseDetail", () => {
     });
   });
 
-  it("displays case information", async () => {
+  it("displays case information with staff name resolved", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue([]);
     renderCaseDetail();
@@ -120,9 +126,12 @@ describe("CaseDetail", () => {
     });
     expect(screen.getByText("ID: client-001")).toBeInTheDocument();
     expect(screen.getByText("対応中")).toBeInTheDocument();
+    // staffId → 名前解決
+    expect(screen.getByText("山田職員")).toBeInTheDocument();
+    expect(screen.queryByText("staff-001")).not.toBeInTheDocument();
   });
 
-  it("displays consultation timeline", async () => {
+  it("displays consultation timeline with staff name", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
     renderCaseDetail();
@@ -131,6 +140,8 @@ describe("CaseDetail", () => {
       expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
     });
     expect(screen.getByText("窓口")).toBeInTheDocument();
+    // 相談タイムラインでもstaff名が表示される（サイドバーにも同名あるためgetAllBy）
+    expect(screen.getAllByText("山田職員").length).toBeGreaterThanOrEqual(1);
   });
 
   it("displays AI analysis results in consultation", async () => {

@@ -53,6 +53,7 @@ vi.mock("./services/ai-retry.js", () => ({
 
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
+import { staffRouter } from "./routes/staff.js";
 import { adminRouter } from "./routes/admin.js";
 import { requireAuth } from "./middleware/auth.js";
 import { retryPendingConsultations } from "./services/ai-retry.js";
@@ -71,6 +72,7 @@ const app = express();
 app.use(express.json());
 app.use((req, _res, next) => { req.user = FAKE_USER; next(); });
 app.use("/api/cases", casesRouter);
+app.use("/api/staff", staffRouter);
 app.use("/api/support-menus", supportMenusRouter);
 
 // App with admin user
@@ -1018,6 +1020,45 @@ describe("GET /api/support-menus/:id", () => {
 
     const res = await request(app).get("/api/support-menus/nonexistent");
     expect(res.status).toBe(404);
+  });
+});
+
+// ============================================================
+// GET /api/staff
+// ============================================================
+describe("GET /api/staff", () => {
+  it("returns staff list with id and name", async () => {
+    const mockDocs = [
+      { id: "staff-1", data: () => ({ name: "テスト職員", email: "test@test.com", role: "staff" }) },
+      { id: "staff-2", data: () => ({ name: "管理者", email: "admin@test.com", role: "admin" }) },
+    ];
+    const mockGet = vi.fn().mockResolvedValue({ docs: mockDocs });
+    vi.mocked(firestore.collection).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(app).get("/api/staff");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { id: "staff-1", name: "テスト職員" },
+      { id: "staff-2", name: "管理者" },
+    ]);
+  });
+
+  it("returns empty array when no staff", async () => {
+    const mockGet = vi.fn().mockResolvedValue({ docs: [] });
+    vi.mocked(firestore.collection).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(app).get("/api/staff");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it("returns 500 when Firestore fails", async () => {
+    const mockGet = vi.fn().mockRejectedValue(new Error("Firestore unavailable"));
+    vi.mocked(firestore.collection).mockReturnValue({ get: mockGet } as never);
+
+    const res = await request(app).get("/api/staff");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Internal server error");
   });
 });
 

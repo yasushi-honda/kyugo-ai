@@ -46,8 +46,14 @@ const mockCases = [
 
 import { api } from "../api";
 
+const mockStaff = [
+  { id: "staff-001", name: "山田職員" },
+  { id: "test-staff-001", name: "テスト職員" },
+];
+
 beforeEach(() => {
   vi.mocked(api.listCases).mockReset();
+  vi.mocked(api.listStaff).mockReset().mockResolvedValue(mockStaff);
   vi.mocked(api.getMe).mockReset().mockResolvedValue({
     uid: "test-uid",
     email: "test@example.com",
@@ -130,6 +136,17 @@ describe("Dashboard", () => {
     await waitFor(() => {
       expect(screen.getByText(/職員情報の取得に失敗しました/)).toBeInTheDocument();
     });
+  });
+
+  it("displays staff name instead of staffId", async () => {
+    vi.mocked(api.listCases).mockResolvedValue(mockCases);
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
+    });
+    // staffId("staff-001") → "山田職員" に解決される（👤絵文字と同じテキストノード内）
+    expect(screen.getAllByText(/山田職員/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("displays status labels in Japanese", async () => {
