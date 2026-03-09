@@ -139,30 +139,80 @@ const HELP_SECTIONS: HelpSection[] = [
     note: "AI分析には数秒〜十数秒かかります。完了すると相談記録にAI分析結果が表示されます。",
   },
   {
-    id: "audio-consultation",
-    title: "音声ファイルで相談を記録する",
+    id: "audio-recording",
+    title: "音声で相談を記録する（直接録音）",
     description:
-      "録音した相談音声をアップロードすると、AIが文字起こし・要約・支援メニュー提案を一括で行います。",
-    image: { src: "/help/audio-consultation.png", alt: "音声ファイル入力" },
+      "ブラウザのマイクから直接録音し、AIが文字起こし・要約・支援メニュー提案を一括で行います。タブレット・スマートフォン・PCで利用できます。",
+    image: { src: "/help/audio-recording.png", alt: "ブラウザ直接録音" },
     annotationType: "steps",
     annotations: [
       {
         icon: "1",
         title: "",
-        description: "「音声ファイル」タブに切り替えます",
+        description: "「音声」タブに切り替えます",
       },
       {
         icon: "2",
+        title: "",
+        description:
+          "「🎙️ 録音する」が選択されていることを確認します（デフォルトで選択済み）",
+      },
+      {
+        icon: "3",
+        title: "背景情報",
+        description: "を入力します（任意。相談の事前情報など）",
+      },
+      {
+        icon: "4",
+        title: "",
+        description:
+          "「録音開始」ボタンをクリックしてマイクからの録音を開始します。初回はブラウザからマイクの許可を求められます",
+      },
+      {
+        icon: "5",
+        title: "",
+        description:
+          "録音中は経過時間が表示されます。「⏸ 一時停止」で中断、「▶ 再開」で再開できます",
+      },
+      {
+        icon: "6",
+        title: "",
+        description:
+          "「⏹ 録音停止」をクリックして録音を完了し、「音声を分析・記録」で送信します",
+      },
+    ],
+    note: "ブラウザがマイク録音に対応していない場合は、自動的にファイルアップロードモードに切り替わります。",
+  },
+  {
+    id: "audio-file-upload",
+    title: "音声で相談を記録する（ファイルアップロード）",
+    description:
+      "録音済みの音声ファイルをアップロードして、AIによる文字起こし・分析を行うこともできます。",
+    image: { src: "/help/audio-consultation.png", alt: "音声ファイルアップロード" },
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "",
+        description: "「音声」タブに切り替えます",
+      },
+      {
+        icon: "2",
+        title: "",
+        description: "「📁 ファイルを選択」ボタンをクリックしてファイルアップロードモードに切り替えます",
+      },
+      {
+        icon: "3",
         title: "背景情報",
         description: "を入力します（任意）",
       },
       {
-        icon: "3",
+        icon: "4",
         title: "",
         description: "音声ファイルエリアをクリックしてファイルを選択します",
       },
       {
-        icon: "4",
+        icon: "5",
         title: "",
         description: "「音声を分析・記録」をクリックして送信します",
       },

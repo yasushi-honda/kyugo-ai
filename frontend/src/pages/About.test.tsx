@@ -88,7 +88,7 @@ describe("About", () => {
     expect(screen.getByText("実際の操作画面をご覧ください")).toBeInTheDocument();
     expect(screen.getByAltText("ダッシュボード画面")).toBeInTheDocument();
     expect(screen.getByAltText("AI分析結果画面")).toBeInTheDocument();
-    expect(screen.getByAltText("音声入力画面")).toBeInTheDocument();
+    expect(screen.getByAltText("ブラウザ直接録音画面")).toBeInTheDocument();
     expect(screen.getByText("AI分析・支援メニュー提案")).toBeInTheDocument();
     expect(screen.getByText("音声からの記録")).toBeInTheDocument();
   });

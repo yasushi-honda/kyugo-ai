@@ -7,11 +7,13 @@ class MockMediaRecorder {
   state: "inactive" | "recording" | "paused" = "inactive";
   ondataavailable: ((e: { data: Blob }) => void) | null = null;
   onstop: (() => void) | null = null;
+  stream: MediaStream;
+  options?: { mimeType?: string };
 
-  constructor(
-    public stream: MediaStream,
-    public options?: { mimeType?: string },
-  ) {}
+  constructor(stream: MediaStream, options?: { mimeType?: string }) {
+    this.stream = stream;
+    this.options = options;
+  }
 
   start() {
     this.state = "recording";
@@ -218,7 +220,7 @@ describe("useAudioRecorder", () => {
     const slowPromise = new Promise<MockMediaStream>((resolve) => {
       resolveGetUserMedia = resolve;
     });
-    vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(slowPromise as Promise<MediaStream>);
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(slowPromise as unknown as Promise<MediaStream>);
 
     const { result } = renderHook(() => useAudioRecorder());
 
