@@ -1,54 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useAudioRecorder } from "./useAudioRecorder";
-
-// Mock MediaRecorder
-class MockMediaRecorder {
-  state: "inactive" | "recording" | "paused" = "inactive";
-  ondataavailable: ((e: { data: Blob }) => void) | null = null;
-  onstop: (() => void) | null = null;
-  stream: MediaStream;
-  options?: { mimeType?: string };
-
-  constructor(stream: MediaStream, options?: { mimeType?: string }) {
-    this.stream = stream;
-    this.options = options;
-  }
-
-  start() {
-    this.state = "recording";
-  }
-
-  stop() {
-    this.state = "inactive";
-    // Simulate async ondataavailable + onstop
-    if (this.ondataavailable) {
-      this.ondataavailable({ data: new Blob(["audio-data"], { type: "audio/webm" }) });
-    }
-    if (this.onstop) {
-      this.onstop();
-    }
-  }
-
-  pause() {
-    this.state = "paused";
-  }
-
-  resume() {
-    this.state = "recording";
-  }
-
-  static isTypeSupported(type: string): boolean {
-    return type === "audio/webm;codecs=opus";
-  }
-}
-
-// Mock MediaStream
-class MockMediaStream {
-  getTracks() {
-    return [{ stop: vi.fn() }];
-  }
-}
+import { MockMediaRecorder, MockMediaStream } from "../__mocks__/MockMediaRecorder";
 
 beforeEach(() => {
   vi.useFakeTimers();
