@@ -87,10 +87,10 @@ const SCREENSHOTS: Screenshot[] = [
     description: "相談内容をAIが自動要約し、関連度スコア付きで活用可能な公的制度を提案します。",
   },
   {
-    src: "/help/audio-consultation.png",
-    alt: "音声入力画面",
+    src: "/help/audio-recording.png",
+    alt: "ブラウザ直接録音画面",
     title: "音声からの記録",
-    description: "ブラウザから直接録音、またはファイルをアップロードするだけで、AIが自動で文字起こし・分析まで実行します。",
+    description: "ブラウザのマイクから直接録音、またはファイルをアップロードするだけで、AIが自動で文字起こし・分析まで実行します。",
   },
 ];
 

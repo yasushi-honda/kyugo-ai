@@ -11,8 +11,10 @@ class MockMediaRecorder {
   state = "inactive";
   ondataavailable: ((e: { data: Blob }) => void) | null = null;
   onstop: (() => void) | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(stream: MediaStream, options?: { mimeType?: string }) {}
+  constructor(_stream: MediaStream, _options?: { mimeType?: string }) {
+    void _stream;
+    void _options;
+  }
   start() { this.state = "recording"; }
   stop() { this.state = "inactive"; }
   pause() { this.state = "paused"; }
