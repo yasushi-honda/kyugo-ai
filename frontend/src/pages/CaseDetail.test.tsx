@@ -325,6 +325,20 @@ describe("CaseDetail", () => {
     });
   });
 
+  it("displays case even when listStaff fails", async () => {
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
+    vi.mocked(api.listStaff).mockRejectedValue(new Error("Staff API down"));
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
+    });
+    // staffMapが空なのでstaffIdがフォールバック表示される（サイドバー+タイムラインの2箇所）
+    expect(screen.getAllByText("staff-001").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+  });
+
   it("opens new consultation modal", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue([]);

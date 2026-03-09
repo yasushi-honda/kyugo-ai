@@ -18,11 +18,10 @@ export function Dashboard() {
     if (!userInfo) return;
     setLoading(true);
     try {
-      const [data, staff] = await Promise.all([
-        api.listCases(),
-        api.listStaff(),
-      ]);
+      const data = await api.listCases();
       setCases(data);
+      // staffは補助情報。失敗しても主データの表示を妨げない
+      const staff = await api.listStaff().catch(() => [] as never);
       setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load cases:", err);
@@ -113,7 +112,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {staffMap[c.assignedStaffId] ?? c.assignedStaffId}
+                      👤 {staffMap[c.assignedStaffId] || c.assignedStaffId}
                     </div>
                   </div>
                 </div>

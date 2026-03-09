@@ -21,13 +21,14 @@ export function CaseDetail() {
     setLoading(true);
     setError(null);
     try {
-      const [c, cons, staff] = await Promise.all([
+      const [c, cons] = await Promise.all([
         api.getCase(id),
         api.listConsultations(id),
-        api.listStaff(),
       ]);
       setCaseData(c);
       setConsultations(cons);
+      // staffは補助情報。失敗しても主データの表示を妨げない
+      const staff = await api.listStaff().catch(() => [] as never);
       setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load case:", err);
@@ -124,7 +125,7 @@ export function CaseDetail() {
                           <span className="consultation-type-badge">
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
-                          <span className="consultation-staff">{staffMap[con.staffId] ?? con.staffId}</span>
+                          <span className="consultation-staff">{staffMap[con.staffId] || con.staffId}</span>
                         </div>
 
                         {con.content && (
@@ -200,7 +201,7 @@ export function CaseDetail() {
                   </div>
                   <div>
                     <div className="info-item-label">担当職員</div>
-                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] ?? caseData.assignedStaffId}</div>
+                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || caseData.assignedStaffId}</div>
                   </div>
                   <div>
                     <div className="info-item-label">生年月日</div>

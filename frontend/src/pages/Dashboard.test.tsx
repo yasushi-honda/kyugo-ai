@@ -149,6 +149,18 @@ describe("Dashboard", () => {
     expect(screen.getAllByText(/山田職員/).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("displays cases even when listStaff fails", async () => {
+    vi.mocked(api.listCases).mockResolvedValue(mockCases);
+    vi.mocked(api.listStaff).mockRejectedValue(new Error("Staff API down"));
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
+    });
+    // staffMapが空なのでstaffIdがフォールバック表示される
+    expect(screen.getAllByText(/staff-001/).length).toBeGreaterThanOrEqual(1);
+  });
+
   it("displays status labels in Japanese", async () => {
     vi.mocked(api.listCases).mockResolvedValue(mockCases);
     renderDashboard();
