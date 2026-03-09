@@ -547,6 +547,87 @@ describe("requireAuth middleware", () => {
     expect(res.json).toHaveBeenCalledWith({ error: "Internal server error" });
   });
 
+  it("allows individually listed email even when domain is not allowed", async () => {
+    const originalDomains = process.env.ALLOWED_EMAIL_DOMAINS;
+    const originalEmails = process.env.ALLOWED_EMAILS;
+    process.env.ALLOWED_EMAIL_DOMAINS = "osaka-fujinhome.or.jp";
+    process.env.ALLOWED_EMAILS = "hy.unimail.11@gmail.com";
+
+    vi.resetModules();
+    vi.mock("../config.js", () => ({
+      firebaseAuth: { verifyIdToken: vi.fn(), getUser: vi.fn() },
+      firestore: { collection: vi.fn() },
+    }));
+    const { requireAuth: freshRequireAuth } = await import("./auth.js");
+    const { firebaseAuth: freshFirebaseAuth, firestore: freshFirestore } = await import("../config.js");
+
+    vi.mocked(freshFirebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "gmail-uid",
+      email: "hy.unimail.11@gmail.com",
+      email_verified: true,
+    } as never);
+    vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
+
+    const mockCreate = vi.fn().mockResolvedValue(undefined);
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ id: "gmail-uid", get: mockDocGet, create: mockCreate });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(freshFirestore.collection).mockReturnValue({
+      where: mockWhere,
+      doc: mockDoc,
+    } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer gmail-token");
+
+    await freshRequireAuth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalled();
+
+    process.env.ALLOWED_EMAIL_DOMAINS = originalDomains;
+    process.env.ALLOWED_EMAILS = originalEmails;
+  });
+
+  it("rejects email not in ALLOWED_EMAILS and not matching ALLOWED_EMAIL_DOMAINS", async () => {
+    const originalDomains = process.env.ALLOWED_EMAIL_DOMAINS;
+    const originalEmails = process.env.ALLOWED_EMAILS;
+    process.env.ALLOWED_EMAIL_DOMAINS = "osaka-fujinhome.or.jp";
+    process.env.ALLOWED_EMAILS = "hy.unimail.11@gmail.com";
+
+    vi.resetModules();
+    vi.mock("../config.js", () => ({
+      firebaseAuth: { verifyIdToken: vi.fn(), getUser: vi.fn() },
+      firestore: { collection: vi.fn() },
+    }));
+    const { requireAuth: freshRequireAuth } = await import("./auth.js");
+    const { firebaseAuth: freshFirebaseAuth, firestore: freshFirestore } = await import("../config.js");
+
+    vi.mocked(freshFirebaseAuth.verifyIdToken).mockResolvedValue({
+      uid: "random-uid",
+      email: "random@gmail.com",
+      email_verified: true,
+    } as never);
+    vi.mocked(freshFirebaseAuth.getUser).mockResolvedValue({ disabled: false } as never);
+
+    const mockDocGet = vi.fn().mockResolvedValue({ exists: false });
+    const mockDoc = vi.fn().mockReturnValue({ get: mockDocGet });
+    const mockQueryGet = vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const mockWhere = vi.fn().mockReturnValue({ get: mockQueryGet });
+    vi.mocked(freshFirestore.collection).mockReturnValue({ doc: mockDoc, where: mockWhere } as never);
+
+    const { req, res, next } = mockReqResNext("Bearer random-token");
+
+    await freshRequireAuth(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed" });
+
+    process.env.ALLOWED_EMAIL_DOMAINS = originalDomains;
+    process.env.ALLOWED_EMAILS = originalEmails;
+  });
+
   it("uses doc(uid) as primary lookup for staff", async () => {
     vi.mocked(firebaseAuth.verifyIdToken).mockResolvedValue({
       uid: "direct-uid",

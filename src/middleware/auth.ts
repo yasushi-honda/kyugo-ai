@@ -7,13 +7,20 @@ const parsedDomains = process.env.ALLOWED_EMAIL_DOMAINS
   : null;
 const allowedDomains = parsedDomains && parsedDomains.length > 0 ? parsedDomains : null;
 
-if (!allowedDomains) {
-  console.warn("WARNING: ALLOWED_EMAIL_DOMAINS is not set. Any authenticated user can auto-provision as staff.");
+const parsedEmails = process.env.ALLOWED_EMAILS
+  ? process.env.ALLOWED_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter((e) => e.length > 0)
+  : null;
+const allowedEmails = parsedEmails && parsedEmails.length > 0 ? parsedEmails : null;
+
+if (!allowedDomains && !allowedEmails) {
+  console.warn("WARNING: ALLOWED_EMAIL_DOMAINS and ALLOWED_EMAILS are not set. Any authenticated user can auto-provision as staff.");
 }
 
 function isEmailAllowed(email: string): boolean {
-  if (!allowedDomains) return true;
-  const domain = email.split("@")[1]?.toLowerCase();
+  const lowerEmail = email.toLowerCase();
+  if (allowedEmails && allowedEmails.includes(lowerEmail)) return true;
+  if (!allowedDomains) return !allowedEmails;
+  const domain = lowerEmail.split("@")[1];
   return !!domain && allowedDomains.includes(domain);
 }
 

@@ -72,6 +72,6 @@ jobs:
             --memory=512Mi \
             --min-instances=0 \
             --max-instances=3 \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},GCP_REGION=${{ env.REGION }}" \
+            --set-env-vars="^::^GCP_PROJECT_ID=${{ env.PROJECT_ID }}::GCP_REGION=${{ env.REGION }}::ALLOWED_EMAIL_DOMAINS=osaka-fujinhome.or.jp::ALLOWED_EMAILS=hy.unimail.11@gmail.com" \
             --service-account=kyugo-ai-deployer@kyugo-ai-dev.iam.gserviceaccount.com \
             --quiet
