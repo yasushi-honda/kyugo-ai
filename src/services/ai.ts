@@ -1,5 +1,5 @@
 import { generativeModel } from "../config.js";
-import { AISummaryResult, AudioAnalysisResult, Consultation, SupportMenu } from "../types.js";
+import { AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu } from "../types.js";
 
 const SYSTEM_INSTRUCTION_TEXT = `あなたは福祉相談支援AIアシスタントです。
 生活困窮者の相談内容を分析し、以下を行います：
@@ -141,4 +141,95 @@ ${buildMenuList(availableMenus)}
     }));
   }
   return parseAIResponse<AudioAnalysisResult>(responseText, ["transcript", "summary", "suggestedSupports"]);
+}
+
+// 個別支援計画書の下書き生成
+const SYSTEM_INSTRUCTION_SUPPORT_PLAN = `あなたは救護施設の個別支援計画策定を支援するAIアシスタントです。
+厚生労働省委託「救護施設・更生施設における個別支援計画 策定導入マニュアル」（令和6年3月、全社協発行）の標準様式に準拠した
+個別支援計画書の下書きを生成します。
+
+以下の原則に従ってください：
+- 利用者本人の希望・意向を最大限尊重した目標設定
+- ICF（国際生活機能分類）の視点で生活機能を多面的に評価
+- 長期目標は6ヶ月〜1年、短期目標は3ヶ月程度の期間設定
+- 具体的・測定可能な目標表現（「〜できるようになる」「〜の頻度を週X回にする」等）
+- 支援領域は日常生活・健康管理・社会参加・経済的自立等から該当するものを選択
+
+回答は必ず以下のJSON形式で返してください：
+{
+  "overallPolicy": "全体的な支援方針（利用者の状況と目指す方向性を200文字以内で）",
+  "goals": [
+    {
+      "area": "支援領域（例: 日常生活、健康管理、社会参加、経済的自立）",
+      "longTermGoal": "長期目標（6ヶ月〜1年）",
+      "shortTermGoal": "短期目標（3ヶ月）",
+      "supports": ["具体的な支援内容1", "具体的な支援内容2"],
+      "frequency": "支援頻度（例: 毎日、週3回、月1回）",
+      "responsible": "担当者・機関（例: 生活支援員、看護師、外部医療機関）"
+    }
+  ],
+  "specialNotes": "特記事項（アレルギー、服薬情報、家族関係等、支援上の留意点）"
+}`;
+
+export async function generateSupportPlanDraft(
+  caseData: Case,
+  consultations: Consultation[],
+  availableMenus: SupportMenu[],
+): Promise<AISupportPlanResult> {
+  // 相談記録の要約を時系列で構成
+  const consultationSummaries = consultations
+    .filter((c) => c.aiStatus === "completed" && c.summary)
+    .map((c) => {
+      const supports = c.suggestedSupports
+        .map((s) => `  - ${s.menuName}（${s.reason}、関連度: ${Math.round(s.relevanceScore * 100)}%）`)
+        .join("\n");
+      return `### ${c.consultationType} 相談（${c.createdAt}）
+内容: ${c.content}
+AI要約: ${c.summary}
+提案された支援メニュー:
+${supports || "  なし"}`;
+    })
+    .join("\n\n");
+
+  const userPrompt = `## 利用者情報
+- 氏名: ${caseData.clientName}
+- ID: ${caseData.clientId}
+- 生年月日: ${caseData.dateOfBirth}
+- ケース状態: ${caseData.status}
+
+## 世帯情報
+${JSON.stringify(caseData.householdInfo || {})}
+
+## 収入情報
+${JSON.stringify(caseData.incomeInfo || {})}
+
+## 相談記録（${consultations.length}件）
+${consultationSummaries || "（相談記録なし）"}
+
+## 利用可能な支援メニュー
+${buildMenuList(availableMenus)}
+
+上記の情報を基に、この利用者の個別支援計画書の下書きを作成してください。
+相談記録のAI要約と提案された支援メニューを踏まえ、具体的な長期・短期目標と支援内容を提案してください。`;
+
+  const result = await generativeModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    systemInstruction: { role: "system", parts: [{ text: SYSTEM_INSTRUCTION_SUPPORT_PLAN }] },
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.4,
+      maxOutputTokens: 8192,
+    },
+  });
+
+  const candidate = result.response.candidates?.[0];
+  const responseText = candidate?.content?.parts?.[0]?.text;
+  if (!responseText) {
+    console.error("Vertex AI empty support plan response", JSON.stringify({
+      finishReason: candidate?.finishReason,
+      safetyRatings: candidate?.safetyRatings,
+      candidatesCount: result.response.candidates?.length ?? 0,
+    }));
+  }
+  return parseAIResponse<AISupportPlanResult>(responseText, ["overallPolicy", "goals", "specialNotes"]);
 }

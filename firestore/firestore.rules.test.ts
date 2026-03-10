@@ -164,6 +164,88 @@ describe("cases", () => {
 });
 
 // ============================================================
+// supportPlans サブコレクション
+// ============================================================
+describe("supportPlans", () => {
+  async function setupSupportPlanData(caseId: string, planId: string, assignedStaffId: string) {
+    await setupCaseData(caseId, assignedStaffId);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "cases", caseId, "supportPlans", planId), {
+        staffId: assignedStaffId,
+        status: "draft",
+        clientName: "テスト太郎",
+        overallPolicy: "支援方針",
+        goals: [],
+        specialNotes: "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    });
+  }
+
+  it("未認証ユーザーは支援計画書を読み取れない", async () => {
+    await setupSupportPlanData("case-1", "plan-1", STAFF_UID);
+    const db = unauthContext().firestore();
+    await assertFails(getDoc(doc(db, "cases", "case-1", "supportPlans", "plan-1")));
+  });
+
+  it("親ケース担当者は支援計画書を読み取れる", async () => {
+    await setupSupportPlanData("case-1", "plan-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertSucceeds(getDoc(doc(db, "cases", "case-1", "supportPlans", "plan-1")));
+  });
+
+  it("非担当者は支援計画書を読み取れない", async () => {
+    await setupSupportPlanData("case-1", "plan-1", STAFF_UID);
+    const db = staffContext(OTHER_STAFF_UID).firestore();
+    await assertFails(getDoc(doc(db, "cases", "case-1", "supportPlans", "plan-1")));
+  });
+
+  it("親ケース担当者は支援計画書を作成できる", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertSucceeds(addDoc(collection(db, "cases", "case-1", "supportPlans"), {
+      staffId: STAFF_UID,
+      status: "draft",
+      clientName: "テスト太郎",
+      overallPolicy: "支援方針",
+      goals: [],
+      specialNotes: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
+  it("非担当者は支援計画書を作成できない", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = staffContext(OTHER_STAFF_UID).firestore();
+    await assertFails(addDoc(collection(db, "cases", "case-1", "supportPlans"), {
+      staffId: OTHER_STAFF_UID,
+      status: "draft",
+      clientName: "テスト太郎",
+      overallPolicy: "支援方針",
+      goals: [],
+      specialNotes: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  });
+
+  it("adminは支援計画書を更新できる", async () => {
+    await setupSupportPlanData("case-1", "plan-1", STAFF_UID);
+    const db = adminContext().firestore();
+    await assertSucceeds(updateDoc(doc(db, "cases", "case-1", "supportPlans", "plan-1"), { status: "confirmed" }));
+  });
+
+  it("支援計画書の削除は禁止", async () => {
+    await setupSupportPlanData("case-1", "plan-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(deleteDoc(doc(db, "cases", "case-1", "supportPlans", "plan-1")));
+  });
+});
+
+// ============================================================
 // consultations サブコレクション
 // ============================================================
 describe("consultations", () => {

@@ -8,6 +8,7 @@ import {
   updateCaseStatusSchema,
 } from "../schemas/case.js";
 import { consultationsRouter } from "./consultations.js";
+import { supportPlansRouter } from "./support-plans.js";
 
 function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
   const result = schema.safeParse(data);
@@ -23,6 +24,9 @@ export const casesRouter = Router();
 
 // 相談記録ルートを委譲
 casesRouter.use("/:id/consultations", consultationsRouter);
+
+// 支援計画書ルートを委譲
+casesRouter.use("/:id/support-plan", supportPlansRouter);
 
 // POST /api/cases - ケース作成（assignedStaffIdはreq.userから強制）
 casesRouter.post("/", async (req: Request, res: Response) => {

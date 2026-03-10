@@ -84,6 +84,32 @@ export interface StaffDetail {
   createdAt: { _seconds: number } | null;
 }
 
+export interface SupportPlanGoal {
+  area: string;
+  longTermGoal: string;
+  shortTermGoal: string;
+  supports: string[];
+  frequency: string;
+  responsible: string;
+}
+
+export interface SupportPlan {
+  id: string;
+  caseId: string;
+  staffId: string;
+  status: "draft" | "confirmed";
+  clientName: string;
+  clientId: string;
+  overallPolicy: string;
+  goals: SupportPlanGoal[];
+  specialNotes: string;
+  planStartDate: string;
+  nextReviewDate: string;
+  confirmedAt?: { _seconds: number };
+  createdAt: { _seconds: number };
+  updatedAt: { _seconds: number };
+}
+
 /** StaffSummary[] → { [id]: name } マップに変換 */
 export function buildStaffMap(staff: StaffSummary[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -146,6 +172,19 @@ export const api = {
 
   updateStaff: (id: string, data: { role?: "admin" | "staff"; disabled?: boolean }) =>
     request<StaffDetail>(`/api/admin-settings/staff/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  // 支援計画書
+  generateSupportPlanDraft: (caseId: string) =>
+    request<SupportPlan>(`/api/cases/${caseId}/support-plan/draft`, { method: "POST" }),
+
+  getSupportPlan: (caseId: string) =>
+    request<SupportPlan>(`/api/cases/${caseId}/support-plan`),
+
+  updateSupportPlan: (caseId: string, planId: string, data: Partial<SupportPlan>) =>
+    request<SupportPlan>(`/api/cases/${caseId}/support-plan/${planId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
