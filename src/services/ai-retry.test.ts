@@ -25,12 +25,18 @@ vi.mock("../repositories/support-menu-repository.js", () => ({
 
 vi.mock("../services/ai.js", () => ({
   analyzeConsultation: vi.fn(),
+  analyzeAudioConsultation: vi.fn(),
+}));
+
+vi.mock("../services/audio-storage.js", () => ({
+  downloadAudio: vi.fn().mockResolvedValue({ buffer: Buffer.from("fake"), mimeType: "audio/wav" }),
 }));
 
 import { retryPendingConsultations } from "./ai-retry.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
-import { analyzeConsultation } from "../services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
+import { downloadAudio } from "./audio-storage.js";
 import type { Consultation, SupportMenu } from "../types.js";
 
 const MOCK_MENUS: SupportMenu[] = [
@@ -89,7 +95,7 @@ describe("retryPendingConsultations", () => {
       "case-1", "cons-1", "retrying",
     );
     expect(consultationRepo.updateConsultationAIResults).toHaveBeenCalledWith(
-      "case-1", "cons-1", "リトライ成功の要約", [],
+      "case-1", "cons-1", "リトライ成功の要約", [], undefined,
     );
   });
 
@@ -287,5 +293,45 @@ describe("retryPendingConsultations", () => {
     expect(result.processed).toBe(2);
     expect(result.failed).toBe(2);
     // 例外が上位に伝播せず、2件とも処理されること
+  });
+
+  it("audioStoragePathがある場合はGCSから音声を取得してanalyzeAudioConsultationで再解析する", async () => {
+    const consultation = mockConsultation({
+      audioStoragePath: "cases/case-1/consultations/cons-1/audio.wav",
+      audioMimeType: "audio/wav",
+      content: "背景情報",
+    });
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([consultation]);
+    vi.mocked(analyzeAudioConsultation).mockResolvedValue({
+      transcript: "音声の文字起こし",
+      summary: "音声リトライの要約",
+      suggestedSupports: [],
+    });
+
+    const result = await retryPendingConsultations();
+
+    expect(result.succeeded).toBe(1);
+    expect(downloadAudio).toHaveBeenCalledWith("cases/case-1/consultations/cons-1/audio.wav");
+    expect(analyzeAudioConsultation).toHaveBeenCalled();
+    expect(analyzeConsultation).not.toHaveBeenCalled();
+    expect(consultationRepo.updateConsultationAIResults).toHaveBeenCalledWith(
+      "case-1", "cons-1", "音声リトライの要約", [], "音声の文字起こし",
+    );
+  });
+
+  it("audioStoragePathがない場合はテキストベースでリトライする", async () => {
+    const consultation = mockConsultation({ content: "テスト相談" });
+    vi.mocked(consultationRepo.listRetryPendingConsultations).mockResolvedValue([consultation]);
+    vi.mocked(analyzeConsultation).mockResolvedValue({
+      summary: "テキストリトライの要約",
+      suggestedSupports: [],
+    });
+
+    const result = await retryPendingConsultations();
+
+    expect(result.succeeded).toBe(1);
+    expect(downloadAudio).not.toHaveBeenCalled();
+    expect(analyzeConsultation).toHaveBeenCalled();
+    expect(analyzeAudioConsultation).not.toHaveBeenCalled();
   });
 });

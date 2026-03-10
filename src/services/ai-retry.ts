@@ -1,7 +1,8 @@
 import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
-import { analyzeConsultation } from "./ai.js";
+import { analyzeConsultation, analyzeAudioConsultation } from "./ai.js";
+import { downloadAudio } from "./audio-storage.js";
 import { isTransientError } from "../utils/error.js";
 import { AI_RETRY_CONFIG } from "../types.js";
 
@@ -50,16 +51,33 @@ export async function retryPendingConsultations(): Promise<RetryResult> {
     }
 
     try {
-      const aiResult = await analyzeConsultation(
-        { content: consultation.content, transcript: consultation.transcript },
-        menus,
-      );
+      let summary: string;
+      let suggestedSupports: { menuId: string; menuName: string; reason: string; relevanceScore: number }[];
+      let transcript: string | undefined;
+
+      if (consultation.audioStoragePath) {
+        // 音声ファイルがGCSに永続化されている場合、音声ベースで再解析
+        const audio = await downloadAudio(consultation.audioStoragePath);
+        const aiResult = await analyzeAudioConsultation(audio.buffer, audio.mimeType, consultation.content, menus);
+        summary = aiResult.summary;
+        suggestedSupports = aiResult.suggestedSupports;
+        transcript = aiResult.transcript;
+      } else {
+        // テキストのみの相談（音声なし）
+        const aiResult = await analyzeConsultation(
+          { content: consultation.content, transcript: consultation.transcript },
+          menus,
+        );
+        summary = aiResult.summary;
+        suggestedSupports = aiResult.suggestedSupports;
+      }
 
       await consultationRepo.updateConsultationAIResults(
         consultation.caseId,
         consultation.id!,
-        aiResult.summary,
-        aiResult.suggestedSupports,
+        summary,
+        suggestedSupports,
+        transcript,
       );
       result.succeeded++;
       console.log(`AI retry succeeded for consultation ${consultation.id} (attempt ${currentRetryCount})`);

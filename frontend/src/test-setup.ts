@@ -21,6 +21,7 @@ vi.mock("./api", async (importOriginal) => {
       listConsultations: vi.fn().mockResolvedValue([]),
       createConsultation: vi.fn(),
       createAudioConsultation: vi.fn(),
+      getConsultation: vi.fn(),
       listStaff: vi.fn().mockResolvedValue([]),
       listSupportMenus: vi.fn().mockResolvedValue([]),
       getAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
