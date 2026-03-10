@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import type { ZodType } from "zod";
 import * as supportPlanRepo from "../repositories/support-plan-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
@@ -7,16 +6,7 @@ import { generateSupportPlanDraft } from "../services/ai.js";
 import { requireCaseAccess } from "../middleware/authz.js";
 import { updateSupportPlanSchema } from "../schemas/case.js";
 import { Case } from "../types.js";
-
-function paramStr(value: string | string[]): string {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
-  const result = schema.safeParse(data);
-  if (result.success) return { success: true, data: result.data };
-  return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
-}
+import { paramStr, validate, formatDateString } from "./utils.js";
 
 export const supportPlansRouter = Router({ mergeParams: true });
 
@@ -41,16 +31,13 @@ supportPlansRouter.post("/draft", async (req: Request, res: Response) => {
       return;
     }
 
-    // AI生成
-    const aiResult = await generateSupportPlanDraft(caseData, consultations, menus);
+    // AI生成（フィルタ済みの相談記録を渡す）
+    const aiResult = await generateSupportPlanDraft(caseData, completedConsultations, menus);
 
     // 計画開始日: 今日、次回見直し日: 3ヶ月後
     const today = new Date();
     const reviewDate = new Date(today);
     reviewDate.setMonth(reviewDate.getMonth() + 3);
-
-    const formatDate = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
     const plan = await supportPlanRepo.createSupportPlan(caseId, {
       staffId: req.user!.staffId,
@@ -60,8 +47,8 @@ supportPlansRouter.post("/draft", async (req: Request, res: Response) => {
       overallPolicy: aiResult.overallPolicy,
       goals: aiResult.goals,
       specialNotes: aiResult.specialNotes,
-      planStartDate: formatDate(today),
-      nextReviewDate: formatDate(reviewDate),
+      planStartDate: formatDateString(today),
+      nextReviewDate: formatDateString(reviewDate),
     });
 
     res.status(201).json(plan);

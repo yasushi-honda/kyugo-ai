@@ -136,6 +136,45 @@ export interface AISupportPlanResult {
   specialNotes: string;
 }
 
+// モニタリングシート
+export type MonitoringProgress = "improved" | "maintained" | "declined" | "not_started";
+
+export interface MonitoringGoalEvaluation {
+  area: string; // 支援領域（SupportPlanGoalのareaと対応）
+  longTermGoal: string; // 長期目標（参照用）
+  shortTermGoal: string; // 短期目標（参照用）
+  progress: MonitoringProgress; // 進捗状況
+  evaluation: string; // 達成状況の評価コメント
+  nextAction: string; // 今後の対応方針
+}
+
+export interface MonitoringSheet {
+  id?: string;
+  caseId: string;
+  supportPlanId: string; // 紐付く支援計画
+  staffId: string; // 作成者
+  status: SupportPlanStatus; // draft | confirmed（SupportPlanStatusを再利用）
+  monitoringDate: string; // YYYY-MM-DD
+  overallEvaluation: string; // 全体評価
+  goalEvaluations: MonitoringGoalEvaluation[]; // 目標ごとの進捗評価
+  environmentChanges: string; // 生活環境の変化
+  clientFeedback: string; // 本人の意向・感想
+  specialNotes: string; // 特記事項
+  nextMonitoringDate: string; // 次回モニタリング予定
+  confirmedAt?: Timestamp; // 確定日時
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// AI生成のモニタリングシート下書きレスポンス
+export interface AIMonitoringResult {
+  overallEvaluation: string;
+  goalEvaluations: MonitoringGoalEvaluation[];
+  environmentChanges: string;
+  clientFeedback: string;
+  specialNotes: string;
+}
+
 // 対応する音声フォーマット
 export const SUPPORTED_AUDIO_MIME_TYPES = [
   "audio/wav",

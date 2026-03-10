@@ -110,6 +110,33 @@ export interface SupportPlan {
   updatedAt: { _seconds: number };
 }
 
+export interface MonitoringGoalEvaluation {
+  area: string;
+  longTermGoal: string;
+  shortTermGoal: string;
+  progress: "improved" | "maintained" | "declined" | "not_started";
+  evaluation: string;
+  nextAction: string;
+}
+
+export interface MonitoringSheet {
+  id: string;
+  caseId: string;
+  supportPlanId: string;
+  staffId: string;
+  status: "draft" | "confirmed";
+  monitoringDate: string;
+  overallEvaluation: string;
+  goalEvaluations: MonitoringGoalEvaluation[];
+  environmentChanges: string;
+  clientFeedback: string;
+  specialNotes: string;
+  nextMonitoringDate: string;
+  confirmedAt?: { _seconds: number };
+  createdAt: { _seconds: number };
+  updatedAt: { _seconds: number };
+}
+
 /** StaffSummary[] → { [id]: name } マップに変換 */
 export function buildStaffMap(staff: StaffSummary[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -185,6 +212,19 @@ export const api = {
 
   updateSupportPlan: (caseId: string, planId: string, data: Partial<SupportPlan>) =>
     request<SupportPlan>(`/api/cases/${caseId}/support-plan/${planId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  // モニタリングシート
+  generateMonitoringDraft: (caseId: string) =>
+    request<MonitoringSheet>(`/api/cases/${caseId}/monitoring/draft`, { method: "POST" }),
+
+  getMonitoringSheet: (caseId: string) =>
+    request<MonitoringSheet>(`/api/cases/${caseId}/monitoring`),
+
+  updateMonitoringSheet: (caseId: string, sheetId: string, data: Partial<MonitoringSheet>) =>
+    request<MonitoringSheet>(`/api/cases/${caseId}/monitoring/${sheetId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),

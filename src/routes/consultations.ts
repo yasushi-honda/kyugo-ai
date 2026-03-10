@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
-import type { ZodType } from "zod";
 import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
@@ -12,12 +11,7 @@ import {
   createConsultationSchema,
   createAudioConsultationSchema,
 } from "../schemas/case.js";
-
-function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
-  const result = schema.safeParse(data);
-  if (result.success) return { success: true, data: result.data };
-  return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
-}
+import { paramStr, validate } from "./utils.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -30,10 +24,6 @@ const upload = multer({
     }
   },
 });
-
-function paramStr(value: string | string[]): string {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 // AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
 async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {

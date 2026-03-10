@@ -33,6 +33,17 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // モニタリングシート（サブコレクション）: 親ケースの担当職員 or admin
+      match /monitoringSheets/{sheetId} {
+        allow read: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow create: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow update: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow delete: if false;
+      }
+
       // 相談記録（サブコレクション）: 親ケースの担当職員 or admin
       match /consultations/{consultationId} {
         allow read: if request.auth != null

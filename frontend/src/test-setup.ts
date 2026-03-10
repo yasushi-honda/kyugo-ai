@@ -30,6 +30,9 @@ vi.mock("./api", async (importOriginal) => {
       generateSupportPlanDraft: vi.fn(),
       getSupportPlan: vi.fn().mockRejectedValue(new Error("Not found")),
       updateSupportPlan: vi.fn(),
+      generateMonitoringDraft: vi.fn(),
+      getMonitoringSheet: vi.fn().mockRejectedValue(new Error("Not found")),
+      updateMonitoringSheet: vi.fn(),
     },
   };
 });
