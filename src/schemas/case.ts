@@ -38,3 +38,9 @@ export const createAudioConsultationSchema = z.object({
   consultationType: consultationTypeEnum,
   context: z.string().max(10000).optional().default(""),
 });
+
+// 管理者設定: ログイン許可リスト
+export const allowedEmailsSchema = z.object({
+  emails: z.array(z.string().email({ error: "Invalid email address" }).max(254)).max(500),
+  domains: z.array(z.string().min(1).max(253).regex(/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i, { error: "Invalid domain format" })).max(200),
+});

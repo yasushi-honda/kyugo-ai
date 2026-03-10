@@ -1210,16 +1210,30 @@ describe("PUT /api/admin-settings/allowed-emails", () => {
 
     const res = await request(adminApp)
       .put("/api/admin-settings/allowed-emails")
-      .send({ emails: ["  User@Example.COM  ", "user@example.com"], domains: ["Example.COM", ""] });
+      .send({ emails: ["User@Example.COM", "user@example.com"], domains: ["Example.COM", "another.org"] });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       emails: ["user@example.com"],
-      domains: ["example.com"],
+      domains: ["example.com", "another.org"],
     });
     expect(mockSet).toHaveBeenCalledWith(
-      expect.objectContaining({ emails: ["user@example.com"], domains: ["example.com"] }),
+      expect.objectContaining({ emails: ["user@example.com"], domains: ["example.com", "another.org"] }),
     );
+  });
+
+  it("returns 400 for invalid email format", async () => {
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: ["not-an-email"], domains: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for invalid domain format", async () => {
+    const res = await request(adminApp)
+      .put("/api/admin-settings/allowed-emails")
+      .send({ emails: [], domains: [""] });
+    expect(res.status).toBe(400);
   });
 
   it("returns 500 when Firestore write fails", async () => {
