@@ -22,6 +22,17 @@ service cloud.firestore {
       // delete禁止（論理削除のみ）
       allow delete: if false;
 
+      // 個別支援計画書（サブコレクション）: 親ケースの担当職員 or admin
+      match /supportPlans/{planId} {
+        allow read: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow create: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow update: if request.auth != null
+          && (isAdmin() || get(/databases/$(database)/documents/cases/$(caseId)).data.assignedStaffId == request.auth.uid);
+        allow delete: if false;
+      }
+
       // 相談記録（サブコレクション）: 親ケースの担当職員 or admin
       match /consultations/{consultationId} {
         allow read: if request.auth != null

@@ -100,6 +100,42 @@ export interface AudioAnalysisResult extends AISummaryResult {
   transcript: string;
 }
 
+// 個別支援計画書
+export type SupportPlanStatus = "draft" | "confirmed";
+
+export interface SupportPlanGoal {
+  area: string; // 支援領域（例: 日常生活、健康管理、社会参加）
+  longTermGoal: string; // 長期目標
+  shortTermGoal: string; // 短期目標
+  supports: string[]; // 具体的な支援内容
+  frequency: string; // 支援頻度
+  responsible: string; // 担当者・機関
+}
+
+export interface SupportPlan {
+  id?: string;
+  caseId: string;
+  staffId: string; // 作成者
+  status: SupportPlanStatus;
+  clientName: string;
+  clientId: string;
+  overallPolicy: string; // 全体的な支援方針
+  goals: SupportPlanGoal[]; // 目標・支援内容一覧
+  specialNotes: string; // 特記事項
+  planStartDate: string; // 計画開始日（YYYY-MM-DD）
+  nextReviewDate: string; // 次回見直し日（YYYY-MM-DD）
+  confirmedAt?: Timestamp; // 確定日時
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// AI生成の支援計画下書きレスポンス
+export interface AISupportPlanResult {
+  overallPolicy: string;
+  goals: SupportPlanGoal[];
+  specialNotes: string;
+}
+
 // 対応する音声フォーマット
 export const SUPPORTED_AUDIO_MIME_TYPES = [
   "audio/wav",

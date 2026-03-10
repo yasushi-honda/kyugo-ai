@@ -44,9 +44,18 @@ vi.mock("./repositories/support-menu-repository.js", () => ({
   listSupportMenus: vi.fn(),
 }));
 
+vi.mock("./repositories/support-plan-repository.js", () => ({
+  createSupportPlan: vi.fn(),
+  getSupportPlan: vi.fn(),
+  getLatestSupportPlan: vi.fn(),
+  listSupportPlans: vi.fn(),
+  updateSupportPlan: vi.fn(),
+}));
+
 vi.mock("./services/ai.js", () => ({
   analyzeConsultation: vi.fn(),
   analyzeAudioConsultation: vi.fn(),
+  generateSupportPlanDraft: vi.fn(),
 }));
 
 vi.mock("./services/ai-retry.js", () => ({
@@ -63,7 +72,8 @@ import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation, analyzeAudioConsultation } from "./services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation, generateSupportPlanDraft } from "./services/ai.js";
+import * as supportPlanRepo from "./repositories/support-plan-repository.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
@@ -1411,5 +1421,186 @@ describe("PATCH /api/admin-settings/staff/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.disabled).toBe(true);
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ disabled: true }));
+  });
+});
+
+// ============================================================
+// Support Plan API
+// ============================================================
+
+const MOCK_CONSULTATION_COMPLETED = {
+  id: "cons-1",
+  caseId: "case-1",
+  staffId: "staff-1",
+  content: "生活困窮の相談",
+  transcript: "",
+  summary: "生活保護の相談。収入が低く生活が困難。",
+  suggestedSupports: [{ menuId: "m1", menuName: "生活保護", reason: "収入不足", relevanceScore: 0.9 }],
+  consultationType: "visit" as const,
+  aiStatus: "completed" as const,
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
+const MOCK_SUPPORT_PLAN = {
+  id: "plan-1",
+  caseId: "case-1",
+  staffId: "staff-1",
+  status: "draft" as const,
+  clientName: "テスト太郎",
+  clientId: "client-001",
+  overallPolicy: "生活保護受給に向けた支援",
+  goals: [{
+    area: "経済的自立",
+    longTermGoal: "安定した生活基盤の確立",
+    shortTermGoal: "生活保護の申請手続き完了",
+    supports: ["生活保護申請支援", "家計相談"],
+    frequency: "週1回",
+    responsible: "生活支援員",
+  }],
+  specialNotes: "持病あり",
+  planStartDate: "2026-03-10",
+  nextReviewDate: "2026-06-10",
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
+describe("Support Plan API", () => {
+  describe("POST /api/cases/:id/support-plan/draft", () => {
+    it("generates a support plan draft from consultations", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([MOCK_CONSULTATION_COMPLETED]);
+      vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+      vi.mocked(generateSupportPlanDraft).mockResolvedValue({
+        overallPolicy: "生活保護受給に向けた支援",
+        goals: MOCK_SUPPORT_PLAN.goals,
+        specialNotes: "持病あり",
+      });
+      vi.mocked(supportPlanRepo.createSupportPlan).mockResolvedValue(MOCK_SUPPORT_PLAN);
+
+      const res = await request(app).post("/api/cases/case-1/support-plan/draft");
+      expect(res.status).toBe(201);
+      expect(res.body.overallPolicy).toBe("生活保護受給に向けた支援");
+      expect(res.body.goals).toHaveLength(1);
+      expect(generateSupportPlanDraft).toHaveBeenCalledWith(
+        MOCK_CASE,
+        [MOCK_CONSULTATION_COMPLETED],
+        [],
+      );
+    });
+
+    it("returns 400 when no completed consultations exist", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([
+        { ...MOCK_CONSULTATION_COMPLETED, aiStatus: "pending" as const, summary: "" },
+      ]);
+      vi.mocked(supportMenuRepo.listSupportMenus).mockResolvedValue([]);
+
+      const res = await request(app).post("/api/cases/case-1/support-plan/draft");
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("AI分析が完了した相談記録がありません");
+    });
+
+    it("returns 403 for unauthorized access", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(OTHER_STAFF_CASE);
+
+      const res = await request(app).post("/api/cases/case-other/support-plan/draft");
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("GET /api/cases/:id/support-plan", () => {
+    it("returns the latest support plan", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(MOCK_SUPPORT_PLAN);
+
+      const res = await request(app).get("/api/cases/case-1/support-plan");
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe("plan-1");
+      expect(res.body.status).toBe("draft");
+    });
+
+    it("returns 404 when no support plan exists", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(null);
+
+      const res = await request(app).get("/api/cases/case-1/support-plan");
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PATCH /api/cases/:id/support-plan/:planId", () => {
+    it("updates a draft support plan", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.updateSupportPlan).mockResolvedValue({
+        ...MOCK_SUPPORT_PLAN,
+        overallPolicy: "更新された支援方針",
+      });
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/support-plan/plan-1")
+        .send({ overallPolicy: "更新された支援方針" });
+      expect(res.status).toBe(200);
+      expect(res.body.overallPolicy).toBe("更新された支援方針");
+    });
+
+    it("confirms a support plan", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.updateSupportPlan).mockResolvedValue({
+        ...MOCK_SUPPORT_PLAN,
+        status: "confirmed",
+        confirmedAt: NOW,
+      });
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/support-plan/plan-1")
+        .send({ status: "confirmed" });
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("confirmed");
+    });
+
+    it("returns 400 when editing a confirmed plan", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.updateSupportPlan).mockRejectedValue(
+        new Error("Cannot edit a confirmed support plan"),
+      );
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/support-plan/plan-1")
+        .send({ overallPolicy: "変更" });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 for non-existent plan", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.updateSupportPlan).mockRejectedValue(
+        new Error("SupportPlan nonexistent not found"),
+      );
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/support-plan/nonexistent")
+        .send({ overallPolicy: "変更" });
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 400 for invalid input", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/support-plan/plan-1")
+        .send({ status: "invalid_status" });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /api/cases/:id/support-plan/list", () => {
+    it("returns all support plans for a case", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.listSupportPlans).mockResolvedValue([MOCK_SUPPORT_PLAN]);
+
+      const res = await request(app).get("/api/cases/case-1/support-plan/list");
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+    });
   });
 });

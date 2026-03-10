@@ -39,6 +39,25 @@ export const createAudioConsultationSchema = z.object({
   context: z.string().max(10000).optional().default(""),
 });
 
+// 個別支援計画書
+const supportPlanGoalSchema = z.object({
+  area: z.string().min(1).max(100),
+  longTermGoal: z.string().min(1).max(500),
+  shortTermGoal: z.string().min(1).max(500),
+  supports: z.array(z.string().min(1).max(500)).min(1).max(20),
+  frequency: z.string().min(1).max(100),
+  responsible: z.string().min(1).max(200),
+});
+
+export const updateSupportPlanSchema = z.object({
+  overallPolicy: z.string().min(1).max(2000).optional(),
+  goals: z.array(supportPlanGoalSchema).min(1).max(20).optional(),
+  specialNotes: z.string().max(5000).optional(),
+  planStartDate: dateString.optional(),
+  nextReviewDate: dateString.optional(),
+  status: z.enum(["draft", "confirmed"]).optional(),
+});
+
 // 管理者設定: ログイン許可リスト
 export const allowedEmailsSchema = z.object({
   emails: z.array(z.string().email({ error: "Invalid email address" }).max(254)).max(500),

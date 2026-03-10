@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, buildStaffMap } from "../api";
-import type { Case, Consultation } from "../api";
+import type { Case, Consultation, SupportPlan } from "../api";
 import { NewConsultationModal } from "../components/NewConsultationModal";
 import { SuggestedSupports } from "../components/SuggestedSupports";
+import { SupportPlanView } from "../components/SupportPlanView";
 import { STATUS_LABELS, TYPE_LABELS, formatDate, formatDateTime } from "../constants";
+
+type DetailTab = "consultations" | "support-plan";
 
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -15,20 +18,23 @@ export function CaseDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewConsultation, setShowNewConsultation] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTab>("consultations");
+  const [supportPlan, setSupportPlan] = useState<SupportPlan | null>(null);
 
   const loadData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
     try {
-      const [c, cons] = await Promise.all([
+      const [c, cons, plan, staff] = await Promise.all([
         api.getCase(id),
         api.listConsultations(id),
+        api.getSupportPlan(id).catch(() => null),
+        api.listStaff().catch(() => [] as { id: string; name: string }[]),
       ]);
       setCaseData(c);
       setConsultations(cons);
-      // staffは補助情報。失敗しても主データの表示を妨げない
-      const staff = await api.listStaff().catch(() => [] as never);
+      setSupportPlan(plan);
       setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load case:", err);
@@ -95,8 +101,29 @@ export function CaseDetail() {
 
       <div className="page-body">
         <div className="detail-layout">
-          {/* Main: Consultation Timeline (Golden Ratio: 61.8%) */}
+          {/* Main: Tabbed Content (Golden Ratio: 61.8%) */}
           <div>
+            <div className="detail-tabs">
+              <button
+                className={`detail-tab ${activeTab === "consultations" ? "active" : ""}`}
+                onClick={() => setActiveTab("consultations")}
+              >
+                相談記録 ({consultations.length})
+              </button>
+              <button
+                className={`detail-tab ${activeTab === "support-plan" ? "active" : ""}`}
+                onClick={() => setActiveTab("support-plan")}
+              >
+                支援計画書 {supportPlan ? (supportPlan.status === "confirmed" ? "✓" : "") : ""}
+              </button>
+            </div>
+
+            {activeTab === "support-plan" && (
+              <SupportPlanView caseId={id!} plan={supportPlan} onUpdate={loadData} />
+            )}
+
+            {activeTab === "consultations" && (
+            <>
             <div className="section-header">
               <h3>相談記録</h3>
               <button className="btn btn-accent" onClick={() => setShowNewConsultation(true)}>
@@ -186,6 +213,8 @@ export function CaseDetail() {
                   </div>
                 ))}
               </div>
+            )}
+            </>
             )}
           </div>
 

@@ -27,6 +27,9 @@ vi.mock("./api", async (importOriginal) => {
       updateAllowedEmails: vi.fn().mockResolvedValue({ emails: [], domains: [] }),
       listAdminStaff: vi.fn().mockResolvedValue([]),
       updateStaff: vi.fn(),
+      generateSupportPlanDraft: vi.fn(),
+      getSupportPlan: vi.fn().mockRejectedValue(new Error("Not found")),
+      updateSupportPlan: vi.fn(),
     },
   };
 });
