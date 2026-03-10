@@ -271,7 +271,9 @@ describe("requireAuth middleware", () => {
     await freshRequireAuth(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(mockCreate).toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      disabled: false,
+    }));
     expect(req.user).toEqual({
       uid: "allowed-uid",
       email: "user@allowed.gov.jp",
@@ -342,6 +344,7 @@ describe("requireAuth middleware", () => {
       firebaseUid: "new-uid",
       email: "new@example.com",
       role: "staff",
+      disabled: false,
     }));
     expect(req.user).toEqual({
       uid: "new-uid",

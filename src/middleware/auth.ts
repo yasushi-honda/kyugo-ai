@@ -160,6 +160,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             email: decoded.email ?? "",
             name: decoded.name ?? "",
             role: "staff",
+            disabled: false,
             createdAt: new Date(),
           });
           staffId = newStaffRef.id;

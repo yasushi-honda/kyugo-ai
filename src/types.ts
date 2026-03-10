@@ -84,6 +84,7 @@ export interface Staff {
   name: string;
   email: string;
   role: "admin" | "staff";
+  disabled: boolean;
   officeId: string;
   createdAt: Timestamp;
 }
