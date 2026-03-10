@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, buildStaffMap } from "../api";
-import type { Case, Consultation, SupportPlan } from "../api";
+import type { Case, Consultation, MonitoringSheet, SupportPlan } from "../api";
 import { NewConsultationModal } from "../components/NewConsultationModal";
 import { SuggestedSupports } from "../components/SuggestedSupports";
 import { SupportPlanView } from "../components/SupportPlanView";
+import { MonitoringSheetView } from "../components/MonitoringSheetView";
 import { STATUS_LABELS, TYPE_LABELS, formatDate, formatDateTime } from "../constants";
 
-type DetailTab = "consultations" | "support-plan";
+type DetailTab = "consultations" | "support-plan" | "monitoring";
 
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -20,21 +21,24 @@ export function CaseDetail() {
   const [showNewConsultation, setShowNewConsultation] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>("consultations");
   const [supportPlan, setSupportPlan] = useState<SupportPlan | null>(null);
+  const [monitoringSheet, setMonitoringSheet] = useState<MonitoringSheet | null>(null);
 
   const loadData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
     try {
-      const [c, cons, plan, staff] = await Promise.all([
+      const [c, cons, plan, monitoring, staff] = await Promise.all([
         api.getCase(id),
         api.listConsultations(id),
         api.getSupportPlan(id).catch(() => null),
+        api.getMonitoringSheet(id).catch(() => null),
         api.listStaff().catch(() => [] as { id: string; name: string }[]),
       ]);
       setCaseData(c);
       setConsultations(cons);
       setSupportPlan(plan);
+      setMonitoringSheet(monitoring);
       setStaffMap(buildStaffMap(staff));
     } catch (err) {
       console.error("Failed to load case:", err);
@@ -116,10 +120,25 @@ export function CaseDetail() {
               >
                 支援計画書 {supportPlan ? (supportPlan.status === "confirmed" ? "✓" : "") : ""}
               </button>
+              <button
+                className={`detail-tab ${activeTab === "monitoring" ? "active" : ""}`}
+                onClick={() => setActiveTab("monitoring")}
+              >
+                モニタリング {monitoringSheet ? (monitoringSheet.status === "confirmed" ? "✓" : "") : ""}
+              </button>
             </div>
 
             {activeTab === "support-plan" && (
               <SupportPlanView caseId={id!} plan={supportPlan} onUpdate={loadData} />
+            )}
+
+            {activeTab === "monitoring" && (
+              <MonitoringSheetView
+                caseId={id!}
+                sheet={monitoringSheet}
+                hasSupportPlan={supportPlan?.status === "confirmed"}
+                onUpdate={loadData}
+              />
             )}
 
             {activeTab === "consultations" && (

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import type { ZodType } from "zod";
 import * as caseRepo from "../repositories/case-repository.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { requireCaseAccess } from "../middleware/authz.js";
@@ -9,16 +8,8 @@ import {
 } from "../schemas/case.js";
 import { consultationsRouter } from "./consultations.js";
 import { supportPlansRouter } from "./support-plans.js";
-
-function validate<T>(schema: ZodType<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
-  const result = schema.safeParse(data);
-  if (result.success) return { success: true, data: result.data };
-  return { success: false, error: result.error.issues.map((e) => e.message).join(", ") };
-}
-
-function paramStr(value: string | string[]): string {
-  return Array.isArray(value) ? value[0] : value;
-}
+import { monitoringRouter } from "./monitoring.js";
+import { paramStr, validate } from "./utils.js";
 
 export const casesRouter = Router();
 
@@ -27,6 +18,9 @@ casesRouter.use("/:id/consultations", consultationsRouter);
 
 // 支援計画書ルートを委譲
 casesRouter.use("/:id/support-plan", supportPlansRouter);
+
+// モニタリングシートルートを委譲
+casesRouter.use("/:id/monitoring", monitoringRouter);
 
 // POST /api/cases - ケース作成（assignedStaffIdはreq.userから強制）
 casesRouter.post("/", async (req: Request, res: Response) => {

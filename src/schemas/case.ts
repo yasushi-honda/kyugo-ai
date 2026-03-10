@@ -58,6 +58,27 @@ export const updateSupportPlanSchema = z.object({
   status: z.enum(["draft", "confirmed"]).optional(),
 });
 
+// モニタリングシート
+const monitoringGoalEvaluationSchema = z.object({
+  area: z.string().min(1).max(100),
+  longTermGoal: z.string().min(1).max(500),
+  shortTermGoal: z.string().min(1).max(500),
+  progress: z.enum(["improved", "maintained", "declined", "not_started"]),
+  evaluation: z.string().min(1).max(2000),
+  nextAction: z.string().min(1).max(2000),
+});
+
+export const updateMonitoringSheetSchema = z.object({
+  overallEvaluation: z.string().min(1).max(5000).optional(),
+  goalEvaluations: z.array(monitoringGoalEvaluationSchema).min(1).max(20).optional(),
+  environmentChanges: z.string().max(5000).optional(),
+  clientFeedback: z.string().max(5000).optional(),
+  specialNotes: z.string().max(5000).optional(),
+  monitoringDate: dateString.optional(),
+  nextMonitoringDate: dateString.optional(),
+  status: z.enum(["draft", "confirmed"]).optional(),
+});
+
 // 管理者設定: ログイン許可リスト
 export const allowedEmailsSchema = z.object({
   emails: z.array(z.string().email({ error: "Invalid email address" }).max(254)).max(500),

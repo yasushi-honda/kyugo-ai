@@ -1,5 +1,5 @@
 import { generativeModel } from "../config.js";
-import { AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu } from "../types.js";
+import { AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu, SupportPlan } from "../types.js";
 
 const SYSTEM_INSTRUCTION_TEXT = `あなたは福祉相談支援AIアシスタントです。
 生活困窮者の相談内容を分析し、以下を行います：
@@ -43,6 +43,22 @@ function buildMenuList(menus: SupportMenu[]): string {
   return menus
     .map((m) => `- ID: ${m.id}, 名称: ${m.name}, カテゴリ: ${m.category}, 対象: ${m.eligibility}, 概要: ${m.description}`)
     .join("\n");
+}
+
+function buildConsultationSummaries(consultations: Consultation[]): string {
+  return consultations
+    .filter((c) => c.aiStatus === "completed" && c.summary)
+    .map((c) => {
+      const supports = c.suggestedSupports
+        .map((s) => `  - ${s.menuName}（${s.reason}、関連度: ${Math.round(s.relevanceScore * 100)}%）`)
+        .join("\n");
+      return `### ${c.consultationType} 相談（${c.createdAt}）
+内容: ${c.content}
+AI要約: ${c.summary}
+提案された支援メニュー:
+${supports || "  なし"}`;
+    })
+    .join("\n\n");
 }
 
 function parseAIResponse<T>(responseText: string | undefined, requiredFields: string[]): T {
@@ -176,20 +192,7 @@ export async function generateSupportPlanDraft(
   consultations: Consultation[],
   availableMenus: SupportMenu[],
 ): Promise<AISupportPlanResult> {
-  // 相談記録の要約を時系列で構成
-  const consultationSummaries = consultations
-    .filter((c) => c.aiStatus === "completed" && c.summary)
-    .map((c) => {
-      const supports = c.suggestedSupports
-        .map((s) => `  - ${s.menuName}（${s.reason}、関連度: ${Math.round(s.relevanceScore * 100)}%）`)
-        .join("\n");
-      return `### ${c.consultationType} 相談（${c.createdAt}）
-内容: ${c.content}
-AI要約: ${c.summary}
-提案された支援メニュー:
-${supports || "  なし"}`;
-    })
-    .join("\n\n");
+  const consultationSummaries = buildConsultationSummaries(consultations);
 
   const userPrompt = `## 利用者情報
 - 氏名: ${caseData.clientName}
@@ -232,4 +235,91 @@ ${buildMenuList(availableMenus)}
     }));
   }
   return parseAIResponse<AISupportPlanResult>(responseText, ["overallPolicy", "goals", "specialNotes"]);
+}
+
+// モニタリングシートの下書き生成
+const SYSTEM_INSTRUCTION_MONITORING = `あなたは救護施設の個別支援計画モニタリングを支援するAIアシスタントです。
+厚生労働省委託「救護施設・更生施設における個別支援計画 策定導入マニュアル」（令和6年3月、全社協発行）のモニタリング様式に準拠した
+モニタリングシートの下書きを生成します。
+
+以下の原則に従ってください：
+- 個別支援計画書の各目標に対して、相談記録の経時変化から進捗を客観的に評価
+- progress は "improved"（改善）、"maintained"（維持）、"declined"（後退）、"not_started"（未着手）のいずれか
+- 具体的なエピソードや数値変化を根拠として挙げる
+- 本人の意向・感想は相談記録中の発言をもとに推測
+- 生活環境の変化は世帯構成・収入・住居等の変化を記述
+
+回答は必ず以下のJSON形式で返してください：
+{
+  "overallEvaluation": "全体的な評価（支援計画全体の進捗と今後の方向性を200文字以内で）",
+  "goalEvaluations": [
+    {
+      "area": "支援領域（支援計画書のareaと一致させる）",
+      "longTermGoal": "長期目標（支援計画書から転記）",
+      "shortTermGoal": "短期目標（支援計画書から転記）",
+      "progress": "improved | maintained | declined | not_started",
+      "evaluation": "達成状況の評価（具体的根拠を含めて）",
+      "nextAction": "今後の対応方針"
+    }
+  ],
+  "environmentChanges": "生活環境の変化（なければ「特になし」）",
+  "clientFeedback": "本人の意向・感想（相談記録から推測）",
+  "specialNotes": "特記事項（支援上の留意点の変化等）"
+}`;
+
+export async function generateMonitoringDraft(
+  caseData: Case,
+  supportPlan: SupportPlan,
+  consultations: Consultation[],
+): Promise<AIMonitoringResult> {
+  const consultationSummaries = buildConsultationSummaries(consultations);
+
+  const goalsText = supportPlan.goals
+    .map((g, i) => `${i + 1}. 【${g.area}】
+   長期目標: ${g.longTermGoal}
+   短期目標: ${g.shortTermGoal}
+   支援内容: ${g.supports.join("、")}
+   頻度: ${g.frequency} / 担当: ${g.responsible}`)
+    .join("\n");
+
+  const userPrompt = `## 利用者情報
+- 氏名: ${caseData.clientName}
+- ID: ${caseData.clientId}
+- ケース状態: ${caseData.status}
+
+## 現行の個別支援計画書
+- 計画期間: ${supportPlan.planStartDate} 〜 ${supportPlan.nextReviewDate}
+- 全体方針: ${supportPlan.overallPolicy}
+
+### 支援目標
+${goalsText}
+
+### 特記事項
+${supportPlan.specialNotes || "（なし）"}
+
+## 相談記録（時系列）
+${consultationSummaries || "（相談記録なし）"}
+
+上記の支援計画の各目標に対して、相談記録の経時変化を分析し、モニタリングシートの下書きを作成してください。`;
+
+  const result = await generativeModel.generateContent({
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    systemInstruction: { role: "system", parts: [{ text: SYSTEM_INSTRUCTION_MONITORING }] },
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.4,
+      maxOutputTokens: 8192,
+    },
+  });
+
+  const candidate = result.response.candidates?.[0];
+  const responseText = candidate?.content?.parts?.[0]?.text;
+  if (!responseText) {
+    console.error("Vertex AI empty monitoring response", JSON.stringify({
+      finishReason: candidate?.finishReason,
+      safetyRatings: candidate?.safetyRatings,
+      candidatesCount: result.response.candidates?.length ?? 0,
+    }));
+  }
+  return parseAIResponse<AIMonitoringResult>(responseText, ["overallEvaluation", "goalEvaluations"]);
 }

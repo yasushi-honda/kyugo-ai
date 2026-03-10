@@ -52,10 +52,19 @@ vi.mock("./repositories/support-plan-repository.js", () => ({
   updateSupportPlan: vi.fn(),
 }));
 
+vi.mock("./repositories/monitoring-repository.js", () => ({
+  createMonitoringSheet: vi.fn(),
+  getMonitoringSheet: vi.fn(),
+  getLatestMonitoringSheet: vi.fn(),
+  listMonitoringSheets: vi.fn(),
+  updateMonitoringSheet: vi.fn(),
+}));
+
 vi.mock("./services/ai.js", () => ({
   analyzeConsultation: vi.fn(),
   analyzeAudioConsultation: vi.fn(),
   generateSupportPlanDraft: vi.fn(),
+  generateMonitoringDraft: vi.fn(),
 }));
 
 vi.mock("./services/ai-retry.js", () => ({
@@ -72,8 +81,9 @@ import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation, analyzeAudioConsultation, generateSupportPlanDraft } from "./services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation, generateSupportPlanDraft, generateMonitoringDraft } from "./services/ai.js";
 import * as supportPlanRepo from "./repositories/support-plan-repository.js";
+import * as monitoringRepo from "./repositories/monitoring-repository.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
@@ -1599,6 +1609,152 @@ describe("Support Plan API", () => {
       vi.mocked(supportPlanRepo.listSupportPlans).mockResolvedValue([MOCK_SUPPORT_PLAN]);
 
       const res = await request(app).get("/api/cases/case-1/support-plan/list");
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+    });
+  });
+});
+
+// ── Monitoring Sheet API ──
+
+const MOCK_CONFIRMED_PLAN = {
+  ...MOCK_SUPPORT_PLAN,
+  status: "confirmed" as const,
+  confirmedAt: NOW,
+};
+
+const MOCK_MONITORING_SHEET = {
+  id: "sheet-1",
+  caseId: "case-1",
+  supportPlanId: "plan-1",
+  staffId: "staff-1",
+  status: "draft" as const,
+  monitoringDate: "2026-03-10",
+  overallEvaluation: "全体的に改善傾向",
+  goalEvaluations: [{
+    area: "経済的自立",
+    longTermGoal: "安定した生活基盤の確立",
+    shortTermGoal: "生活保護の申請手続き完了",
+    progress: "improved" as const,
+    evaluation: "生活保護申請が受理された",
+    nextAction: "受給開始後の家計管理支援",
+  }],
+  environmentChanges: "住居が安定した",
+  clientFeedback: "前向きに取り組めている",
+  specialNotes: "",
+  nextMonitoringDate: "2026-04-10",
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
+describe("Monitoring Sheet API", () => {
+  describe("POST /api/cases/:id/monitoring/draft", () => {
+    it("generates a monitoring sheet draft", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(MOCK_CONFIRMED_PLAN);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([MOCK_CONSULTATION_COMPLETED]);
+      vi.mocked(generateMonitoringDraft).mockResolvedValue({
+        overallEvaluation: MOCK_MONITORING_SHEET.overallEvaluation,
+        goalEvaluations: MOCK_MONITORING_SHEET.goalEvaluations,
+        environmentChanges: MOCK_MONITORING_SHEET.environmentChanges,
+        clientFeedback: MOCK_MONITORING_SHEET.clientFeedback,
+        specialNotes: MOCK_MONITORING_SHEET.specialNotes,
+      });
+      vi.mocked(monitoringRepo.createMonitoringSheet).mockResolvedValue(MOCK_MONITORING_SHEET);
+
+      const res = await request(app).post("/api/cases/case-1/monitoring/draft");
+      expect(res.status).toBe(201);
+      expect(res.body.overallEvaluation).toBe("全体的に改善傾向");
+    });
+
+    it("returns 400 when no support plan exists", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(null);
+
+      const res = await request(app).post("/api/cases/case-1/monitoring/draft");
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 when support plan is not confirmed", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(MOCK_SUPPORT_PLAN);
+
+      const res = await request(app).post("/api/cases/case-1/monitoring/draft");
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 when no completed consultations", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(supportPlanRepo.getLatestSupportPlan).mockResolvedValue(MOCK_CONFIRMED_PLAN);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([]);
+
+      const res = await request(app).post("/api/cases/case-1/monitoring/draft");
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /api/cases/:id/monitoring", () => {
+    it("returns the latest monitoring sheet", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(monitoringRepo.getLatestMonitoringSheet).mockResolvedValue(MOCK_MONITORING_SHEET);
+
+      const res = await request(app).get("/api/cases/case-1/monitoring");
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe("sheet-1");
+    });
+
+    it("returns 404 when no monitoring sheet exists", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(monitoringRepo.getLatestMonitoringSheet).mockResolvedValue(null);
+
+      const res = await request(app).get("/api/cases/case-1/monitoring");
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PATCH /api/cases/:id/monitoring/:sheetId", () => {
+    it("updates a draft monitoring sheet", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(monitoringRepo.updateMonitoringSheet).mockResolvedValue({
+        ...MOCK_MONITORING_SHEET,
+        overallEvaluation: "更新された評価",
+      });
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/monitoring/sheet-1")
+        .send({ overallEvaluation: "更新された評価" });
+      expect(res.status).toBe(200);
+      expect(res.body.overallEvaluation).toBe("更新された評価");
+    });
+
+    it("returns 400 for confirmed sheet", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(monitoringRepo.updateMonitoringSheet).mockRejectedValue(
+        new Error("Cannot edit a confirmed monitoring sheet"),
+      );
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/monitoring/sheet-1")
+        .send({ overallEvaluation: "test" });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 for invalid input", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+      const res = await request(app)
+        .patch("/api/cases/case-1/monitoring/sheet-1")
+        .send({ status: "invalid_status" });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /api/cases/:id/monitoring/list", () => {
+    it("returns all monitoring sheets for a case", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(monitoringRepo.listMonitoringSheets).mockResolvedValue([MOCK_MONITORING_SHEET]);
+
+      const res = await request(app).get("/api/cases/case-1/monitoring/list");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
     });
