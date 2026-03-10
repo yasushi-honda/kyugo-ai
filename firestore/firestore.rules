@@ -54,5 +54,10 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // 管理設定: Admin SDKのみアクセス（クライアントSDK禁止）
+    match /config/{doc} {
+      allow read, write: if false;
+    }
   }
 }

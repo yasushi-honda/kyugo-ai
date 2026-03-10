@@ -365,6 +365,31 @@ describe("supportMenus", () => {
 });
 
 // ============================================================
+// config コレクション（Admin SDKのみ）
+// ============================================================
+describe("config", () => {
+  it("未認証ユーザーはconfigを読み取れない", async () => {
+    const db = unauthContext().firestore();
+    await assertFails(getDoc(doc(db, "config", "allowedEmails")));
+  });
+
+  it("認証済みユーザーでもconfigを読み取れない", async () => {
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(getDoc(doc(db, "config", "allowedEmails")));
+  });
+
+  it("adminでもconfigを読み取れない（Admin SDKのみ）", async () => {
+    const db = adminContext().firestore();
+    await assertFails(getDoc(doc(db, "config", "allowedEmails")));
+  });
+
+  it("adminでもconfigに書き込めない（Admin SDKのみ）", async () => {
+    const db = adminContext().firestore();
+    await assertFails(setDoc(doc(db, "config", "allowedEmails"), { emails: [], domains: [] }));
+  });
+});
+
+// ============================================================
 // デフォルトルール（未知のコレクション）
 // ============================================================
 describe("default deny", () => {

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { firestore, ALLOWED_EMAILS_CONFIG_DOC } from "../config.js";
 import { requireAdmin } from "../middleware/authz.js";
+import { allowedEmailsSchema } from "../schemas/case.js";
 
 export const adminSettingsRouter = Router();
 
@@ -131,22 +132,17 @@ adminSettingsRouter.get("/allowed-emails", async (_req: Request, res: Response) 
 
 // PUT /api/admin-settings/allowed-emails
 adminSettingsRouter.put("/allowed-emails", async (req: Request, res: Response) => {
-  const { emails, domains } = req.body;
-
-  if (!Array.isArray(emails) || !Array.isArray(domains)) {
-    res.status(400).json({ error: "emails and domains must be arrays of strings" });
+  const result = allowedEmailsSchema.safeParse(req.body);
+  if (!result.success) {
+    res.status(400).json({ error: result.error.issues[0]?.message ?? "Invalid input" });
     return;
   }
 
-  // 各要素がstringであることを検証
-  if (!emails.every((e: unknown) => typeof e === "string") || !domains.every((d: unknown) => typeof d === "string")) {
-    res.status(400).json({ error: "emails and domains must be arrays of strings" });
-    return;
-  }
+  const { emails, domains } = result.data;
 
-  // 正規化: 小文字化、空文字除去、重複除去
-  const normalizedEmails = [...new Set(emails.map((e: string) => e.trim().toLowerCase()).filter((e: string) => e.length > 0))];
-  const normalizedDomains = [...new Set(domains.map((d: string) => d.trim().toLowerCase()).filter((d: string) => d.length > 0))];
+  // 正規化: 小文字化、重複除去
+  const normalizedEmails = [...new Set(emails.map((e) => e.trim().toLowerCase()))];
+  const normalizedDomains = [...new Set(domains.map((d) => d.trim().toLowerCase()))];
 
   try {
     await firestore.doc(ALLOWED_EMAILS_CONFIG_DOC).set(
