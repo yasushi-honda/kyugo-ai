@@ -4,6 +4,7 @@ import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportPlanRepo from "../repositories/support-plan-repository.js";
 import { generateMonitoringDraft } from "../services/ai.js";
 import { requireCaseAccess } from "../middleware/authz.js";
+import { aiLimiter } from "../middleware/rate-limit.js";
 import { updateMonitoringSheetSchema } from "../schemas/case.js";
 import { Case } from "../types.js";
 import { paramStr, validate, formatDateString } from "./utils.js";
@@ -13,7 +14,7 @@ export const monitoringRouter = Router({ mergeParams: true });
 monitoringRouter.use(requireCaseAccess);
 
 // POST /api/cases/:id/monitoring/draft — AI下書き生成
-monitoringRouter.post("/draft", async (req: Request, res: Response) => {
+monitoringRouter.post("/draft", aiLimiter, async (req: Request, res: Response) => {
   const caseId = paramStr(req.params.id);
   const caseData = req.caseData as Case;
 

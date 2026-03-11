@@ -6,7 +6,11 @@ import express from "express";
 vi.mock("./config.js", () => ({
   ALLOWED_EMAILS_CONFIG_DOC: "config/allowedEmails",
   firestore: {
-    collection: vi.fn(),
+    collection: vi.fn().mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+      }),
+    }),
     doc: vi.fn(),
   },
   generativeModel: {
@@ -88,6 +92,11 @@ vi.mock("./services/ai-retry.js", () => ({
   retryPendingConsultations: vi.fn(),
 }));
 
+vi.mock("./middleware/rate-limit.js", () => ({
+  defaultLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  aiLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
 import { casesRouter } from "./routes/cases.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
 import { staffRouter } from "./routes/staff.js";
@@ -160,13 +169,23 @@ beforeEach(() => {
 });
 
 describe("GET /health", () => {
-  const healthApp = express();
-  healthApp.get("/health", (_req, res) => res.json({ status: "ok" }));
-
-  it("returns ok", async () => {
-    const res = await request(healthApp).get("/health");
+  it("returns ok when Firestore is reachable", async () => {
+    const { app: serverApp } = await import("./server.js");
+    const res = await request(serverApp).get("/health");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
+  });
+
+  it("returns 503 when Firestore is unreachable", async () => {
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockRejectedValue(new Error("connection failed")),
+      }),
+    } as never);
+    const { app: serverApp } = await import("./server.js");
+    const res = await request(serverApp).get("/health");
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe("degraded");
   });
 });
 

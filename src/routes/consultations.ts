@@ -8,6 +8,7 @@ import { uploadAudio } from "../services/audio-storage.js";
 import { SUPPORTED_AUDIO_MIME_TYPES, AI_RETRY_CONFIG } from "../types.js";
 import { isTransientError } from "../utils/error.js";
 import { requireCaseAccess } from "../middleware/authz.js";
+import { aiLimiter } from "../middleware/rate-limit.js";
 import {
   createConsultationSchema,
   createAudioConsultationSchema,
@@ -90,7 +91,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
 
 // POST /api/cases/:id/consultations/audio - 音声付き相談記録作成（staffIdはreq.userから強制）
 // 相談記録を先に保存し、AI分析は非同期で実行（AI障害時の入力消失を防止）
-consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), async (req: Request, res: Response) => {
+consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("audio"), async (req: Request, res: Response) => {
   try {
     const caseId = paramStr(req.params.id);
 

@@ -7,6 +7,8 @@ import { supportMenusRouter } from "./routes/support-menus.js";
 import { adminRouter } from "./routes/admin.js";
 import { adminSettingsRouter } from "./routes/admin-settings.js";
 import { requireAuth } from "./middleware/auth.js";
+import { defaultLimiter } from "./middleware/rate-limit.js";
+import { firestore } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,9 +23,17 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+// Rate limiting（/health はレート制限外）
+app.use("/api", defaultLimiter);
+
+// Health check（Firestore接続確認付き、軽量なdoc get）
+app.get("/health", async (_req, res) => {
+  try {
+    await firestore.collection("_health").doc("ping").get();
+    res.json({ status: "ok" });
+  } catch {
+    res.status(503).json({ status: "degraded", error: "Firestore unreachable" });
+  }
 });
 
 // Current user info
