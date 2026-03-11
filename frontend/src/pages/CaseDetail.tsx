@@ -6,9 +6,10 @@ import { NewConsultationModal } from "../components/NewConsultationModal";
 import { SuggestedSupports } from "../components/SuggestedSupports";
 import { SupportPlanView } from "../components/SupportPlanView";
 import { MonitoringSheetView } from "../components/MonitoringSheetView";
+import { LegalSearchView } from "../components/LegalSearchView";
 import { STATUS_LABELS, TYPE_LABELS, formatDate, formatDateTime } from "../constants";
 
-type DetailTab = "consultations" | "support-plan" | "monitoring";
+type DetailTab = "consultations" | "support-plan" | "monitoring" | "legal-search";
 
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -126,6 +127,12 @@ export function CaseDetail() {
               >
                 モニタリング {monitoringSheet ? (monitoringSheet.status === "confirmed" ? "✓" : "") : ""}
               </button>
+              <button
+                className={`detail-tab ${activeTab === "legal-search" ? "active" : ""}`}
+                onClick={() => setActiveTab("legal-search")}
+              >
+                法令検索
+              </button>
             </div>
 
             {activeTab === "support-plan" && (
@@ -139,6 +146,10 @@ export function CaseDetail() {
                 hasSupportPlan={supportPlan?.status === "confirmed"}
                 onUpdate={loadData}
               />
+            )}
+
+            {activeTab === "legal-search" && (
+              <LegalSearchView caseId={id!} />
             )}
 
             {activeTab === "consultations" && (

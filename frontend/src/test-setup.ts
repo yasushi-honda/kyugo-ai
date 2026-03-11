@@ -34,6 +34,8 @@ vi.mock("./api", async (importOriginal) => {
       generateMonitoringDraft: vi.fn(),
       getMonitoringSheet: vi.fn().mockRejectedValue(new Error("Not found")),
       updateMonitoringSheet: vi.fn(),
+      searchLegalInfo: vi.fn(),
+      listLegalSearches: vi.fn().mockResolvedValue([]),
     },
   };
 });

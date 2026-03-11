@@ -168,6 +168,31 @@ export interface MonitoringSheet {
   updatedAt: Timestamp;
 }
 
+// 法令検索結果
+export interface LegalReference {
+  lawName: string; // 法令名（例: 生活保護法）
+  article: string; // 条文番号・内容
+  summary: string; // 条文の要約・解説
+  sourceUrl?: string; // 出典URL
+  relevance: string; // 相談内容との関連性の説明
+}
+
+export interface LegalSearchResult {
+  id?: string;
+  caseId: string;
+  staffId: string;
+  query: string; // 検索に使用したクエリ
+  references: LegalReference[];
+  legalBasis: string; // 法的根拠の総合説明
+  createdAt: Timestamp;
+}
+
+// AI生成の法令検索レスポンス
+export interface AILegalSearchResult {
+  references: LegalReference[];
+  legalBasis: string;
+}
+
 // AI生成のモニタリングシート下書きレスポンス
 export interface AIMonitoringResult {
   overallEvaluation: string;
