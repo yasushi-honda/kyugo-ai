@@ -115,12 +115,10 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
       consultationType: data.consultationType,
     });
 
-    // 音声ファイルをCloud Storageに永続化 + 支援メニュー取得を並列実行
-    Promise.all([
-      uploadAudio(caseId, consultation.id!, file.buffer, file.mimetype),
-      supportMenuRepo.listSupportMenus(),
-    ])
-      .then(async ([storagePath, menus]) => {
+    // Step 1: 音声ファイルをGCSに永続化しパスをFirestoreに保存（リトライの前提条件）
+    // この段階が失敗するとリトライ不可になるため、AI分析とは独立して実行
+    uploadAudio(caseId, consultation.id!, file.buffer, file.mimetype)
+      .then(async (storagePath) => {
         await consultationRepo.updateConsultationAudioPath(
           caseId,
           consultation.id!,
@@ -128,7 +126,8 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
           file.mimetype,
         );
 
-        // 音声AI分析を非同期で実行
+        // Step 2: 音声AI分析を非同期で実行（失敗してもGCSパスは保存済みなのでリトライ可能）
+        const menus = await supportMenuRepo.listSupportMenus();
         const aiResult = await analyzeAudioConsultation(file.buffer, file.mimetype, data.context, menus);
         await consultationRepo.updateConsultationAIResults(
           caseId,

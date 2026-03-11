@@ -46,7 +46,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     try {
       const updated = await api.getConsultation(caseId, consultation.id!);
       setAudioConsultation(updated);
-      if (updated.aiStatus === "pending" || updated.aiStatus === "retrying") {
+      if (updated.aiStatus === "pending" || updated.aiStatus === "retrying" || updated.aiStatus === "retry_pending") {
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(() => pollStatus(updated, attempt + 1), POLL_INTERVAL_MS);
       }
