@@ -4,34 +4,38 @@ import { auth } from "../firebase";
 
 const googleProvider = new GoogleAuthProvider();
 
-function getErrorMessage(err: Error): string {
+function classifyError(err: Error): { message: string; isHint: boolean } {
   const msg = err.message;
   if (msg.includes("popup-closed-by-user")) {
-    return "ログインウィンドウが閉じられました。もう一度お試しください。";
+    return { message: "ログインウィンドウが閉じられました。もう一度お試しください。", isHint: true };
   }
   if (msg.includes("popup-blocked")) {
-    return "ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。";
+    return { message: "ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。", isHint: false };
   }
   if (msg.includes("network-request-failed")) {
-    return "インターネット接続を確認してください。接続後にもう一度お試しください。";
+    return { message: "インターネット接続を確認してください。接続後にもう一度お試しください。", isHint: false };
   }
   if (msg.includes("unauthorized-domain")) {
-    return "このドメインからのログインは許可されていません。管理者にお問い合わせください。";
+    return { message: "このドメインからのログインは許可されていません。管理者にお問い合わせください。", isHint: false };
   }
-  return "ログインに失敗しました。繰り返し発生する場合は管理者にお問い合わせください。";
+  return { message: "ログインに失敗しました。繰り返し発生する場合は管理者にお問い合わせください。", isHint: false };
 }
 
 export function Login() {
   const [error, setError] = useState("");
+  const [isHint, setIsHint] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
     setError("");
+    setIsHint(false);
     setLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      setError(getErrorMessage(err as Error));
+      const classified = classifyError(err as Error);
+      setError(classified.message);
+      setIsHint(classified.isHint);
     } finally {
       setLoading(false);
     }
@@ -54,7 +58,7 @@ export function Login() {
             初回ログインやトラブル時は管理者にお問い合わせください。
           </p>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className={isHint ? "login-hint" : "login-error"}>{error}</div>}
 
           <button
             type="button"

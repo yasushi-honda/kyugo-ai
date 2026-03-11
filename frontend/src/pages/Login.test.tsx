@@ -72,7 +72,7 @@ describe("Login", () => {
       });
     });
 
-    it("ポップアップを閉じた時にやさしいメッセージを表示する", async () => {
+    it("ポップアップを閉じた時にヒント表示する（エラーではない）", async () => {
       vi.mocked(signInWithPopup).mockRejectedValue(
         new Error("Firebase: Error (auth/popup-closed-by-user)."),
       );
@@ -84,7 +84,9 @@ describe("Login", () => {
       await vi.waitFor(() => {
         expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
       });
-      expect(screen.getByText(/ログインウィンドウが閉じ/)).toBeInTheDocument();
+      const hint = screen.getByText(/ログインウィンドウが閉じ/);
+      expect(hint).toBeInTheDocument();
+      expect(hint.className).toBe("login-hint");
     });
 
     it("不明なエラー時に汎用メッセージを表示する", async () => {
