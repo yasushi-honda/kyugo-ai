@@ -45,20 +45,34 @@ function buildMenuList(menus: SupportMenu[]): string {
     .join("\n");
 }
 
+// プロンプトサイズ制限: 直近N件・最大文字数で切り詰め
+const MAX_CONSULTATIONS = 20;
+const MAX_SUMMARY_CHARS = 8000;
+
 function buildConsultationSummaries(consultations: Consultation[]): string {
-  return consultations
+  const completed = consultations
     .filter((c) => c.aiStatus === "completed" && c.summary)
-    .map((c) => {
-      const supports = c.suggestedSupports
-        .map((s) => `  - ${s.menuName}（${s.reason}、関連度: ${Math.round(s.relevanceScore * 100)}%）`)
-        .join("\n");
-      return `### ${c.consultationType} 相談（${c.createdAt}）
+    .slice(-MAX_CONSULTATIONS); // 直近N件（時系列の末尾を優先）
+
+  const parts: string[] = [];
+  let totalLength = 0;
+
+  for (const c of completed) {
+    const supports = c.suggestedSupports
+      .map((s) => `  - ${s.menuName}（${s.reason}、関連度: ${Math.round(s.relevanceScore * 100)}%）`)
+      .join("\n");
+    const part = `### ${c.consultationType} 相談（${c.createdAt}）
 内容: ${c.content}
 AI要約: ${c.summary}
 提案された支援メニュー:
 ${supports || "  なし"}`;
-    })
-    .join("\n\n");
+
+    if (totalLength + part.length > MAX_SUMMARY_CHARS) break;
+    parts.push(part);
+    totalLength += part.length;
+  }
+
+  return parts.join("\n\n");
 }
 
 function parseAIResponse<T>(responseText: string | undefined, requiredFields: string[]): T {

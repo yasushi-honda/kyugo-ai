@@ -21,12 +21,17 @@ legalSearchRouter.post("/", async (req: Request, res: Response) => {
   }
 
   try {
-    // 相談記録を収集して検索コンテキストに使用
+    // 相談記録を収集して検索コンテキストに使用（直近20件・4000文字以内）
     const consultations = await consultationRepo.listConsultations(caseId);
-    const summaries = consultations
+    const completed = consultations
       .filter((c) => c.aiStatus === "completed" && c.summary)
-      .map((c) => `[${c.consultationType}] ${c.summary}`)
-      .join("\n");
+      .slice(-20);
+    let summaries = "";
+    for (const c of completed) {
+      const line = `[${c.consultationType}] ${c.summary}\n`;
+      if (summaries.length + line.length > 4000) break;
+      summaries += line;
+    }
 
     const aiResult = await searchLegalInfo(parsed.data.query, summaries);
 
