@@ -323,6 +323,85 @@ describe("consultations", () => {
 });
 
 // ============================================================
+// legalSearches サブコレクション
+// ============================================================
+describe("legalSearches", () => {
+  async function setupLegalSearchData(caseId: string, searchId: string, assignedStaffId: string) {
+    await setupCaseData(caseId, assignedStaffId);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "cases", caseId, "legalSearches", searchId), {
+        staffId: assignedStaffId,
+        query: "生活保護の申請要件",
+        references: [],
+        legalBasis: "テスト",
+        createdAt: new Date(),
+      });
+    });
+  }
+
+  it("未認証ユーザーは法令検索を読み取れない", async () => {
+    await setupLegalSearchData("case-1", "search-1", STAFF_UID);
+    const db = unauthContext().firestore();
+    await assertFails(getDoc(doc(db, "cases", "case-1", "legalSearches", "search-1")));
+  });
+
+  it("親ケース担当者は法令検索を読み取れる", async () => {
+    await setupLegalSearchData("case-1", "search-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertSucceeds(getDoc(doc(db, "cases", "case-1", "legalSearches", "search-1")));
+  });
+
+  it("非担当者は法令検索を読み取れない", async () => {
+    await setupLegalSearchData("case-1", "search-1", STAFF_UID);
+    const db = staffContext(OTHER_STAFF_UID).firestore();
+    await assertFails(getDoc(doc(db, "cases", "case-1", "legalSearches", "search-1")));
+  });
+
+  it("親ケース担当者は法令検索を作成できる", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertSucceeds(addDoc(collection(db, "cases", "case-1", "legalSearches"), {
+      staffId: STAFF_UID,
+      query: "テスト検索",
+      references: [],
+      legalBasis: "テスト",
+      createdAt: new Date(),
+    }));
+  });
+
+  it("非担当者は法令検索を作成できない", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = staffContext(OTHER_STAFF_UID).firestore();
+    await assertFails(addDoc(collection(db, "cases", "case-1", "legalSearches"), {
+      staffId: OTHER_STAFF_UID,
+      query: "不正検索",
+      references: [],
+      legalBasis: "テスト",
+      createdAt: new Date(),
+    }));
+  });
+
+  it("adminは法令検索を作成できる", async () => {
+    await setupCaseData("case-1", STAFF_UID);
+    const db = adminContext().firestore();
+    await assertSucceeds(addDoc(collection(db, "cases", "case-1", "legalSearches"), {
+      staffId: ADMIN_UID,
+      query: "管理者検索",
+      references: [],
+      legalBasis: "テスト",
+      createdAt: new Date(),
+    }));
+  });
+
+  it("法令検索の削除は禁止", async () => {
+    await setupLegalSearchData("case-1", "search-1", STAFF_UID);
+    const db = staffContext(STAFF_UID).firestore();
+    await assertFails(deleteDoc(doc(db, "cases", "case-1", "legalSearches", "search-1")));
+  });
+});
+
+// ============================================================
 // staff コレクション
 // ============================================================
 describe("staff", () => {
