@@ -4,6 +4,12 @@ export const STATUS_LABELS: Record<string, string> = {
   closed: "終了",
 };
 
+export const STATUS_TOOLTIPS: Record<string, string> = {
+  active: "現在対応を進めているケース",
+  referred: "他機関・他部署に照会（問い合わせ）中のケース",
+  closed: "対応が完了したケース",
+};
+
 export const TYPE_LABELS: Record<string, string> = {
   visit: "訪問",
   counter: "窓口",
