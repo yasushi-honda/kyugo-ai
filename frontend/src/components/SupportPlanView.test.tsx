@@ -123,6 +123,22 @@ describe("SupportPlanView", () => {
       expect(confirmSpy).toHaveBeenCalledWith(
         "現在の下書きを上書きして再生成しますか？手動で編集した内容は失われます。"
       );
+      expect(api.generateSupportPlanDraft).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+
+    it("再生成でconfirm承認時にAPIを呼び出す", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      vi.mocked(api.generateSupportPlanDraft).mockResolvedValue({} as SupportPlan);
+      render(<SupportPlanView caseId="case-1" plan={MOCK_DRAFT} onUpdate={onUpdate} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByText("再生成"));
+
+      await waitFor(() => {
+        expect(api.generateSupportPlanDraft).toHaveBeenCalledWith("case-1");
+      });
+      expect(onUpdate).toHaveBeenCalled();
       confirmSpy.mockRestore();
     });
 

@@ -49,7 +49,10 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
     setEditData({ ...editData, goalEvaluations });
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (isRegenerate = false) => {
+    if (isRegenerate) {
+      if (!confirm("現在の下書きを上書きして再生成しますか？手動で編集した内容は失われます。")) return;
+    }
     setGenerating(true);
     setError(null);
     try {
@@ -118,7 +121,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
           </p>
           <button
             className="btn btn-accent"
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
             disabled={generating || !hasSupportPlan}
           >
             {generating ? "生成中..." : "AI下書きを生成"}
@@ -141,7 +144,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
         <div className="support-plan-actions">
           {sheet.status === "draft" && !editing && (
             <>
-              <button className="btn btn-secondary" onClick={handleGenerate} disabled={generating}>
+              <button className="btn btn-secondary" onClick={() => handleGenerate(true)} disabled={generating}>
                 {generating ? "再生成中..." : "再生成"}
               </button>
               <button className="btn btn-primary" onClick={startEditing}>
