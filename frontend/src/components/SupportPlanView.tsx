@@ -123,13 +123,13 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
         <div className="support-plan-actions">
           {plan.status === "draft" && !editing && (
             <>
-              <button className="btn btn-secondary" onClick={() => handleGenerate(true)} disabled={generating}>
+              <button className="btn btn-secondary" onClick={() => handleGenerate(true)} disabled={generating || saving}>
                 {generating ? "再生成中..." : "再生成"}
               </button>
-              <button className="btn btn-primary" onClick={startEditing}>
+              <button className="btn btn-primary" onClick={startEditing} disabled={generating || saving}>
                 編集
               </button>
-              <button className="btn btn-accent" onClick={handleConfirm} disabled={saving}>
+              <button className="btn btn-accent" onClick={handleConfirm} disabled={generating || saving}>
                 確定
               </button>
             </>

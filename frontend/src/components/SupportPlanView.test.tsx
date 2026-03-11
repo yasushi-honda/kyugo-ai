@@ -240,6 +240,21 @@ describe("SupportPlanView", () => {
       expect(onUpdate).toHaveBeenCalled();
       confirmSpy.mockRestore();
     });
+
+    it("確定処理中は再生成ボタンが無効化される", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      // 確定APIを保留状態にしてsaving=trueを維持
+      vi.mocked(api.updateSupportPlan).mockReturnValue(new Promise(() => {}));
+      render(<SupportPlanView caseId="case-1" plan={MOCK_DRAFT} onUpdate={onUpdate} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByText("確定"));
+
+      // 再生成・編集ボタンがdisabledであること
+      expect(screen.getByText("再生成").closest("button")).toBeDisabled();
+      expect(screen.getByText("編集").closest("button")).toBeDisabled();
+      confirmSpy.mockRestore();
+    });
   });
 
   describe("確定済み表示", () => {
