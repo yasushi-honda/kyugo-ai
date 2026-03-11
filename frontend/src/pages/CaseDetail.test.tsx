@@ -336,8 +336,8 @@ describe("CaseDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("山田太郎")).toBeInTheDocument();
     });
-    // staffMapが空なのでフォールバックテキストが表示される
-    expect(screen.getAllByText(/名前未設定/).length).toBeGreaterThanOrEqual(1);
+    // staffMapが空なのでフォールバックテキスト+IDが表示される
+    expect(screen.getAllByText(/名前未設定.*staff-001/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
   });
 

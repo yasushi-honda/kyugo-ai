@@ -112,7 +112,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {staffMap[c.assignedStaffId] || "（名前未設定）"}
+                      👤 {staffMap[c.assignedStaffId] || `（名前未設定: ${c.assignedStaffId}）`}
                     </div>
                   </div>
                 </div>

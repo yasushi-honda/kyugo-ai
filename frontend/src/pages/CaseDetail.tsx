@@ -182,7 +182,7 @@ export function CaseDetail() {
                           <span className="consultation-type-badge">
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
-                          <span className="consultation-staff">{staffMap[con.staffId] || "（名前未設定）"}</span>
+                          <span className="consultation-staff">{staffMap[con.staffId] || `（名前未設定: ${con.staffId}）`}</span>
                         </div>
 
                         {con.content && (
@@ -261,7 +261,7 @@ export function CaseDetail() {
                   </div>
                   <div>
                     <div className="info-item-label">担当職員</div>
-                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || "（名前未設定）"}</div>
+                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || `（名前未設定: ${caseData.assignedStaffId}）`}</div>
                   </div>
                   <div>
                     <div className="info-item-label">生年月日</div>
