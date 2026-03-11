@@ -35,9 +35,9 @@ describe("LegalSearchView", () => {
     render(<LegalSearchView caseId="case-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("法令検索の履歴はありません。")).toBeInTheDocument();
+      expect(screen.getByText(/支援方法や給付制度の条件を法令から調べられます/)).toBeInTheDocument();
     });
-    expect(screen.getByPlaceholderText(/検索したい内容を入力/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("例: 生活保護の申請条件")).toBeInTheDocument();
     expect(screen.getByText("関連法令を検索")).toBeInTheDocument();
   });
 
@@ -74,7 +74,7 @@ describe("LegalSearchView", () => {
       expect(screen.getByText("関連法令を検索")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByPlaceholderText(/検索したい内容を入力/), "生活保護");
+    await user.type(screen.getByRole("textbox"), "生活保護");
     await user.click(screen.getByText("関連法令を検索"));
 
     await waitFor(() => {
@@ -94,7 +94,7 @@ describe("LegalSearchView", () => {
       expect(screen.getByText("関連法令を検索")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByPlaceholderText(/検索したい内容を入力/), "テスト");
+    await user.type(screen.getByRole("textbox"), "テスト");
     await user.click(screen.getByText("関連法令を検索"));
 
     await waitFor(() => {
@@ -144,6 +144,78 @@ describe("LegalSearchView", () => {
       const link = screen.getByText("出典");
       expect(link).toHaveAttribute("href", "https://example.com");
       expect(link).toHaveAttribute("target", "_blank");
+    });
+  });
+
+  // ===== Issue #124 UX改善テスト =====
+
+  describe("検索フォームの改善", () => {
+    it("placeholderが簡潔な1例のみ表示する", async () => {
+      vi.mocked(api.listLegalSearches).mockResolvedValue([]);
+      render(<LegalSearchView caseId="case-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("例: 生活保護の申請条件")).toBeInTheDocument();
+      });
+    });
+
+    it("テキストエリアがrows=2で表示される", async () => {
+      vi.mocked(api.listLegalSearches).mockResolvedValue([]);
+      render(<LegalSearchView caseId="case-1" />);
+
+      await waitFor(() => {
+        const textarea = screen.getByRole("textbox");
+        expect(textarea).toHaveAttribute("rows", "2");
+      });
+    });
+  });
+
+  describe("空状態のガイダンス", () => {
+    it("空状態に利用ガイドを表示する", async () => {
+      vi.mocked(api.listLegalSearches).mockResolvedValue([]);
+      render(<LegalSearchView caseId="case-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/支援方法や給付制度の条件を法令から調べられます/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("関連性バッジ表示", () => {
+    it("関連性テキストの代わりにバッジを表示する", async () => {
+      vi.mocked(api.listLegalSearches).mockResolvedValue([MOCK_RESULT]);
+      render(<LegalSearchView caseId="case-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText("生活保護法")).toBeInTheDocument();
+      });
+      // 関連性がバッジとして表示される
+      const badge = screen.getByText("申請要件に直結");
+      expect(badge.closest(".legal-relevance-badge")).toBeInTheDocument();
+    });
+  });
+
+  describe("検索中のローディング", () => {
+    it("検索中にボタンにスピナーと検索中テキストを表示する", async () => {
+      vi.mocked(api.listLegalSearches).mockResolvedValue([]);
+      // searchLegalInfoを遅延させる
+      vi.mocked(api.searchLegalInfo).mockImplementation(
+        () => new Promise(() => {}) // never resolves
+      );
+
+      render(<LegalSearchView caseId="case-1" />);
+      const user = userEvent.setup();
+
+      await waitFor(() => {
+        expect(screen.getByText("関連法令を検索")).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByRole("textbox"), "テスト");
+      await user.click(screen.getByText("関連法令を検索"));
+
+      await waitFor(() => {
+        expect(screen.getByText("検索中...")).toBeInTheDocument();
+      });
     });
   });
 });
