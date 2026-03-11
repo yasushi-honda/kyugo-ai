@@ -12,6 +12,11 @@ vi.mock("./config.js", () => ({
   generativeModel: {
     generateContent: vi.fn(),
   },
+  genAI: {
+    models: {
+      generateContent: vi.fn(),
+    },
+  },
   firebaseAuth: {
     verifyIdToken: vi.fn(),
     getUser: vi.fn(),
@@ -61,11 +66,17 @@ vi.mock("./repositories/monitoring-repository.js", () => ({
   updateMonitoringSheet: vi.fn(),
 }));
 
+vi.mock("./repositories/legal-search-repository.js", () => ({
+  createLegalSearch: vi.fn(),
+  listLegalSearches: vi.fn(),
+}));
+
 vi.mock("./services/ai.js", () => ({
   analyzeConsultation: vi.fn(),
   analyzeAudioConsultation: vi.fn(),
   generateSupportPlanDraft: vi.fn(),
   generateMonitoringDraft: vi.fn(),
+  searchLegalInfo: vi.fn(),
 }));
 
 vi.mock("./services/audio-storage.js", () => ({
@@ -87,9 +98,10 @@ import { retryPendingConsultations } from "./services/ai-retry.js";
 import * as caseRepo from "./repositories/case-repository.js";
 import * as consultationRepo from "./repositories/consultation-repository.js";
 import * as supportMenuRepo from "./repositories/support-menu-repository.js";
-import { analyzeConsultation, analyzeAudioConsultation, generateSupportPlanDraft, generateMonitoringDraft } from "./services/ai.js";
+import { analyzeConsultation, analyzeAudioConsultation, generateSupportPlanDraft, generateMonitoringDraft, searchLegalInfo } from "./services/ai.js";
 import * as supportPlanRepo from "./repositories/support-plan-repository.js";
 import * as monitoringRepo from "./repositories/monitoring-repository.js";
+import * as legalSearchRepo from "./repositories/legal-search-repository.js";
 import { Timestamp } from "@google-cloud/firestore";
 import { firebaseAuth, firestore } from "./config.js";
 
@@ -1763,6 +1775,90 @@ describe("Monitoring Sheet API", () => {
       const res = await request(app).get("/api/cases/case-1/monitoring/list");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
+    });
+  });
+
+  // ── 法令検索 ──
+
+  const MOCK_LEGAL_SEARCH_RESULT = {
+    id: "legal-1",
+    caseId: "case-1",
+    staffId: "staff-1",
+    query: "生活保護の申請要件",
+    references: [
+      { lawName: "生活保護法", article: "第4条", summary: "保護の補足性", relevance: "申請要件に直結" },
+    ],
+    legalBasis: "生活保護法に基づく",
+    createdAt: NOW,
+  };
+
+  describe("POST /api/cases/:id/legal-search", () => {
+    it("executes legal search and returns result", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([]);
+      vi.mocked(searchLegalInfo).mockResolvedValue({
+        references: MOCK_LEGAL_SEARCH_RESULT.references,
+        legalBasis: MOCK_LEGAL_SEARCH_RESULT.legalBasis,
+      });
+      vi.mocked(legalSearchRepo.createLegalSearch).mockResolvedValue(MOCK_LEGAL_SEARCH_RESULT);
+
+      const res = await request(app)
+        .post("/api/cases/case-1/legal-search")
+        .send({ query: "生活保護の申請要件" });
+      expect(res.status).toBe(201);
+      expect(res.body.query).toBe("生活保護の申請要件");
+      expect(res.body.references).toHaveLength(1);
+    });
+
+    it("returns 400 when query is empty", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+      const res = await request(app)
+        .post("/api/cases/case-1/legal-search")
+        .send({ query: "" });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 when query is missing", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+      const res = await request(app)
+        .post("/api/cases/case-1/legal-search")
+        .send({});
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 500 when AI search fails", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(consultationRepo.listConsultations).mockResolvedValue([]);
+      vi.mocked(searchLegalInfo).mockRejectedValue(new Error("AI error"));
+
+      const res = await request(app)
+        .post("/api/cases/case-1/legal-search")
+        .send({ query: "テスト" });
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe("法令検索に失敗しました");
+    });
+  });
+
+  describe("GET /api/cases/:id/legal-search", () => {
+    it("returns legal search history", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(legalSearchRepo.listLegalSearches).mockResolvedValue([MOCK_LEGAL_SEARCH_RESULT]);
+
+      const res = await request(app).get("/api/cases/case-1/legal-search");
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].query).toBe("生活保護の申請要件");
+    });
+
+    it("returns empty array when no history", async () => {
+      vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+      vi.mocked(legalSearchRepo.listLegalSearches).mockResolvedValue([]);
+
+      const res = await request(app).get("/api/cases/case-1/legal-search");
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(0);
     });
   });
 });

@@ -17,6 +17,7 @@
     "@eslint/js": "^9.39.4",
     "@google-cloud/firestore": "^7.0.0",
     "@google-cloud/vertexai": "^1.10.0",
+    "@google/genai": "^1.44.0",
     "express": "^5.2.1",
     "firebase-admin": "^13.7.0",
     "multer": "^2.1.1",

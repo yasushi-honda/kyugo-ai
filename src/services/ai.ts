@@ -1,5 +1,5 @@
-import { generativeModel } from "../config.js";
-import { AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu, SupportPlan } from "../types.js";
+import { generativeModel, genAI, MODEL } from "../config.js";
+import { AILegalSearchResult, AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu, SupportPlan } from "../types.js";
 
 const SYSTEM_INSTRUCTION_TEXT = `あなたは福祉相談支援AIアシスタントです。
 生活困窮者の相談内容を分析し、以下を行います：
@@ -322,4 +322,77 @@ ${consultationSummaries || "（相談記録なし）"}
     }));
   }
   return parseAIResponse<AIMonitoringResult>(responseText, ["overallEvaluation", "goalEvaluations"]);
+}
+
+// 法令・制度検索（Grounding with Google Search）
+const LEGAL_SEARCH_INSTRUCTION = `あなたは日本の福祉法制に精通した法令検索AIアシスタントです。
+相談内容に関連する法令・制度を、Google検索によるグラウンディングを活用して正確に検索します。
+
+対象法令の範囲：
+- 生活保護法、生活困窮者自立支援法、障害者総合支援法、社会福祉法
+- 児童福祉法、老人福祉法、介護保険法
+- 大阪府関連の施行細則・条例
+- 救護施設関連の厚生省令・ガイドライン
+- その他、相談内容に関連する法令・通知・制度
+
+回答は必ず以下のJSON形式で返してください：
+{
+  "references": [
+    {
+      "lawName": "法令名（例: 生活保護法）",
+      "article": "条文番号と内容（例: 第4条（保護の補足性）利用し得る資産、能力その他あらゆるものを...）",
+      "summary": "この条文が相談内容にどう関連するかの解説（100文字以内）",
+      "sourceUrl": "出典URL（e-Gov法令検索等の公式URL。不明な場合は空文字）",
+      "relevance": "相談内容との具体的な関連性の説明"
+    }
+  ],
+  "legalBasis": "この相談に適用される法的根拠の総合説明（300文字以内）"
+}
+
+注意事項：
+- 関連度の高い法令を最大5件まで提示
+- 条文の引用は正確に。不確かな場合は「参照推奨」と明記
+- 法改正の可能性があるため、最新の条文を確認するよう付記すること`;
+
+export async function searchLegalInfo(
+  query: string,
+  consultationSummaries: string,
+): Promise<AILegalSearchResult> {
+  const userPrompt = `## 検索クエリ
+${query}
+
+## 相談記録の要約
+${consultationSummaries || "（なし）"}
+
+上記の相談内容に関連する法令・制度を検索し、条文と解説を提供してください。`;
+
+  const response = await genAI.models.generateContent({
+    model: MODEL,
+    contents: userPrompt,
+    config: {
+      systemInstruction: LEGAL_SEARCH_INSTRUCTION,
+      tools: [{ googleSearch: {} }],
+      temperature: 0.2,
+      maxOutputTokens: 8192,
+    },
+  });
+
+  const responseText = response.text;
+  if (!responseText) {
+    console.error("GenAI empty legal search response", JSON.stringify({
+      candidates: response.candidates?.length ?? 0,
+    }));
+    throw new Error("AI returned empty response for legal search");
+  }
+
+  // Grounding応答はマークダウンコードブロックやテキストを含む場合があるため、
+  // コードブロック記法を除去してからJSONブロックを抽出
+  const stripped = responseText.replace(/```(?:json)?\n?([\s\S]*?)\n?```/g, "$1").trim();
+  const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.error("GenAI legal search: no JSON found in response", responseText.slice(0, 500));
+    throw new Error("AI response does not contain valid JSON for legal search");
+  }
+
+  return parseAIResponse<AILegalSearchResult>(jsonMatch[0], ["references", "legalBasis"]);
 }

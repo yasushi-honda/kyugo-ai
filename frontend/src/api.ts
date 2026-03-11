@@ -110,6 +110,24 @@ export interface SupportPlan {
   updatedAt: { _seconds: number };
 }
 
+export interface LegalReference {
+  lawName: string;
+  article: string;
+  summary: string;
+  sourceUrl?: string;
+  relevance: string;
+}
+
+export interface LegalSearchResult {
+  id: string;
+  caseId: string;
+  staffId: string;
+  query: string;
+  references: LegalReference[];
+  legalBasis: string;
+  createdAt: { _seconds: number };
+}
+
 export interface MonitoringGoalEvaluation {
   area: string;
   longTermGoal: string;
@@ -231,4 +249,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+
+  // 法令検索
+  searchLegalInfo: (caseId: string, query: string) =>
+    request<LegalSearchResult>(`/api/cases/${caseId}/legal-search`, {
+      method: "POST",
+      body: JSON.stringify({ query }),
+    }),
+
+  listLegalSearches: (caseId: string) =>
+    request<LegalSearchResult[]>(`/api/cases/${caseId}/legal-search`),
 };

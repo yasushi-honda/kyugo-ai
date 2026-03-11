@@ -79,6 +79,11 @@ export const updateMonitoringSheetSchema = z.object({
   status: z.enum(["draft", "confirmed"]).optional(),
 });
 
+// 法令検索
+export const createLegalSearchSchema = z.object({
+  query: z.string({ error: "query is required" }).min(1, { error: "query is required" }).max(2000),
+});
+
 // 管理者設定: ログイン許可リスト
 export const allowedEmailsSchema = z.object({
   emails: z.array(z.string().email({ error: "Invalid email address" }).max(254)).max(500),

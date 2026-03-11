@@ -2607,3 +2607,130 @@ a:hover { color: var(--ai-600); }
   margin: 0;
   line-height: 1.5;
 }
+
+/* ═══════════════════════════════════════
+   Legal Search — 法令検索
+   ═══════════════════════════════════════ */
+
+.legal-search-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.legal-search-form {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.legal-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.legal-search-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.legal-search-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.legal-search-query {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.legal-search-label {
+  font-weight: 700;
+  color: var(--ai-600);
+}
+
+.legal-search-date {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.legal-references {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.legal-reference-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.legal-reference-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.legal-reference-name {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ai-700);
+  margin: 0;
+}
+
+.legal-reference-link {
+  font-size: var(--text-xs);
+  color: var(--ai-500);
+  text-decoration: none;
+  border: 1px solid var(--ai-200);
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.legal-reference-link:hover {
+  background: var(--ai-50);
+}
+
+.legal-reference-article {
+  font-size: var(--text-sm);
+  color: var(--ai-600);
+  font-weight: 600;
+}
+
+.legal-reference-summary {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+.legal-reference-relevance {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.legal-relevance-label {
+  font-weight: 700;
+  color: var(--matcha-600);
+}

@@ -9,6 +9,7 @@ import {
 import { consultationsRouter } from "./consultations.js";
 import { supportPlansRouter } from "./support-plans.js";
 import { monitoringRouter } from "./monitoring.js";
+import { legalSearchRouter } from "./legal-search.js";
 import { paramStr, validate } from "./utils.js";
 
 export const casesRouter = Router();
@@ -21,6 +22,9 @@ casesRouter.use("/:id/support-plan", supportPlansRouter);
 
 // モニタリングシートルートを委譲
 casesRouter.use("/:id/monitoring", monitoringRouter);
+
+// 法令検索ルートを委譲
+casesRouter.use("/:id/legal-search", legalSearchRouter);
 
 // POST /api/cases - ケース作成（assignedStaffIdはreq.userから強制）
 casesRouter.post("/", async (req: Request, res: Response) => {

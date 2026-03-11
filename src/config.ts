@@ -1,4 +1,5 @@
 import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 import { Firestore } from "@google-cloud/firestore";
 import { Storage } from "@google-cloud/storage";
 import { initializeApp, applicationDefault, cert } from "firebase-admin/app";
@@ -19,6 +20,13 @@ export const vertexAI = new VertexAI({
 });
 
 export const generativeModel = vertexAI.getGenerativeModel({ model: MODEL });
+
+// @google/genai SDK (Grounding with Google Search用)
+export const genAI = new GoogleGenAI({
+  vertexai: true,
+  project: PROJECT_ID,
+  location: REGION,
+});
 
 // Firebase Admin SDK initialization
 const firebaseAdminApp = initializeApp({
