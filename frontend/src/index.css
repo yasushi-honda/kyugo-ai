@@ -668,6 +668,12 @@ a:hover { color: var(--ai-600); }
 
 .form-textarea { resize: vertical; min-height: 120px; line-height: 1.8; }
 
+.form-help {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 .form-row { display: flex; gap: var(--space-4); }
 .form-group-flex { flex: 1; }
 
@@ -1060,7 +1066,7 @@ a:hover { color: var(--ai-600); }
   font-size: var(--text-sm);
 }
 
-.login-error, .alert-error {
+.login-error, .alert-error, .form-error {
   background: var(--kuri-100);
   color: var(--kuri-500);
   border: 1px solid rgba(196, 92, 92, 0.2);
