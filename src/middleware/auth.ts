@@ -82,7 +82,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const userRecord = await firebaseAuth.getUser(decoded.uid);
     if (userRecord.disabled) {
-      res.status(401).json({ error: "User account is disabled" });
+      res.status(401).json({ error: "User account is disabled", code: "ACCOUNT_DISABLED" });
       return;
     }
   } catch {

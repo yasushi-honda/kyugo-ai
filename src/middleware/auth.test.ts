@@ -518,7 +518,7 @@ describe("requireAuth middleware", () => {
     await requireAuth(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "User account is disabled" });
+    expect(res.json).toHaveBeenCalledWith({ error: "User account is disabled", code: "ACCOUNT_DISABLED" });
     expect(next).not.toHaveBeenCalled();
   });
 
