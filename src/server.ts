@@ -26,10 +26,10 @@ app.use((_req, res, next) => {
 // Rate limiting（/health はレート制限外）
 app.use("/api", defaultLimiter);
 
-// Health check（Firestore接続確認付き）
+// Health check（Firestore接続確認付き、軽量なdoc get）
 app.get("/health", async (_req, res) => {
   try {
-    await firestore.listCollections();
+    await firestore.collection("_health").doc("ping").get();
     res.json({ status: "ok" });
   } catch {
     res.status(503).json({ status: "degraded", error: "Firestore unreachable" });

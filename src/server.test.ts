@@ -6,9 +6,12 @@ import express from "express";
 vi.mock("./config.js", () => ({
   ALLOWED_EMAILS_CONFIG_DOC: "config/allowedEmails",
   firestore: {
-    collection: vi.fn(),
+    collection: vi.fn().mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+      }),
+    }),
     doc: vi.fn(),
-    listCollections: vi.fn(),
   },
   generativeModel: {
     generateContent: vi.fn(),
@@ -167,7 +170,6 @@ beforeEach(() => {
 
 describe("GET /health", () => {
   it("returns ok when Firestore is reachable", async () => {
-    vi.mocked(firestore.listCollections).mockResolvedValue([] as never);
     const { app: serverApp } = await import("./server.js");
     const res = await request(serverApp).get("/health");
     expect(res.status).toBe(200);
@@ -175,7 +177,11 @@ describe("GET /health", () => {
   });
 
   it("returns 503 when Firestore is unreachable", async () => {
-    vi.mocked(firestore.listCollections).mockRejectedValue(new Error("connection failed"));
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockRejectedValue(new Error("connection failed")),
+      }),
+    } as never);
     const { app: serverApp } = await import("./server.js");
     const res = await request(serverApp).get("/health");
     expect(res.status).toBe(503);
