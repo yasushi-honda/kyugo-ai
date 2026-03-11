@@ -211,16 +211,16 @@ describe("NewCaseModal", () => {
     });
   });
 
-  describe("無効ボタンのヒント", () => {
-    it("必須項目未入力時にボタンのtitle属性で理由を表示する", () => {
+  describe("未入力ヒント", () => {
+    it("必須項目未入力時に未入力項目を可視テキストで表示する", () => {
       renderModal();
 
-      const submitBtn = screen.getByText("ケースを作成");
-      expect(submitBtn).toHaveAttribute("title");
-      expect(submitBtn.getAttribute("title")).toMatch(/未入力/);
+      const hint = screen.getByText(/未入力の項目/);
+      expect(hint).toBeInTheDocument();
+      expect(hint.textContent).toMatch(/相談者氏名/);
     });
 
-    it("全項目入力後はtitle属性が消える", async () => {
+    it("全項目入力後は未入力ヒントが消える", async () => {
       renderModal();
       const user = userEvent.setup();
 
@@ -229,8 +229,7 @@ describe("NewCaseModal", () => {
       const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
       await user.type(dateInput, "1990-01-01");
 
-      const submitBtn = screen.getByText("ケースを作成");
-      expect(submitBtn).not.toHaveAttribute("title");
+      expect(screen.queryByText(/未入力の項目/)).not.toBeInTheDocument();
     });
   });
 });

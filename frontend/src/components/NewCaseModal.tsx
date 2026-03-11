@@ -46,7 +46,7 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="form-error">{error}</div>}
 
           <div className="form-group">
             <label className="form-label">相談者氏名 *</label>
@@ -87,10 +87,12 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             className="btn btn-primary"
             onClick={handleSubmit}
             disabled={submitting || !isValid}
-            {...(!isValid ? { title: `未入力の項目: ${missingFields.join("、")}` } : {})}
           >
             {submitting ? "作成中..." : "ケースを作成"}
           </button>
+          {!isValid && (
+            <p className="form-help">未入力の項目: {missingFields.join("、")}</p>
+          )}
         </div>
       </div>
     </div>

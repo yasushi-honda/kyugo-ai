@@ -1066,7 +1066,7 @@ a:hover { color: var(--ai-600); }
   font-size: var(--text-sm);
 }
 
-.login-error, .alert-error {
+.login-error, .alert-error, .form-error {
   background: var(--kuri-100);
   color: var(--kuri-500);
   border: 1px solid rgba(196, 92, 92, 0.2);
