@@ -668,6 +668,12 @@ a:hover { color: var(--ai-600); }
 
 .form-textarea { resize: vertical; min-height: 120px; line-height: 1.8; }
 
+.form-help {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 .form-row { display: flex; gap: var(--space-4); }
 .form-group-flex { flex: 1; }
 
