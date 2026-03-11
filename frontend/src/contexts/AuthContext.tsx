@@ -16,20 +16,20 @@ interface AuthContextType {
   getIdToken: () => Promise<string>;
 }
 
-function getAuthErrorMessage(message: string): string {
-  if (message.includes("email domain not allowed")) {
-    return "このメールアドレスのドメインは許可されていません。組織のアカウントでログインしてください。";
+function getAuthErrorMessage(err: unknown): string {
+  const code = (err as { code?: string }).code;
+  switch (code) {
+    case "EMAIL_DOMAIN_NOT_ALLOWED":
+      return "このメールアドレスのドメインは許可されていません。組織のアカウントでログインしてください。";
+    case "ACCOUNT_DISABLED":
+      return "このアカウントは無効化されています。管理者にお問い合わせください。";
+    case "EMAIL_REQUIRED":
+      return "メールアドレスが取得できません。Googleアカウントの設定を確認してください。";
+    case "EMAIL_NOT_VERIFIED":
+      return "メールアドレスが未確認です。Googleアカウントのメール確認を完了してください。";
+    default:
+      return `職員情報の取得に失敗しました: ${(err as Error).message}`;
   }
-  if (message.includes("has been disabled")) {
-    return "このアカウントは無効化されています。管理者にお問い合わせください。";
-  }
-  if (message.includes("Email is required")) {
-    return "メールアドレスが取得できません。Googleアカウントの設定を確認してください。";
-  }
-  if (message.includes("Email not verified")) {
-    return "メールアドレスが未確認です。Googleアカウントのメール確認を完了してください。";
-  }
-  return `職員情報の取得に失敗しました: ${message}`;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       if (requestId !== fetchIdRef.current) return;
       setUserInfo(null);
-      setAuthError(getAuthErrorMessage((err as Error).message));
+      setAuthError(getAuthErrorMessage(err));
     } finally {
       if (requestId === fetchIdRef.current) {
         if (isRetry) {

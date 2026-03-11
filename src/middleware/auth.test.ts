@@ -100,7 +100,7 @@ describe("requireAuth middleware", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
   });
 
   it("returns 403 when email_verified is undefined (new user)", async () => {
@@ -122,7 +122,7 @@ describe("requireAuth middleware", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
   });
 
   it("returns 403 when email is undefined (new user)", async () => {
@@ -144,7 +144,7 @@ describe("requireAuth middleware", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Email is required for auto-provisioning" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Email is required for auto-provisioning", code: "EMAIL_REQUIRED" });
   });
 
   it("treats empty ALLOWED_EMAIL_DOMAINS as unset (fail-open)", async () => {
@@ -232,7 +232,7 @@ describe("requireAuth middleware", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed", code: "EMAIL_DOMAIN_NOT_ALLOWED" });
 
     process.env.ALLOWED_EMAIL_DOMAINS = originalEnv;
   });
@@ -625,7 +625,7 @@ describe("requireAuth middleware", () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Access denied: email domain not allowed", code: "EMAIL_DOMAIN_NOT_ALLOWED" });
 
     process.env.ALLOWED_EMAIL_DOMAINS = originalDomains;
     process.env.ALLOWED_EMAILS = originalEmails;

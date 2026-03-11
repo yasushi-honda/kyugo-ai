@@ -4,21 +4,20 @@ import { auth } from "../firebase";
 
 const googleProvider = new GoogleAuthProvider();
 
-function classifyError(err: Error): { message: string; isHint: boolean } {
-  const msg = err.message;
-  if (msg.includes("popup-closed-by-user")) {
-    return { message: "ログインウィンドウが閉じられました。もう一度お試しください。", isHint: true };
+function classifyError(err: unknown): { message: string; isHint: boolean } {
+  const code = (err as { code?: string }).code ?? "";
+  switch (code) {
+    case "auth/popup-closed-by-user":
+      return { message: "ログインウィンドウが閉じられました。もう一度お試しください。", isHint: true };
+    case "auth/popup-blocked":
+      return { message: "ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。", isHint: false };
+    case "auth/network-request-failed":
+      return { message: "インターネット接続を確認してください。接続後にもう一度お試しください。", isHint: false };
+    case "auth/unauthorized-domain":
+      return { message: "このドメインからのログインは許可されていません。管理者にお問い合わせください。", isHint: false };
+    default:
+      return { message: "ログインに失敗しました。繰り返し発生する場合は管理者にお問い合わせください。", isHint: false };
   }
-  if (msg.includes("popup-blocked")) {
-    return { message: "ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。", isHint: false };
-  }
-  if (msg.includes("network-request-failed")) {
-    return { message: "インターネット接続を確認してください。接続後にもう一度お試しください。", isHint: false };
-  }
-  if (msg.includes("unauthorized-domain")) {
-    return { message: "このドメインからのログインは許可されていません。管理者にお問い合わせください。", isHint: false };
-  }
-  return { message: "ログインに失敗しました。繰り返し発生する場合は管理者にお問い合わせください。", isHint: false };
 }
 
 export function Login() {
@@ -33,7 +32,7 @@ export function Login() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      const classified = classifyError(err as Error);
+      const classified = classifyError(err);
       setError(classified.message);
       setIsHint(classified.isHint);
     } finally {
