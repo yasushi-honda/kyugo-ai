@@ -82,7 +82,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const userRecord = await firebaseAuth.getUser(decoded.uid);
     if (userRecord.disabled) {
-      res.status(401).json({ error: "User account is disabled" });
+      res.status(401).json({ error: "User account is disabled", code: "ACCOUNT_DISABLED" });
       return;
     }
   } catch {
@@ -103,7 +103,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     if (primaryDoc.exists) {
       const data = primaryDoc.data()!;
       if (data.disabled) {
-        res.status(403).json({ error: "Your account has been disabled" });
+        res.status(403).json({ error: "Your account has been disabled", code: "ACCOUNT_DISABLED" });
         return;
       }
       staffId = primaryDoc.id;
@@ -130,7 +130,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         // レガシーレコード発見
         const staffDoc = legacyQuery.docs[0];
         if (staffDoc.data().disabled) {
-          res.status(403).json({ error: "Your account has been disabled" });
+          res.status(403).json({ error: "Your account has been disabled", code: "ACCOUNT_DISABLED" });
           return;
         }
         staffId = staffDoc.id;
@@ -139,15 +139,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       } else {
         // 未登録ユーザーのアクセス制御
         if (!decoded.email) {
-          res.status(403).json({ error: "Email is required for auto-provisioning" });
+          res.status(403).json({ error: "Email is required for auto-provisioning", code: "EMAIL_REQUIRED" });
           return;
         }
         if (!decoded.email_verified) {
-          res.status(403).json({ error: "Email not verified" });
+          res.status(403).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
           return;
         }
         if (!(await isEmailAllowed(decoded.email))) {
-          res.status(403).json({ error: "Access denied: email domain not allowed" });
+          res.status(403).json({ error: "Access denied: email domain not allowed", code: "EMAIL_DOMAIN_NOT_ALLOWED" });
           return;
         }
 
@@ -176,7 +176,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
               throw new Error("Staff document exists but has no data");
             }
             if (existingData.disabled) {
-              res.status(403).json({ error: "Your account has been disabled" });
+              res.status(403).json({ error: "Your account has been disabled", code: "ACCOUNT_DISABLED" });
               return;
             }
             staffId = existingDoc.id;

@@ -49,7 +49,9 @@ describe("Login", () => {
 
   describe("エラーメッセージ分岐", () => {
     it("ネットワークエラー時に接続確認を促す", async () => {
-      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/network-request-failed"));
+      const err = new Error("auth/network-request-failed");
+      (err as Error & { code: string }).code = "auth/network-request-failed";
+      vi.mocked(signInWithPopup).mockRejectedValue(err);
       const user = userEvent.setup();
 
       render(<Login />);
@@ -61,7 +63,9 @@ describe("Login", () => {
     });
 
     it("ポップアップブロック時にブロック解除を案内する", async () => {
-      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/popup-blocked"));
+      const err = new Error("auth/popup-blocked");
+      (err as Error & { code: string }).code = "auth/popup-blocked";
+      vi.mocked(signInWithPopup).mockRejectedValue(err);
       const user = userEvent.setup();
 
       render(<Login />);
@@ -73,9 +77,9 @@ describe("Login", () => {
     });
 
     it("ポップアップを閉じた時にヒント表示する（エラーではない）", async () => {
-      vi.mocked(signInWithPopup).mockRejectedValue(
-        new Error("Firebase: Error (auth/popup-closed-by-user)."),
-      );
+      const err = new Error("Firebase: Error (auth/popup-closed-by-user).");
+      (err as Error & { code: string }).code = "auth/popup-closed-by-user";
+      vi.mocked(signInWithPopup).mockRejectedValue(err);
       const user = userEvent.setup();
 
       render(<Login />);
@@ -102,7 +106,9 @@ describe("Login", () => {
     });
 
     it("unauthorized-domain時にドメインエラーを表示する", async () => {
-      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/unauthorized-domain"));
+      const err = new Error("auth/unauthorized-domain");
+      (err as Error & { code: string }).code = "auth/unauthorized-domain";
+      vi.mocked(signInWithPopup).mockRejectedValue(err);
       const user = userEvent.setup();
 
       render(<Login />);

@@ -131,17 +131,43 @@ describe("api.listSupportMenus", () => {
 });
 
 describe("error handling", () => {
-  it("throws Error with server error message", async () => {
-    mockFetch.mockResolvedValue(errorResponse(400, { error: "Invalid input" }));
+  it("throws ApiError with code and status from server response", async () => {
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Access denied", code: "EMAIL_DOMAIN_NOT_ALLOWED" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
-    await expect(api.listCases()).rejects.toThrow("Invalid input");
+    await expect(api.listCases()).rejects.toMatchObject({
+      name: "ApiError",
+      message: "Access denied",
+      code: "EMAIL_DOMAIN_NOT_ALLOWED",
+      status: 403,
+    });
   });
 
-  it("throws Error with status text when no error field", async () => {
+  it("throws ApiError with UNKNOWN code when no code field", async () => {
+    mockFetch.mockResolvedValue(errorResponse(400, { error: "Invalid input" }));
+
+    await expect(api.listCases()).rejects.toMatchObject({
+      name: "ApiError",
+      message: "Invalid input",
+      code: "UNKNOWN",
+      status: 400,
+    });
+  });
+
+  it("throws ApiError with status text when response is not JSON", async () => {
     mockFetch.mockResolvedValue(
       new Response("not json", { status: 500, statusText: "Internal Server Error" }),
     );
 
-    await expect(api.listCases()).rejects.toThrow("Internal Server Error");
+    await expect(api.listCases()).rejects.toMatchObject({
+      name: "ApiError",
+      message: "Internal Server Error",
+      code: "UNKNOWN",
+      status: 500,
+    });
   });
 });

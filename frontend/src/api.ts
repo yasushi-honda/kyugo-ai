@@ -2,6 +2,17 @@ import { auth } from "./firebase";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await auth.currentUser?.getIdToken();
   const res = await fetch(`${API_BASE}${path}`, {
@@ -14,7 +25,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    throw new ApiError(
+      err.error ?? `HTTP ${res.status}`,
+      err.code ?? "UNKNOWN",
+      res.status,
+    );
   }
   return res.json();
 }

@@ -9,7 +9,7 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Help } from "./pages/Help";
 import { About } from "./pages/About";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import type { UserInfo } from "./api";
 
 function renderApp(path = "/") {
@@ -198,7 +198,7 @@ describe("Auth error handling", () => {
   });
 
   it("ドメイン不許可エラーを日本語で表示する", async () => {
-    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Access denied: email domain not allowed"));
+    vi.mocked(api.getMe).mockRejectedValueOnce(new ApiError("Access denied: email domain not allowed", "EMAIL_DOMAIN_NOT_ALLOWED", 403));
 
     render(
       <AuthProvider>
@@ -217,7 +217,7 @@ describe("Auth error handling", () => {
   });
 
   it("アカウント無効化エラーを日本語で表示する", async () => {
-    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Your account has been disabled"));
+    vi.mocked(api.getMe).mockRejectedValueOnce(new ApiError("Your account has been disabled", "ACCOUNT_DISABLED", 403));
 
     render(
       <AuthProvider>
