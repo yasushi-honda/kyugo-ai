@@ -128,7 +128,7 @@ export function useAudioRecorder(): AudioRecorderState & AudioRecorderActions {
       // Abort if session was superseded
       if (sessionIdRef.current !== currentSession) return;
       const msg = err instanceof DOMException && err.name === "NotAllowedError"
-        ? "マイクへのアクセスが許可されていません。ブラウザの設定を確認してください。"
+        ? "マイクへのアクセスが許可されていません。アドレスバーのカメラ/マイクアイコンから許可するか、ブラウザの設定 > プライバシー > マイクで許可してください。"
         : "マイクの初期化に失敗しました。";
       setError(msg);
       releaseStream();

@@ -127,7 +127,7 @@ describe("useAudioRecorder", () => {
     });
 
     expect(result.current.isRecording).toBe(false);
-    expect(result.current.error).toBe("マイクへのアクセスが許可されていません。ブラウザの設定を確認してください。");
+    expect(result.current.error).toBe("マイクへのアクセスが許可されていません。アドレスバーのカメラ/マイクアイコンから許可するか、ブラウザの設定 > プライバシー > マイクで許可してください。");
   });
 
   it("sets generic error for non-permission failures", async () => {
