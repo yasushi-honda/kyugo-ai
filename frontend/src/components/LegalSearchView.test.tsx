@@ -112,6 +112,29 @@ describe("LegalSearchView", () => {
     });
   });
 
+  it("does not render source link for non-https URLs", async () => {
+    const unsafeResult: LegalSearchResult = {
+      ...MOCK_RESULT,
+      references: [
+        {
+          lawName: "テスト法",
+          article: "第1条",
+          summary: "テスト",
+          sourceUrl: "javascript:alert(1)",
+          relevance: "テスト",
+        },
+      ],
+    };
+    vi.mocked(api.listLegalSearches).mockResolvedValue([unsafeResult]);
+
+    render(<LegalSearchView caseId="case-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("テスト法")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("出典")).not.toBeInTheDocument();
+  });
+
   it("renders source link when sourceUrl is provided", async () => {
     vi.mocked(api.listLegalSearches).mockResolvedValue([MOCK_RESULT]);
 

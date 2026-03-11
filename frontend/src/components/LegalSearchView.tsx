@@ -3,6 +3,11 @@ import { api } from "../api";
 import type { LegalSearchResult } from "../api";
 import { formatDateTime } from "../constants";
 
+/** XSS防止: https: スキームのURLのみ許可 */
+function isSafeUrl(url: string | undefined): url is string {
+  return typeof url === "string" && url.startsWith("https://");
+}
+
 interface LegalSearchViewProps {
   caseId: string;
 }
@@ -114,7 +119,7 @@ export function LegalSearchView({ caseId }: LegalSearchViewProps) {
                   <div key={`${result.id}-${ref.lawName}-${i}`} className="legal-reference-card">
                     <div className="legal-reference-header">
                       <h4 className="legal-reference-name">{ref.lawName}</h4>
-                      {ref.sourceUrl && (
+                      {isSafeUrl(ref.sourceUrl) && (
                         <a
                           href={ref.sourceUrl}
                           target="_blank"

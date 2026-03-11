@@ -1,5 +1,5 @@
 import { generativeModel, genAI, MODEL } from "../config.js";
-import { AILegalSearchResult, AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, SupportMenu, SupportPlan } from "../types.js";
+import { AILegalSearchResult, AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, LegalReference, SupportMenu, SupportPlan } from "../types.js";
 
 const SYSTEM_INSTRUCTION_TEXT = `あなたは福祉相談支援AIアシスタントです。
 生活困窮者の相談内容を分析し、以下を行います：
@@ -394,5 +394,28 @@ ${consultationSummaries || "（なし）"}
     throw new Error("AI response does not contain valid JSON for legal search");
   }
 
-  return parseAIResponse<AILegalSearchResult>(jsonMatch[0], ["references", "legalBasis"]);
+  const parsed = parseAIResponse<AILegalSearchResult>(jsonMatch[0], ["references", "legalBasis"]);
+
+  // references配列の形状検証とsourceUrlサニタイズ
+  if (!Array.isArray(parsed.references)) {
+    throw new Error("AI response: references is not an array");
+  }
+  parsed.references = parsed.references
+    .filter((ref): ref is LegalReference =>
+      typeof ref === "object" &&
+      ref !== null &&
+      typeof ref.lawName === "string" &&
+      typeof ref.article === "string" &&
+      typeof ref.summary === "string" &&
+      typeof ref.relevance === "string",
+    )
+    .map((ref) => ({
+      ...ref,
+      // XSS防止: https: スキームのURLのみ許可
+      sourceUrl: typeof ref.sourceUrl === "string" && ref.sourceUrl.startsWith("https://")
+        ? ref.sourceUrl
+        : undefined,
+    }));
+
+  return parsed;
 }

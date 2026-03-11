@@ -100,6 +100,78 @@ describe("searchLegalInfo", () => {
     );
   });
 
+  it("strips non-https sourceUrl (XSS prevention)", async () => {
+    const malicious = JSON.stringify({
+      references: [
+        {
+          lawName: "テスト法",
+          article: "第1条",
+          summary: "テスト",
+          sourceUrl: "javascript:alert(1)",
+          relevance: "テスト",
+        },
+        {
+          lawName: "正常法",
+          article: "第2条",
+          summary: "正常",
+          sourceUrl: "https://example.com",
+          relevance: "正常",
+        },
+        {
+          lawName: "HTTP法",
+          article: "第3条",
+          summary: "HTTP",
+          sourceUrl: "http://example.com",
+          relevance: "HTTPも除外",
+        },
+      ],
+      legalBasis: "テスト",
+    });
+    vi.mocked(genAI.models.generateContent).mockResolvedValue({
+      text: malicious,
+      candidates: [{}],
+    } as never);
+
+    const result = await searchLegalInfo("テスト", "");
+
+    expect(result.references).toHaveLength(3);
+    expect(result.references[0].sourceUrl).toBeUndefined();
+    expect(result.references[1].sourceUrl).toBe("https://example.com");
+    expect(result.references[2].sourceUrl).toBeUndefined();
+  });
+
+  it("filters out malformed references (missing required fields)", async () => {
+    const badRefs = JSON.stringify({
+      references: [
+        { lawName: "正常法", article: "第1条", summary: "OK", relevance: "OK" },
+        { lawName: "不完全" }, // missing article, summary, relevance
+        "not an object",
+        null,
+      ],
+      legalBasis: "テスト",
+    });
+    vi.mocked(genAI.models.generateContent).mockResolvedValue({
+      text: badRefs,
+      candidates: [{}],
+    } as never);
+
+    const result = await searchLegalInfo("テスト", "");
+
+    expect(result.references).toHaveLength(1);
+    expect(result.references[0].lawName).toBe("正常法");
+  });
+
+  it("throws when references is not an array", async () => {
+    vi.mocked(genAI.models.generateContent).mockResolvedValue({
+      text: JSON.stringify({ references: "not-array", legalBasis: "test" }),
+      candidates: [{}],
+    } as never);
+
+    await expect(searchLegalInfo("テスト", "")).rejects.toThrow(
+      "references is not an array",
+    );
+  });
+
   it("passes empty summaries as （なし）", async () => {
     vi.mocked(genAI.models.generateContent).mockResolvedValue({
       text: VALID_RESPONSE,
