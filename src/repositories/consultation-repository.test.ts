@@ -74,7 +74,7 @@ describe("recoverStuckPendingConsultations", () => {
     expect(mockDocRef.update).toHaveBeenCalledWith(
       expect.objectContaining({
         aiStatus: "error",
-        aiErrorMessage: "Recovered from stuck pending state (no content available for retry)",
+        aiErrorMessage: "Recovered from stuck pending state (no content or audio available for retry)",
         aiRetryCount: 0,
       }),
     );

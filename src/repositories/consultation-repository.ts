@@ -73,6 +73,19 @@ export async function updateConsultationAIStatus(
   await consultationsRef(caseId).doc(consultationId).update(update);
 }
 
+export async function updateConsultationAudioPath(
+  caseId: string,
+  consultationId: string,
+  audioStoragePath: string,
+  audioMimeType: string,
+): Promise<void> {
+  await consultationsRef(caseId).doc(consultationId).update({
+    audioStoragePath,
+    audioMimeType,
+    updatedAt: Timestamp.now(),
+  });
+}
+
 // retry_pending かつ nextRetryAt <= now のconsultationを全caseから取得
 export async function listRetryPendingConsultations(): Promise<Consultation[]> {
   const now = Timestamp.now();
@@ -129,8 +142,9 @@ export async function recoverStuckRetryingConsultations(): Promise<number> {
 }
 
 // pending のまま stuck したconsultationを復旧する（fire-and-forget失敗対策）
+// - audioStoragePathがあるレコード → retry_pending（音声ベースでリトライ可能）
 // - contentがあるレコード → retry_pending（テキストベースでリトライ可能）
-// - contentが空のレコード → error（音声データ喪失により復旧不可能）
+// - どちらもないレコード → error（復旧不可能）
 // createdAt を基準にする理由: pending状態ではupdatedAtが更新されないため
 export async function recoverStuckPendingConsultations(): Promise<number> {
   const threshold = Timestamp.fromMillis(Date.now() - STUCK_THRESHOLD_MS);
@@ -145,12 +159,12 @@ export async function recoverStuckPendingConsultations(): Promise<number> {
 
     for (const doc of snapshot.docs) {
       const data = doc.data() as Consultation;
-      const hasContent = !!data.content?.trim();
+      const canRetry = !!data.audioStoragePath || !!data.content?.trim();
       await doc.ref.update({
-        aiStatus: hasContent ? "retry_pending" : "error",
-        aiErrorMessage: hasContent
+        aiStatus: canRetry ? "retry_pending" : "error",
+        aiErrorMessage: canRetry
           ? "Recovered from stuck pending state"
-          : "Recovered from stuck pending state (no content available for retry)",
+          : "Recovered from stuck pending state (no content or audio available for retry)",
         aiRetryCount: 0,
         updatedAt: Timestamp.now(),
       });

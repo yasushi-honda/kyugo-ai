@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { api } from "../api";
+import type { Consultation } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import { SuggestedSupports } from "./SuggestedSupports";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
@@ -14,6 +15,9 @@ interface Props {
 type Mode = "text" | "audio";
 type AudioSource = "record" | "file";
 
+const POLL_INTERVAL_MS = 5000;
+const POLL_MAX_ATTEMPTS = 60; // 5分間
+
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
@@ -26,17 +30,36 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [aiResult, setAiResult] = useState<{
-    transcript?: string;
-    summary?: string;
-    suggestedSupports?: Array<{ menuName: string; reason: string; relevanceScore: number }>;
-  } | null>(null);
+  const [audioConsultation, setAudioConsultation] = useState<Consultation | null>(null);
+  const [pollCount, setPollCount] = useState(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorder = useAudioRecorder();
   const effectiveAudioSource = recorder.isSupported ? audioSource : "file";
 
   // Use recorded file or uploaded file
   const activeAudioFile = effectiveAudioSource === "record" ? recorder.recordedFile : audioFile;
+
+  // ポーリングで音声相談のAI分析状態を監視
+  const pollStatus = useCallback(async (consultation: Consultation, attempt: number) => {
+    if (attempt >= POLL_MAX_ATTEMPTS) return;
+    try {
+      const updated = await api.getConsultation(caseId, consultation.id!);
+      setAudioConsultation(updated);
+      if (updated.aiStatus === "pending" || updated.aiStatus === "retrying" || updated.aiStatus === "retry_pending") {
+        setPollCount(attempt + 1);
+        pollTimerRef.current = setTimeout(() => pollStatus(updated, attempt + 1), POLL_INTERVAL_MS);
+      }
+    } catch {
+      // ポーリング失敗は無視（次回リフレッシュで確認可能）
+    }
+  }, [caseId]);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, []);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -54,11 +77,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
         formData.append("context", form.context);
 
         const result = await api.createAudioConsultation(caseId, formData);
-        setAiResult({
-          transcript: result.transcript,
-          summary: result.summary,
-          suggestedSupports: result.suggestedSupports,
-        });
+        setAudioConsultation(result);
+        setPollCount(0);
+        // AI分析はpendingで返るのでポーリング開始
+        pollTimerRef.current = setTimeout(() => pollStatus(result, 0), POLL_INTERVAL_MS);
       }
     } catch (err) {
       alert(`送信に失敗しました: ${(err as Error).message}`);
@@ -67,38 +89,81 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     }
   };
 
-  // AI結果表示後に閉じる
-  if (aiResult) {
+  // 音声相談結果表示
+  if (audioConsultation) {
+    const status = audioConsultation.aiStatus;
+    const isAnalyzing = status === "pending" || status === "retrying";
+    const isCompleted = status === "completed";
+    const isError = status === "error";
+    const isRetryPending = status === "retry_pending";
+
     return (
-      <div className="modal-overlay" onClick={onCreated}>
+      <div className="modal-overlay" onClick={isAnalyzing ? undefined : onCreated}>
         <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
-            <h3>AI分析結果</h3>
+            <h3>{isAnalyzing ? "AI分析中..." : isCompleted ? "AI分析結果" : "相談記録を保存しました"}</h3>
             <button className="btn btn-ghost" onClick={onCreated}>✕</button>
           </div>
           <div className="modal-body">
-            {aiResult.transcript && (
-              <div className="transcript-section">
-                <label className="form-label">文字起こし</label>
-                <div className="transcript-block">{aiResult.transcript}</div>
+            {isAnalyzing && (
+              <div className="ai-panel">
+                <div className="ai-panel-header">
+                  <div className="spinner spinner-sm" />
+                  AI分析を実行中です...（{pollCount * 5}秒経過）
+                </div>
+                <p className="ai-summary">音声の文字起こしと分析を行っています。このまましばらくお待ちください。画面を閉じても分析は継続されます。</p>
               </div>
             )}
 
-            <div className="ai-panel">
-              <div className="ai-panel-header">
-                <div className="ai-panel-icon">AI</div>
-                分析完了
+            {isRetryPending && (
+              <div className="ai-panel">
+                <div className="ai-panel-header">
+                  <div className="ai-panel-icon">⏳</div>
+                  AI分析を再試行待ちです
+                </div>
+                <p className="ai-summary">一時的なエラーが発生しました。自動的に再試行されます。画面を閉じても問題ありません。</p>
               </div>
-              {aiResult.summary && (
-                <div className="ai-summary">{aiResult.summary}</div>
-              )}
-              {aiResult.suggestedSupports && aiResult.suggestedSupports.length > 0 && (
-                <SuggestedSupports supports={aiResult.suggestedSupports} />
-              )}
-            </div>
+            )}
+
+            {isError && (
+              <div className="ai-panel ai-error-panel">
+                <div className="ai-panel-header">
+                  <div className="ai-panel-icon">⚠️</div>
+                  AI分析に失敗しました
+                </div>
+                <p className="ai-summary">{audioConsultation.aiErrorMessage ?? "不明なエラー"}</p>
+                <p className="ai-summary">相談記録は保存されています。管理者にお問い合わせください。</p>
+              </div>
+            )}
+
+            {isCompleted && (
+              <>
+                {audioConsultation.transcript && (
+                  <div className="transcript-section">
+                    <label className="form-label">文字起こし</label>
+                    <div className="transcript-block">{audioConsultation.transcript}</div>
+                  </div>
+                )}
+
+                <div className="ai-panel">
+                  <div className="ai-panel-header">
+                    <div className="ai-panel-icon">AI</div>
+                    分析完了
+                  </div>
+                  {audioConsultation.summary && (
+                    <div className="ai-summary">{audioConsultation.summary}</div>
+                  )}
+                  {audioConsultation.suggestedSupports && audioConsultation.suggestedSupports.length > 0 && (
+                    <SuggestedSupports supports={audioConsultation.suggestedSupports} />
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <div className="modal-footer">
-            <button className="btn btn-primary" onClick={onCreated}>閉じる</button>
+            <button className="btn btn-primary" onClick={onCreated}>
+              {isAnalyzing ? "バックグラウンドで続行" : "閉じる"}
+            </button>
           </div>
         </div>
       </div>
@@ -297,7 +362,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
             {submitting ? (
               <>
                 <div className="spinner spinner-sm" />
-                {mode === "audio" ? "AI分析中..." : "保存中..."}
+                保存中...
               </>
             ) : (
               mode === "audio" ? "音声を分析・記録" : "相談を記録"

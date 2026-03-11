@@ -1,5 +1,6 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import { Firestore } from "@google-cloud/firestore";
+import { Storage } from "@google-cloud/storage";
 import { initializeApp, applicationDefault, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
@@ -28,5 +29,10 @@ const firebaseAdminApp = initializeApp({
 });
 
 export const firebaseAuth = getAuth(firebaseAdminApp);
+
+// Cloud Storage for audio file persistence
+export const AUDIO_BUCKET_NAME = process.env.AUDIO_BUCKET_NAME ?? `${PROJECT_ID}-audio`;
+export const storage = new Storage({ projectId: PROJECT_ID });
+export const audioBucket = storage.bucket(AUDIO_BUCKET_NAME);
 
 export const ALLOWED_EMAILS_CONFIG_DOC = "config/allowedEmails";

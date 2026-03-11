@@ -4,6 +4,7 @@ import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "../services/ai.js";
+import { uploadAudio } from "../services/audio-storage.js";
 import { SUPPORTED_AUDIO_MIME_TYPES, AI_RETRY_CONFIG } from "../types.js";
 import { isTransientError } from "../utils/error.js";
 import { requireCaseAccess } from "../middleware/authz.js";
@@ -114,10 +115,20 @@ consultationsRouter.post("/audio", requireCaseAccess, upload.single("audio"), as
       consultationType: data.consultationType,
     });
 
-    // 音声AI分析を非同期で実行（レスポンスは先に返す）
-    supportMenuRepo.listSupportMenus()
-      .then((menus) => analyzeAudioConsultation(file.buffer, file.mimetype, data.context, menus))
-      .then(async (aiResult) => {
+    // Step 1: 音声ファイルをGCSに永続化しパスをFirestoreに保存（リトライの前提条件）
+    // この段階が失敗するとリトライ不可になるため、AI分析とは独立して実行
+    uploadAudio(caseId, consultation.id!, file.buffer, file.mimetype)
+      .then(async (storagePath) => {
+        await consultationRepo.updateConsultationAudioPath(
+          caseId,
+          consultation.id!,
+          storagePath,
+          file.mimetype,
+        );
+
+        // Step 2: 音声AI分析を非同期で実行（失敗してもGCSパスは保存済みなのでリトライ可能）
+        const menus = await supportMenuRepo.listSupportMenus();
+        const aiResult = await analyzeAudioConsultation(file.buffer, file.mimetype, data.context, menus);
         await consultationRepo.updateConsultationAIResults(
           caseId,
           consultation.id!,

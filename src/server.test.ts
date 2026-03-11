@@ -35,6 +35,7 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   listConsultations: vi.fn(),
   updateConsultationAIResults: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
+  updateConsultationAudioPath: vi.fn(),
   listRetryPendingConsultations: vi.fn(),
   expireRetryPendingConsultations: vi.fn(),
 }));
@@ -65,6 +66,11 @@ vi.mock("./services/ai.js", () => ({
   analyzeAudioConsultation: vi.fn(),
   generateSupportPlanDraft: vi.fn(),
   generateMonitoringDraft: vi.fn(),
+}));
+
+vi.mock("./services/audio-storage.js", () => ({
+  uploadAudio: vi.fn().mockResolvedValue("cases/case-1/consultations/c-1/audio.wav"),
+  downloadAudio: vi.fn().mockResolvedValue({ buffer: Buffer.from("fake"), mimeType: "audio/wav" }),
 }));
 
 vi.mock("./services/ai-retry.js", () => ({

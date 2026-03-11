@@ -54,6 +54,8 @@ export interface Consultation {
   aiErrorMessage?: string;
   aiRetryCount?: number;
   nextRetryAt?: Timestamp;
+  audioStoragePath?: string;
+  audioMimeType?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

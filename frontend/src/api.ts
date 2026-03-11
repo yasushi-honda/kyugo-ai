@@ -174,10 +174,13 @@ export const api = {
   }),
 
   createAudioConsultation: (caseId: string, formData: FormData) =>
-    request<Consultation & { transcript: string; summary: string; suggestedSupports: SuggestedSupport[] }>(
+    request<Consultation>(
       `/api/cases/${caseId}/consultations/audio`,
       { method: "POST", body: formData },
     ),
+
+  getConsultation: (caseId: string, consultationId: string) =>
+    request<Consultation>(`/api/cases/${caseId}/consultations/${consultationId}`),
 
   listStaff: () =>
     request<StaffSummary[]>("/api/staff"),
