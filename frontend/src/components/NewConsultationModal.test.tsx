@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { NewConsultationModal } from "./NewConsultationModal";
 import { TestAuthWrapper } from "../test-utils";
 
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import { MockMediaRecorder } from "../__mocks__/MockMediaRecorder";
 
 beforeEach(() => {
@@ -322,34 +322,116 @@ describe("NewConsultationModal", () => {
   });
 
   describe("ポーリングエラー表示", () => {
-    it("AI分析中画面でポーリングエラーフラグが立つとメッセージ表示する", async () => {
-      vi.mocked(api.createAudioConsultation).mockResolvedValue({
-        id: "cons-1",
-        caseId: "case-1",
-        staffId: "test-staff-001",
-        content: "",
-        transcript: "",
-        summary: "",
-        suggestedSupports: [],
-        consultationType: "counter",
-        aiStatus: "pending",
-        createdAt: { _seconds: 1700000000 },
-        updatedAt: { _seconds: 1700000000 },
-      });
+    const pendingConsultation = {
+      id: "cons-1",
+      caseId: "case-1",
+      staffId: "test-staff-001",
+      content: "",
+      transcript: "",
+      summary: "",
+      suggestedSupports: [],
+      consultationType: "counter",
+      aiStatus: "pending" as const,
+      createdAt: { _seconds: 1700000000 },
+      updatedAt: { _seconds: 1700000000 },
+    };
 
+    async function submitAudioAndStartPolling() {
+      vi.mocked(api.createAudioConsultation).mockResolvedValue(pendingConsultation);
       renderModal();
       const user = userEvent.setup();
-
       await user.click(screen.getByText("音声"));
       await user.click(screen.getByText(/ファイルを選択/));
       const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(fileInput, file);
       await user.click(screen.getByText("音声を分析・記録"));
-
       await waitFor(() => {
         expect(screen.getByText(/AI分析中/)).toBeInTheDocument();
       });
+    }
+
+    it("AI分析中画面でポーリングエラーフラグが立つとメッセージ表示する", async () => {
+      await submitAudioAndStartPolling();
+    });
+
+    it("一時エラー（5xx/ネットワーク）で再試行を継続する", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.mocked(api.getConsultation)
+        .mockRejectedValueOnce(new ApiError("Internal Server Error", "UNKNOWN", 500))
+        .mockResolvedValueOnce(pendingConsultation);
+
+      await submitAudioAndStartPolling();
+
+      // 1回目のポーリング: 500エラー → 再試行メッセージ表示
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.getByText(/接続に問題があります/)).toBeInTheDocument();
+      });
+
+      // 2回目のポーリング: 成功 → エラー表示消える
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.queryByText(/接続に問題があります/)).not.toBeInTheDocument();
+      });
+
+      vi.useRealTimers();
+    });
+
+    it("恒久エラー（403）でポーリングを停止しエラー表示する", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.mocked(api.getConsultation)
+        .mockRejectedValueOnce(new ApiError("Access denied", "EMAIL_DOMAIN_NOT_ALLOWED", 403));
+
+      await submitAudioAndStartPolling();
+
+      // 1回目のポーリング: 403 → 恒久エラー表示、再試行しない
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.getByText(/アクセスが拒否されました/)).toBeInTheDocument();
+      });
+      // 再試行メッセージは表示されない
+      expect(screen.queryByText(/自動的に再試行/)).not.toBeInTheDocument();
+
+      vi.useRealTimers();
+    });
+
+    it("恒久エラー（404）でポーリングを停止しエラー表示する", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.mocked(api.getConsultation)
+        .mockRejectedValueOnce(new ApiError("Not found", "UNKNOWN", 404));
+
+      await submitAudioAndStartPolling();
+
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.getByText(/アクセスが拒否されました/)).toBeInTheDocument();
+      });
+
+      vi.useRealTimers();
+    });
+
+    it("ネットワークエラー（statusなし）で再試行を継続する", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.mocked(api.getConsultation)
+        .mockRejectedValueOnce(new Error("Failed to fetch"))
+        .mockResolvedValueOnce(pendingConsultation);
+
+      await submitAudioAndStartPolling();
+
+      // ネットワークエラー → 再試行メッセージ
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.getByText(/接続に問題があります/)).toBeInTheDocument();
+      });
+
+      // 復旧 → エラー消える
+      await vi.advanceTimersByTimeAsync(5000);
+      await waitFor(() => {
+        expect(screen.queryByText(/接続に問題があります/)).not.toBeInTheDocument();
+      });
+
+      vi.useRealTimers();
     });
   });
 });
