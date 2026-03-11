@@ -275,6 +275,7 @@ describe("MonitoringSheetView", () => {
       await user.click(screen.getByText("確定"));
 
       expect(screen.getByText("再生成").closest("button")).toBeDisabled();
+      expect(screen.getByText("編集").closest("button")).toBeDisabled();
       confirmSpy.mockRestore();
     });
   });
