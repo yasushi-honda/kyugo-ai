@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import type { Consultation } from "../api";
 import { useAuth } from "../contexts/AuthContext";
 import { SuggestedSupports } from "./SuggestedSupports";
@@ -41,6 +41,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   const [audioConsultation, setAudioConsultation] = useState<Consultation | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [pollError, setPollError] = useState(false);
+  const [pollPermanentError, setPollPermanentError] = useState("");
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorder = useAudioRecorder();
@@ -58,9 +59,14 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(() => pollStatus(updated, attempt + 1), POLL_INTERVAL_MS);
       }
-    } catch {
+    } catch (err) {
+      // 恒久エラー（4xx、401除く）→ ポーリング停止+エラー表示
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401) {
+        setPollPermanentError("アクセスが拒否されました。画面を閉じてやり直してください。");
+        return;
+      }
+      // 一時エラー（5xx/ネットワーク）→ 再試行継続
       setPollError(true);
-      // リトライ継続
       setPollCount(attempt + 1);
       pollTimerRef.current = setTimeout(() => pollStatus(consultation, attempt + 1), POLL_INTERVAL_MS);
     }
@@ -92,6 +98,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
         setAudioConsultation(result);
         setPollCount(0);
         setPollError(false);
+        setPollPermanentError("");
         pollTimerRef.current = setTimeout(() => pollStatus(result, 0), POLL_INTERVAL_MS);
       }
     } catch (err) {
@@ -124,7 +131,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                   AI分析を実行中です...（{pollCount * 5}秒経過）
                 </div>
                 <p className="ai-summary">音声の文字起こしと分析を行っています。このまましばらくお待ちください。画面を閉じても分析は継続されます。</p>
-                {pollError && (
+                {pollPermanentError && (
+                  <p className="form-error">{pollPermanentError}</p>
+                )}
+                {pollError && !pollPermanentError && (
                   <p className="form-error">接続に問題があります。自動的に再試行しています。</p>
                 )}
                 {pollCount >= POLL_TIMEOUT_WARNING && (
