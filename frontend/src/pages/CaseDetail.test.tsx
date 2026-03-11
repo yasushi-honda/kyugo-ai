@@ -241,7 +241,7 @@ describe("CaseDetail", () => {
     expect(screen.queryByText("AI分析結果")).not.toBeInTheDocument();
   });
 
-  it("shows retry pending indicator when aiStatus is retry_pending", async () => {
+  it("shows retry pending indicator with explanation when aiStatus is retry_pending", async () => {
     const retryConsultation = {
       ...mockConsultations[0],
       id: "cons-retry",
@@ -256,6 +256,7 @@ describe("CaseDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("AI分析 再試行待ち")).toBeInTheDocument();
     });
+    expect(screen.getByText(/自動的に再試行されます/)).toBeInTheDocument();
   });
 
   it("shows error message when aiStatus is error", async () => {
@@ -297,7 +298,7 @@ describe("CaseDetail", () => {
     expect(panel?.querySelector(".ai-error-message")).toBeNull();
   });
 
-  it("shows completed AI results with aiStatus completed", async () => {
+  it("shows completed AI results with explicit label", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
     renderCaseDetail();
@@ -305,6 +306,7 @@ describe("CaseDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
     });
+    expect(screen.getByText("AIによる要約")).toBeInTheDocument();
     // pending/error表示は出ない
     expect(screen.queryByText("AI分析中...")).not.toBeInTheDocument();
     expect(screen.queryByText("AI分析エラー")).not.toBeInTheDocument();
@@ -325,7 +327,7 @@ describe("CaseDetail", () => {
     });
   });
 
-  it("displays case even when listStaff fails", async () => {
+  it("displays fallback text instead of UUID when listStaff fails", async () => {
     vi.mocked(api.getCase).mockResolvedValue(mockCase);
     vi.mocked(api.listConsultations).mockResolvedValue(mockConsultations);
     vi.mocked(api.listStaff).mockRejectedValue(new Error("Staff API down"));
@@ -334,8 +336,8 @@ describe("CaseDetail", () => {
     await waitFor(() => {
       expect(screen.getByText("山田太郎")).toBeInTheDocument();
     });
-    // staffMapが空なのでstaffIdがフォールバック表示される（サイドバー+タイムラインの2箇所）
-    expect(screen.getAllByText("staff-001").length).toBeGreaterThanOrEqual(1);
+    // staffMapが空なのでフォールバックテキスト+IDが表示される
+    expect(screen.getAllByText(/名前未設定.*staff-001/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
   });
 

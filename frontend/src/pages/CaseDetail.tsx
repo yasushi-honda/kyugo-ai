@@ -182,7 +182,7 @@ export function CaseDetail() {
                           <span className="consultation-type-badge">
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
-                          <span className="consultation-staff">{staffMap[con.staffId] || con.staffId}</span>
+                          <span className="consultation-staff">{staffMap[con.staffId] || `（名前未設定: ${con.staffId}）`}</span>
                         </div>
 
                         {con.content && (
@@ -211,6 +211,7 @@ export function CaseDetail() {
                               <div className="ai-panel-icon">AI</div>
                               AI分析 再試行待ち
                             </div>
+                            <p className="ai-summary">一時的なエラーが発生しました。自動的に再試行されます（5分以内）。</p>
                           </div>
                         )}
 
@@ -230,7 +231,7 @@ export function CaseDetail() {
                           <div className="ai-panel">
                             <div className="ai-panel-header">
                               <div className="ai-panel-icon">AI</div>
-                              AI分析結果
+                              AIによる要約
                             </div>
                             <div className="ai-summary">{con.summary}</div>
                             {con.suggestedSupports?.length > 0 && (
@@ -260,7 +261,7 @@ export function CaseDetail() {
                   </div>
                   <div>
                     <div className="info-item-label">担当職員</div>
-                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || caseData.assignedStaffId}</div>
+                    <div className="info-item-value">{staffMap[caseData.assignedStaffId] || `（名前未設定: ${caseData.assignedStaffId}）`}</div>
                   </div>
                   <div>
                     <div className="info-item-label">生年月日</div>

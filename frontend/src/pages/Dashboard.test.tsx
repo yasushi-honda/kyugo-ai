@@ -149,7 +149,7 @@ describe("Dashboard", () => {
     expect(screen.getAllByText(/山田職員/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("displays cases even when listStaff fails", async () => {
+  it("displays fallback text instead of UUID when listStaff fails", async () => {
     vi.mocked(api.listCases).mockResolvedValue(mockCases);
     vi.mocked(api.listStaff).mockRejectedValue(new Error("Staff API down"));
     renderDashboard();
@@ -157,8 +157,8 @@ describe("Dashboard", () => {
     await waitFor(() => {
       expect(screen.getByText("山田太郎")).toBeInTheDocument();
     });
-    // staffMapが空なのでstaffIdがフォールバック表示される
-    expect(screen.getAllByText(/staff-001/).length).toBeGreaterThanOrEqual(1);
+    // staffMapが空なのでフォールバックテキスト+IDが表示される
+    expect(screen.getAllByText(/名前未設定.*staff-001/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("displays status labels in Japanese", async () => {
@@ -170,5 +170,21 @@ describe("Dashboard", () => {
     });
     expect(screen.getAllByText("照会中").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("終了").length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ===== Issue #125 UX改善テスト =====
+
+  it("shows status tooltip on badge hover", async () => {
+    vi.mocked(api.listCases).mockResolvedValue(mockCases);
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎")).toBeInTheDocument();
+    });
+
+    // ステータスバッジにtitle属性で説明がある
+    const activeBadges = screen.getAllByText("対応中");
+    const cardBadge = activeBadges.find((el) => el.closest(".case-card"));
+    expect(cardBadge?.closest(".badge")).toHaveAttribute("title");
   });
 });

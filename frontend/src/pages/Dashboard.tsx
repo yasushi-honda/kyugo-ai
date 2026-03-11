@@ -4,7 +4,7 @@ import { api, buildStaffMap } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
 import { useAuth } from "../contexts/AuthContext";
-import { STATUS_LABELS, formatDate } from "../constants";
+import { STATUS_LABELS, STATUS_TOOLTIPS, formatDate } from "../constants";
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ export function Dashboard() {
                       <div className="case-card-name">{c.clientName}</div>
                       <div className="case-card-id">ID: {c.clientId}</div>
                     </div>
-                    <span className={`badge badge-${c.status}`}>
+                    <span className={`badge badge-${c.status}`} title={STATUS_TOOLTIPS[c.status]}>
                       <span className="badge-dot" />
                       {STATUS_LABELS[c.status]}
                     </span>
@@ -112,7 +112,7 @@ export function Dashboard() {
                       📅 {formatDate(c.createdAt)}
                     </div>
                     <div className="case-card-meta-item">
-                      👤 {staffMap[c.assignedStaffId] || c.assignedStaffId}
+                      👤 {staffMap[c.assignedStaffId] || `（名前未設定: ${c.assignedStaffId}）`}
                     </div>
                   </div>
                 </div>
