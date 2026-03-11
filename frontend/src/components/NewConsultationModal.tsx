@@ -17,12 +17,19 @@ type AudioSource = "record" | "file";
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_MAX_ATTEMPTS = 60; // 5分間
+const POLL_TIMEOUT_WARNING = 48; // 4分経過で警告
+
+const CONSULTATION_TYPE_LABELS: Record<string, string> = {
+  counter: "窓口 — 対面での相談",
+  visit: "訪問 — 相談者宅等への訪問",
+  phone: "電話 — 電話による相談",
+  online: "オンライン — ビデオ通話等",
+};
 
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
   const [audioSource, setAudioSource] = useState<AudioSource>("record");
-  // Fall back to file upload when browser doesn't support recording
   const [form, setForm] = useState({
     content: "",
     consultationType: "counter",
@@ -30,28 +37,32 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [audioConsultation, setAudioConsultation] = useState<Consultation | null>(null);
   const [pollCount, setPollCount] = useState(0);
+  const [pollError, setPollError] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorder = useAudioRecorder();
   const effectiveAudioSource = recorder.isSupported ? audioSource : "file";
 
-  // Use recorded file or uploaded file
   const activeAudioFile = effectiveAudioSource === "record" ? recorder.recordedFile : audioFile;
 
-  // ポーリングで音声相談のAI分析状態を監視
   const pollStatus = useCallback(async (consultation: Consultation, attempt: number) => {
     if (attempt >= POLL_MAX_ATTEMPTS) return;
     try {
       const updated = await api.getConsultation(caseId, consultation.id!);
       setAudioConsultation(updated);
+      setPollError(false);
       if (updated.aiStatus === "pending" || updated.aiStatus === "retrying" || updated.aiStatus === "retry_pending") {
         setPollCount(attempt + 1);
         pollTimerRef.current = setTimeout(() => pollStatus(updated, attempt + 1), POLL_INTERVAL_MS);
       }
     } catch {
-      // ポーリング失敗は無視（次回リフレッシュで確認可能）
+      setPollError(true);
+      // リトライ継続
+      setPollCount(attempt + 1);
+      pollTimerRef.current = setTimeout(() => pollStatus(consultation, attempt + 1), POLL_INTERVAL_MS);
     }
   }, [caseId]);
 
@@ -63,6 +74,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setError("");
     try {
       if (mode === "text") {
         await api.createConsultation(caseId, {
@@ -79,11 +91,11 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
         const result = await api.createAudioConsultation(caseId, formData);
         setAudioConsultation(result);
         setPollCount(0);
-        // AI分析はpendingで返るのでポーリング開始
+        setPollError(false);
         pollTimerRef.current = setTimeout(() => pollStatus(result, 0), POLL_INTERVAL_MS);
       }
     } catch (err) {
-      alert(`送信に失敗しました: ${(err as Error).message}`);
+      setError(`送信に失敗しました: ${(err as Error).message}`);
     } finally {
       setSubmitting(false);
     }
@@ -112,6 +124,14 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                   AI分析を実行中です...（{pollCount * 5}秒経過）
                 </div>
                 <p className="ai-summary">音声の文字起こしと分析を行っています。このまましばらくお待ちください。画面を閉じても分析は継続されます。</p>
+                {pollError && (
+                  <p className="form-error">接続に問題があります。自動的に再試行しています。</p>
+                )}
+                {pollCount >= POLL_TIMEOUT_WARNING && (
+                  <p className="form-help" style={{ color: "var(--kuri-500)" }}>
+                    分析に時間がかかっています。画面を閉じて後で確認することもできます。
+                  </p>
+                )}
               </div>
             )}
 
@@ -178,6 +198,8 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
+          {error && <div className="form-error">{error}</div>}
+
           {/* Mode Toggle */}
           <div className="mode-toggle">
             <button
@@ -206,10 +228,9 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                 value={form.consultationType}
                 onChange={(e) => setForm({ ...form, consultationType: e.target.value })}
               >
-                <option value="counter">窓口</option>
-                <option value="visit">訪問</option>
-                <option value="phone">電話</option>
-                <option value="online">オンライン</option>
+                {Object.entries(CONSULTATION_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -224,6 +245,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                 placeholder="相談者の状況や相談内容を記録してください..."
                 rows={6}
               />
+              <p className="form-help">{form.content.length}文字</p>
             </div>
           ) : (
             <>
@@ -327,7 +349,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                     onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
                   />
                   <div
-                    className={`audio-recorder ${audioFile ? "has-file" : ""}`}
+                    className={`audio-recorder file-upload-area ${audioFile ? "has-file" : ""}`}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <div className="audio-icon">{audioFile ? "✅" : "📁"}</div>
@@ -341,6 +363,11 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                       <div className="audio-filename">
                         {audioFile.name} ({(audioFile.size / 1024 / 1024).toFixed(1)} MB)
                       </div>
+                    )}
+                    {!audioFile && (
+                      <span className="btn btn-secondary btn-sm" style={{ marginTop: "var(--space-2)" }}>
+                        ファイルを選ぶ
+                      </span>
                     )}
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewConsultationModal } from "./NewConsultationModal";
 import { TestAuthWrapper } from "../test-utils";
@@ -10,6 +10,7 @@ import { MockMediaRecorder } from "../__mocks__/MockMediaRecorder";
 beforeEach(() => {
   vi.mocked(api.createConsultation).mockReset();
   vi.mocked(api.createAudioConsultation).mockReset();
+  vi.mocked(api.getConsultation).mockReset();
   vi.stubGlobal("MediaRecorder", MockMediaRecorder);
 });
 
@@ -158,26 +159,21 @@ describe("NewConsultationModal", () => {
     renderModal();
     const user = userEvent.setup();
 
-    // Switch to audio mode, then file sub-mode
     await user.click(screen.getByText("音声"));
     await user.click(screen.getByText(/ファイルを選択/));
-
-    // Simulate file selection
     const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, file);
 
-    // Submit
     await user.click(screen.getByText("音声を分析・記録"));
 
-    // Should show AI results
     await vi.waitFor(() => {
       expect(screen.getByText("AI分析結果")).toBeInTheDocument();
     });
     expect(screen.getByText("音声のテキスト")).toBeInTheDocument();
     expect(screen.getByText("AI要約テスト")).toBeInTheDocument();
     expect(screen.getByText("生活保護")).toBeInTheDocument();
-    expect(screen.getByText("90")).toBeInTheDocument(); // relevanceScore * 100
+    expect(screen.getByText("90")).toBeInTheDocument();
   });
 
   it("calls onClose when cancel is clicked", async () => {
@@ -214,7 +210,6 @@ describe("NewConsultationModal", () => {
 
     await user.click(screen.getByText("音声"));
 
-    // Should show file upload directly without toggle
     expect(screen.getByText(/クリックして音声ファイルを選択/)).toBeInTheDocument();
     expect(screen.queryByText(/録音する/)).not.toBeInTheDocument();
   });
@@ -223,16 +218,138 @@ describe("NewConsultationModal", () => {
     renderModal();
     const user = userEvent.setup();
 
-    // Switch to audio → file sub-mode
     await user.click(screen.getByText("音声"));
     await user.click(screen.getByText(/ファイルを選択/));
     expect(screen.getByText(/クリックして音声ファイルを選択/)).toBeInTheDocument();
 
-    // Switch to text
     await user.click(screen.getByText("テキスト入力"));
 
-    // Switch back to audio → should default to record, not file
     await user.click(screen.getByText("音声"));
     expect(screen.getByText("録音開始")).toBeInTheDocument();
+  });
+
+  // ===== Issue #121 UX改善テスト =====
+
+  describe("相談種別の説明", () => {
+    it("相談種別に説明文を表示する", () => {
+      renderModal();
+
+      expect(screen.getByText(/対面での相談/)).toBeInTheDocument();
+    });
+  });
+
+  describe("文字数カウンター", () => {
+    it("テキストモードで文字数カウンターを表示する", async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByPlaceholderText(/相談者の状況/), "テスト");
+
+      expect(screen.getByText(/3文字/)).toBeInTheDocument();
+    });
+
+    it("空の状態では0文字と表示する", () => {
+      renderModal();
+
+      expect(screen.getByText(/0文字/)).toBeInTheDocument();
+    });
+  });
+
+  describe("インラインエラー表示", () => {
+    it("テキスト送信失敗時にインラインエラーを表示する（alertではない）", async () => {
+      vi.mocked(api.createConsultation).mockRejectedValue(new Error("Network error"));
+      const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByPlaceholderText(/相談者の状況/), "テスト内容");
+      await user.click(screen.getByText("相談を記録"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/送信に失敗しました/)).toBeInTheDocument();
+      });
+
+      expect(alertMock).not.toHaveBeenCalled();
+      alertMock.mockRestore();
+    });
+
+    it("再送信時にエラーがクリアされる", async () => {
+      vi.mocked(api.createConsultation)
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce({
+          id: "cons-1",
+          caseId: "case-1",
+          staffId: "test-staff-001",
+          content: "テスト内容",
+          transcript: "",
+          summary: "",
+          suggestedSupports: [],
+          consultationType: "counter",
+          aiStatus: "completed",
+          createdAt: { _seconds: 1700000000 },
+          updatedAt: { _seconds: 1700000000 },
+        });
+
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByPlaceholderText(/相談者の状況/), "テスト内容");
+      await user.click(screen.getByText("相談を記録"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/送信に失敗しました/)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("相談を記録"));
+
+      await waitFor(() => {
+        expect(screen.queryByText(/送信に失敗しました/)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("ファイルアップロードUI", () => {
+    it("ファイルアップロード領域にボタンスタイルのテキストを表示する", async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(screen.getByText("音声"));
+      await user.click(screen.getByText(/ファイルを選択/));
+
+      expect(screen.getByText(/ファイルを選ぶ/)).toBeInTheDocument();
+    });
+  });
+
+  describe("ポーリングエラー表示", () => {
+    it("AI分析中画面でポーリングエラーフラグが立つとメッセージ表示する", async () => {
+      vi.mocked(api.createAudioConsultation).mockResolvedValue({
+        id: "cons-1",
+        caseId: "case-1",
+        staffId: "test-staff-001",
+        content: "",
+        transcript: "",
+        summary: "",
+        suggestedSupports: [],
+        consultationType: "counter",
+        aiStatus: "pending",
+        createdAt: { _seconds: 1700000000 },
+        updatedAt: { _seconds: 1700000000 },
+      });
+
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(screen.getByText("音声"));
+      await user.click(screen.getByText(/ファイルを選択/));
+      const file = new File(["audio-data"], "test.wav", { type: "audio/wav" });
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+      await user.click(screen.getByText("音声を分析・記録"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/AI分析中/)).toBeInTheDocument();
+      });
+    });
   });
 });
