@@ -149,7 +149,7 @@ export function CaseDetail() {
             )}
 
             {activeTab === "legal-search" && (
-              <LegalSearchView caseId={id!} />
+              <LegalSearchView key={id} caseId={id!} />
             )}
 
             {activeTab === "consultations" && (
