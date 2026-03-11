@@ -4,6 +4,7 @@ import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { generateSupportPlanDraft } from "../services/ai.js";
 import { requireCaseAccess } from "../middleware/authz.js";
+import { aiLimiter } from "../middleware/rate-limit.js";
 import { updateSupportPlanSchema } from "../schemas/case.js";
 import { Case } from "../types.js";
 import { paramStr, validate, formatDateString } from "./utils.js";
@@ -14,7 +15,7 @@ export const supportPlansRouter = Router({ mergeParams: true });
 supportPlansRouter.use(requireCaseAccess);
 
 // POST /api/cases/:id/support-plan/draft — AI下書き生成
-supportPlansRouter.post("/draft", async (req: Request, res: Response) => {
+supportPlansRouter.post("/draft", aiLimiter, async (req: Request, res: Response) => {
   const caseId = paramStr(req.params.id);
   const caseData = req.caseData as Case;
 

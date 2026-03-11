@@ -3,6 +3,7 @@ import * as legalSearchRepo from "../repositories/legal-search-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import { searchLegalInfo } from "../services/ai.js";
 import { requireCaseAccess } from "../middleware/authz.js";
+import { aiLimiter } from "../middleware/rate-limit.js";
 import { createLegalSearchSchema } from "../schemas/case.js";
 import { paramStr, validate } from "./utils.js";
 
@@ -12,7 +13,7 @@ export const legalSearchRouter = Router({ mergeParams: true });
 legalSearchRouter.use(requireCaseAccess);
 
 // POST /api/cases/:id/legal-search — 法令検索実行
-legalSearchRouter.post("/", async (req: Request, res: Response) => {
+legalSearchRouter.post("/", aiLimiter, async (req: Request, res: Response) => {
   const caseId = paramStr(req.params.id);
   const parsed = validate(createLegalSearchSchema, req.body);
   if (!parsed.success) {
