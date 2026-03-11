@@ -28,35 +28,6 @@ describe("Login", () => {
     expect(signInWithPopup).toHaveBeenCalledWith(expect.anything(), expect.anything());
   });
 
-  it("shows error on login failure", async () => {
-    vi.mocked(signInWithPopup).mockRejectedValue(new Error("Network error"));
-    const user = userEvent.setup();
-
-    render(<Login />);
-
-    await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
-
-    await vi.waitFor(() => {
-      expect(screen.getByText("ログインに失敗しました")).toBeInTheDocument();
-    });
-  });
-
-  it("does not show error when popup is closed by user", async () => {
-    vi.mocked(signInWithPopup).mockRejectedValue(
-      new Error("Firebase: Error (auth/popup-closed-by-user)."),
-    );
-    const user = userEvent.setup();
-
-    render(<Login />);
-
-    await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
-
-    await vi.waitFor(() => {
-      expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
-    });
-    expect(screen.queryByText("ログインに失敗しました")).not.toBeInTheDocument();
-  });
-
   it("disables button and shows loading state while signing in", async () => {
     vi.mocked(signInWithPopup).mockReturnValue(new Promise(() => {}));
     const user = userEvent.setup();
@@ -67,5 +38,79 @@ describe("Login", () => {
 
     expect(screen.getByText("ログイン中...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ログイン中..." })).toBeDisabled();
+  });
+
+  it("ガイダンステキストを表示する", () => {
+    render(<Login />);
+
+    expect(screen.getByText(/組織のGoogleアカウント/)).toBeInTheDocument();
+    expect(screen.getByText(/管理者にお問い合わせ/)).toBeInTheDocument();
+  });
+
+  describe("エラーメッセージ分岐", () => {
+    it("ネットワークエラー時に接続確認を促す", async () => {
+      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/network-request-failed"));
+      const user = userEvent.setup();
+
+      render(<Login />);
+      await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+      await vi.waitFor(() => {
+        expect(screen.getByText(/インターネット接続を確認/)).toBeInTheDocument();
+      });
+    });
+
+    it("ポップアップブロック時にブロック解除を案内する", async () => {
+      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/popup-blocked"));
+      const user = userEvent.setup();
+
+      render(<Login />);
+      await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+      await vi.waitFor(() => {
+        expect(screen.getByText(/ポップアップがブロック/)).toBeInTheDocument();
+      });
+    });
+
+    it("ポップアップを閉じた時にヒント表示する（エラーではない）", async () => {
+      vi.mocked(signInWithPopup).mockRejectedValue(
+        new Error("Firebase: Error (auth/popup-closed-by-user)."),
+      );
+      const user = userEvent.setup();
+
+      render(<Login />);
+      await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+      await vi.waitFor(() => {
+        expect(screen.getByRole("button", { name: "Googleアカウントでログイン" })).toBeEnabled();
+      });
+      const hint = screen.getByText(/ログインウィンドウが閉じ/);
+      expect(hint).toBeInTheDocument();
+      expect(hint.className).toBe("login-hint");
+    });
+
+    it("不明なエラー時に汎用メッセージを表示する", async () => {
+      vi.mocked(signInWithPopup).mockRejectedValue(new Error("Unknown error"));
+      const user = userEvent.setup();
+
+      render(<Login />);
+      await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+      await vi.waitFor(() => {
+        expect(screen.getByText(/ログインに失敗しました.*管理者にお問い合わせ/)).toBeInTheDocument();
+      });
+    });
+
+    it("unauthorized-domain時にドメインエラーを表示する", async () => {
+      vi.mocked(signInWithPopup).mockRejectedValue(new Error("auth/unauthorized-domain"));
+      const user = userEvent.setup();
+
+      render(<Login />);
+      await user.click(screen.getByRole("button", { name: "Googleアカウントでログイン" }));
+
+      await vi.waitFor(() => {
+        expect(screen.getByText(/このドメインからのログインは許可されていません/)).toBeInTheDocument();
+      });
+    });
   });
 });

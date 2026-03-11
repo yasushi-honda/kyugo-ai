@@ -1042,6 +1042,24 @@ a:hover { color: var(--ai-600); }
   background: linear-gradient(90deg, transparent, var(--border-light), transparent);
 }
 
+.login-guidance {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  margin-bottom: var(--space-4);
+}
+
+.login-hint {
+  background: var(--ai-50, #f0f4fa);
+  color: var(--text-secondary);
+  border: 1px solid rgba(58, 107, 170, 0.15);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
 .login-error, .alert-error {
   background: var(--kuri-100);
   color: var(--kuri-500);

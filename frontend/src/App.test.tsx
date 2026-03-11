@@ -197,6 +197,44 @@ describe("Auth error handling", () => {
     });
   });
 
+  it("ドメイン不許可エラーを日本語で表示する", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Access denied: email domain not allowed"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/ドメインは許可されていません/)).toBeInTheDocument();
+    });
+  });
+
+  it("アカウント無効化エラーを日本語で表示する", async () => {
+    vi.mocked(api.getMe).mockRejectedValueOnce(new Error("Your account has been disabled"));
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/アカウントは無効化されています/)).toBeInTheDocument();
+    });
+  });
+
   it("calls logout when logout button is clicked on auth error", async () => {
     vi.mocked(api.getMe).mockRejectedValueOnce(new Error("403 Forbidden"));
 
