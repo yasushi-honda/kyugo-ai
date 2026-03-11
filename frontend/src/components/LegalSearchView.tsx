@@ -59,8 +59,8 @@ export function LegalSearchView({ caseId }: LegalSearchViewProps) {
             className="form-textarea"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="検索したい内容を入力してください（例: 生活保護の申請要件、障害者手帳の交付基準...）"
-            rows={3}
+            placeholder="例: 生活保護の申請条件"
+            rows={2}
             disabled={searching}
           />
         </div>
@@ -88,8 +88,9 @@ export function LegalSearchView({ caseId }: LegalSearchViewProps) {
         </div>
       ) : results.length === 0 ? (
         <div className="empty-state">
-          <p>法令検索の履歴はありません。</p>
-          <p>相談内容に関連する法令・制度を検索するには、上のフォームにキーワードを入力してください。</p>
+          <div className="empty-state-icon">📚</div>
+          <p className="empty-state-text">支援方法や給付制度の条件を法令から調べられます</p>
+          <p>上のフォームにキーワードを入力して検索してください。</p>
         </div>
       ) : (
         <div className="legal-search-results">
@@ -132,8 +133,8 @@ export function LegalSearchView({ caseId }: LegalSearchViewProps) {
                     </div>
                     <div className="legal-reference-article">{ref.article}</div>
                     <div className="legal-reference-summary">{ref.summary}</div>
-                    <div className="legal-reference-relevance">
-                      <span className="legal-relevance-label">関連性:</span> {ref.relevance}
+                    <div className="legal-relevance-badge">
+                      {ref.relevance}
                     </div>
                   </div>
                 ))}
