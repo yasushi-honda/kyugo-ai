@@ -263,6 +263,20 @@ describe("MonitoringSheetView", () => {
       expect(onUpdate).toHaveBeenCalled();
       confirmSpy.mockRestore();
     });
+
+    it("確定処理中は再生成ボタンが無効化される", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      vi.mocked(api.updateMonitoringSheet).mockReturnValue(new Promise(() => {}));
+      render(
+        <MonitoringSheetView caseId="case-1" sheet={MOCK_DRAFT} hasSupportPlan={true} onUpdate={onUpdate} />
+      );
+      const user = userEvent.setup();
+
+      await user.click(screen.getByText("確定"));
+
+      expect(screen.getByText("再生成").closest("button")).toBeDisabled();
+      confirmSpy.mockRestore();
+    });
   });
 
   describe("確定済み表示", () => {
