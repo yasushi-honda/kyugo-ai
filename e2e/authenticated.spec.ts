@@ -23,12 +23,11 @@ test.describe("認証済みフロー", () => {
   });
 
   test("ナビゲーションが動作する", async ({ page }) => {
-    // ヘルプページへ遷移（UIテキストはアイコン付きのため柔軟にマッチ）
-    const helpLink = page.getByRole("link", { name: /ヘルプ|使い方/i });
-    if (await helpLink.isVisible()) {
-      await helpLink.click();
-      await expect(page).toHaveURL(/\/help/);
-    }
+    // ナビはdiv.sidebar-nav-item（Link要素ではない）
+    const helpNav = page.locator(".sidebar-nav-item", { hasText: /使い方ガイド/ });
+    await expect(helpNav).toBeVisible();
+    await helpNav.click();
+    await expect(page).toHaveURL(/\/help/);
   });
 
   test("ログアウトが動作する", async ({ page }) => {
