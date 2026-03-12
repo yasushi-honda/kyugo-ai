@@ -330,7 +330,7 @@ describe("NewConsultationModal", () => {
       transcript: "",
       summary: "",
       suggestedSupports: [],
-      consultationType: "counter",
+      consultationType: "counter" as const,
       aiStatus: "pending" as const,
       createdAt: { _seconds: 1700000000 },
       updatedAt: { _seconds: 1700000000 },
