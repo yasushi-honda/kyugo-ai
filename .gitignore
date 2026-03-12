@@ -9,4 +9,7 @@ credentials/
 *.key
 service-account*.json
 .playwright-mcp/
+test-results/
+playwright-report/
+blob-report/
 frontend/dist/
