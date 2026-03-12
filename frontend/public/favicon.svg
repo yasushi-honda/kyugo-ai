@@ -1,59 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <!-- 藍色グラデーション -->
-    <linearGradient id="indigo" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1B3255"/>
       <stop offset="100%" stop-color="#2B4C7E"/>
     </linearGradient>
-    <!-- 和紙テクスチャ風の微細パターン -->
-    <filter id="washi">
-      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="noise"/>
-      <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
-      <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>
-      <feComponentTransfer in="blend">
-        <feFuncA type="linear" slope="0.97"/>
-      </feComponentTransfer>
-    </filter>
-    <!-- 柔らかい影 -->
-    <filter id="softShadow">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F1F3D" flood-opacity="0.2"/>
-    </filter>
   </defs>
 
-  <!-- 背景: 角丸四角（和紙色） -->
-  <rect width="512" height="512" rx="96" ry="96" fill="#F5F0E8"/>
+  <!-- 背景: 藍色の角丸四角 -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
 
-  <!-- メイン: 藍色の円（支え合いの輪） -->
-  <circle cx="256" cy="256" r="196" fill="url(#indigo)" filter="url(#washi)"/>
-
-  <!-- 2つの手が支え合うモチーフ（救護のシンボル） -->
-  <g transform="translate(256,256)" fill="none" stroke="#F5F0E8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
-    <!-- 左の手: 下から支える -->
-    <path d="M-70,40 C-70,10 -50,-20 -20,-35 C0,-45 10,-40 15,-30" opacity="0.95"/>
-    <path d="M-70,40 C-80,35 -85,25 -82,15" opacity="0.95"/>
-    <path d="M-70,40 C-78,42 -85,50 -80,60" opacity="0.95"/>
-
-    <!-- 右の手: 上から差し伸べる -->
-    <path d="M70,-40 C70,-10 50,20 20,35 C0,45 -10,40 -15,30" opacity="0.95"/>
-    <path d="M70,-40 C80,-35 85,-25 82,-15" opacity="0.95"/>
-    <path d="M70,-40 C78,-42 85,-50 80,-60" opacity="0.95"/>
-  </g>
-
-  <!-- 中央: AIを示す光の点 -->
-  <circle cx="256" cy="256" r="16" fill="#F5F0E8" opacity="0.9"/>
-  <circle cx="256" cy="256" r="8" fill="#D4A84B" opacity="0.85"/>
-
-  <!-- ネットワーク線（AIの繋がり） -->
-  <g stroke="#F5F0E8" stroke-width="3" opacity="0.35">
-    <line x1="256" y1="240" x2="220" y2="190"/>
-    <line x1="256" y1="240" x2="292" y2="190"/>
-    <line x1="256" y1="272" x2="220" y2="322"/>
-    <line x1="256" y1="272" x2="292" y2="322"/>
-  </g>
-  <g fill="#F5F0E8" opacity="0.4">
-    <circle cx="220" cy="190" r="5"/>
-    <circle cx="292" cy="190" r="5"/>
-    <circle cx="220" cy="322" r="5"/>
-    <circle cx="292" cy="322" r="5"/>
-  </g>
+  <!-- 「救」の文字 -->
+  <text
+    x="256" y="276"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif"
+    font-weight="700"
+    font-size="340"
+    fill="#F5F0E8"
+    letter-spacing="-10"
+  >救</text>
 </svg>
