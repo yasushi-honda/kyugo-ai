@@ -9,15 +9,25 @@
   <!-- 背景: 藍色の角丸四角 -->
   <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
 
-  <!-- 「救」の文字 -->
-  <text
-    x="256" y="276"
-    text-anchor="middle"
-    dominant-baseline="central"
-    font-family="'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif"
-    font-weight="700"
-    font-size="340"
-    fill="#F5F0E8"
-    letter-spacing="-10"
-  >救</text>
+  <!-- シールド（盾）: 救護＝守る -->
+  <path
+    d="M256,80 L400,150 L400,280 Q400,400 256,440 Q112,400 112,280 L112,150 Z"
+    fill="none"
+    stroke="#F5F0E8"
+    stroke-width="28"
+    stroke-linejoin="round"
+  />
+
+  <!-- ハート: ケア・福祉 -->
+  <path
+    d="M256,340
+       C200,300 160,260 160,220
+       C160,190 180,170 210,170
+       C235,170 248,185 256,200
+       C264,185 277,170 302,170
+       C332,170 352,190 352,220
+       C352,260 312,300 256,340Z"
+    fill="#D4A84B"
+    opacity="0.85"
+  />
 </svg>
