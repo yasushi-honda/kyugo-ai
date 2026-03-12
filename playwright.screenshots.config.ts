@@ -1,17 +1,19 @@
 import { defineConfig, devices } from "@playwright/test";
 import { AUTH_EMULATOR_HOST, E2E_PROJECT_ID } from "./e2e/global-setup";
 
+/**
+ * ヘルプ用スクリーンショット生成専用Playwright設定
+ */
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: ["**/generate-help-screenshots.ts"],
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "html",
+  testMatch: ["**/generate-help-screenshots.ts"],
+  fullyParallel: false,
+  retries: 0,
+  workers: 1,
+  reporter: "list",
   use: {
     baseURL: "http://localhost:5173",
-    trace: "on-first-retry",
+    trace: "off",
   },
   projects: [
     {
@@ -24,7 +26,7 @@ export default defineConfig({
     command: "npm run dev",
     cwd: "./frontend",
     url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     env: {
       VITE_FIREBASE_API_KEY: "fake-api-key",
       VITE_FIREBASE_AUTH_DOMAIN: "localhost",

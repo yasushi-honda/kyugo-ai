@@ -113,6 +113,214 @@ export const MOCK_LEGAL_SEARCH_RESULT = {
   createdAt: { _seconds: 1709280000 },
 };
 
+// --- ヘルプスクリーンショット用デモデータ ---
+
+export const DEMO_STAFF_EMAIL = "sato@city.ibaraki.example.jp";
+
+const DEMO_USER_INFO: MockUserInfo = {
+  staffId: "staff-demo-001",
+  name: "佐藤 太郎（サトウ）",
+  email: DEMO_STAFF_EMAIL,
+  role: "admin",
+};
+
+const DEMO_CASE = {
+  id: "case-demo-001",
+  clientName: "山田 花子",
+  clientId: "client-2024-001",
+  status: "active",
+  assignedStaffId: "staff-demo-001",
+  assignedStaffName: "佐藤 太郎（サトウ）",
+  dateOfBirth: { _seconds: -361238400 }, // 1958-07-22
+  summary: "一人暮らしの高齢者。年金収入のみで生活が困窮。",
+  createdAt: { _seconds: 1771146000 }, // 2026-02-15
+  updatedAt: { _seconds: 1773153000 }, // 2026-03-10
+};
+
+const DEMO_CONSULTATION = {
+  id: "cons-demo-001",
+  caseId: "case-demo-001",
+  staffId: "staff-demo-001",
+  content:
+    "訪問相談。山田さん（67歳）は月8万円の年金で一人暮らし。最近、医療費の自己負担が重く、通院が困難になっている。食費も切り詰めており、栄養状態が心配。近隣に頼れる親族はいない。",
+  transcript: "",
+  summary:
+    "一人暮らしの高齢者が月8万円の年金で生活しており、医療費の自己負担が重く、通院が困難になっている状態。経済的な困窮と医療アクセスへの課題を抱えている。",
+  suggestedSupports: [
+    {
+      menuId: "menu-001",
+      menuName: "生活保護",
+      reason:
+        "年金収入が生活保護基準を下回っており、医療扶助により医療費の自己負担がなくなります。",
+      relevanceScore: 0.95,
+    },
+    {
+      menuId: "menu-002",
+      menuName: "生活困窮者自立支援制度",
+      reason:
+        "生活保護に至る前の段階で、家計改善や就労支援等の包括的な支援を受けられます。",
+      relevanceScore: 0.88,
+    },
+    {
+      menuId: "menu-003",
+      menuName: "高額療養費制度",
+      reason:
+        "医療費の自己負担が高額になった場合、限度額を超えた分が払い戻されます。",
+      relevanceScore: 0.72,
+    },
+  ],
+  consultationType: "visit",
+  aiStatus: "completed",
+  createdAt: { _seconds: 1773158400 }, // 2026-03-10 16:00
+  updatedAt: { _seconds: 1773158400 },
+};
+
+/**
+ * ヘルプスクリーンショット用デモデータでAPIモックをセットアップ
+ */
+export async function mockApiRoutesForHelp(page: Page) {
+  // Playwrightはルートを逆順（LIFO）で評価するため、
+  // catch-all（**/api/**）を最初に、具体的なルートを後に登録する
+  await Promise.all([
+    page.route("**/api/**", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    }),
+
+    page.route("**/api/support-menus", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { id: "menu-001", name: "生活保護", category: "経済支援", description: "最低限度の生活を保障し自立を助長する制度" },
+          { id: "menu-002", name: "生活困窮者自立支援制度", category: "総合支援", description: "生活困窮者への包括的支援" },
+          { id: "menu-003", name: "高額療養費制度", category: "医療支援", description: "医療費の自己負担限度額制度" },
+        ]),
+      });
+    }),
+
+    page.route("**/api/staff", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { id: "staff-demo-001", name: "佐藤 太郎（サトウ）", email: DEMO_STAFF_EMAIL, role: "admin" },
+        ]),
+      });
+    }),
+
+    page.route("**/api/cases", (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify(DEMO_CASE),
+        });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([DEMO_CASE]),
+        });
+      }
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/status$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(DEMO_CASE),
+      });
+    }),
+
+    page.route(/\/api\/cases\/[^/]+$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(DEMO_CASE),
+      });
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/consultations$/, (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify(DEMO_CONSULTATION),
+        });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([DEMO_CONSULTATION]),
+        });
+      }
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/consultations\/audio$/, (route) => {
+      route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DEMO_CONSULTATION,
+          id: "cons-demo-audio",
+          content: "",
+          transcript: "音声テキスト変換結果",
+          aiStatus: "completed",
+        }),
+      });
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/consultations\/[^/]+$/, (route) => {
+      if (route.request().url().includes("/audio")) {
+        route.fallback();
+        return;
+      }
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...DEMO_CONSULTATION, aiStatus: "completed" }),
+      });
+    }),
+
+    // 支援計画・モニタリングは意図的に空（スクリーンショット対象外のため最小レスポンス）
+    page.route(/\/api\/cases\/[^/]+\/support-plan/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/monitoring/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    }),
+
+    page.route(/\/api\/cases\/[^/]+\/legal-search$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    }),
+
+    page.route("**/api/me", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(DEMO_USER_INFO),
+      });
+    }),
+  ]);
+}
+
 /**
  * APIモックをセットアップ（バックエンド不要）
  * 注意: Playwrightはルートを逆順（LIFO）で評価するため、
