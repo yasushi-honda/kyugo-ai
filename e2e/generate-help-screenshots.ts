@@ -10,12 +10,11 @@
  *   npm run generate:help-screenshots
  */
 import { test } from "@playwright/test";
-import { mockApiRoutesForHelp, signInTestUser } from "./helpers";
+import { DEMO_STAFF_EMAIL, mockApiRoutesForHelp, signInTestUser } from "./helpers";
 import path from "path";
 
 const OUTPUT_DIR = path.resolve("frontend/public/help");
 const VIEWPORT = { width: 1440, height: 900 };
-const DEMO_STAFF_EMAIL = "sato@city.ibaraki.example.jp";
 
 /** モーダル内のdisabled input（職員メール）をデモ用に置換 */
 async function replaceStaffEmail(page: import("@playwright/test").Page) {

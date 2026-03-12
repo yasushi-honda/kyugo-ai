@@ -115,7 +115,7 @@ export const MOCK_LEGAL_SEARCH_RESULT = {
 
 // --- ヘルプスクリーンショット用デモデータ ---
 
-const DEMO_STAFF_EMAIL = "sato@city.ibaraki.example.jp";
+export const DEMO_STAFF_EMAIL = "sato@city.ibaraki.example.jp";
 
 const DEMO_USER_INFO: MockUserInfo = {
   staffId: "staff-demo-001",
@@ -179,6 +179,8 @@ const DEMO_CONSULTATION = {
  * ヘルプスクリーンショット用デモデータでAPIモックをセットアップ
  */
 export async function mockApiRoutesForHelp(page: Page) {
+  // Playwrightはルートを逆順（LIFO）で評価するため、
+  // catch-all（**/api/**）を最初に、具体的なルートを後に登録する
   await Promise.all([
     page.route("**/api/**", (route) => {
       route.fulfill({
@@ -284,6 +286,7 @@ export async function mockApiRoutesForHelp(page: Page) {
       });
     }),
 
+    // 支援計画・モニタリングは意図的に空（スクリーンショット対象外のため最小レスポンス）
     page.route(/\/api\/cases\/[^/]+\/support-plan/, (route) => {
       route.fulfill({
         status: 200,
