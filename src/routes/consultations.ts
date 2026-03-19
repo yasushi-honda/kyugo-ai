@@ -86,7 +86,8 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
 
     res.status(201).json(consultation);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("Consultation creation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -148,7 +149,8 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
     if (message.includes("Unsupported audio format")) {
       res.status(400).json({ error: message });
     } else {
-      res.status(500).json({ error: message });
+      logger.error("Audio consultation creation failed", { error: message });
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 });
@@ -159,7 +161,8 @@ consultationsRouter.get("/", requireCaseAccess, async (req: Request, res: Respon
     const consultations = await consultationRepo.listConsultations(paramStr(req.params.id));
     res.json(consultations);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("List consultations failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -173,6 +176,7 @@ consultationsRouter.get("/:consultationId", requireCaseAccess, async (req: Reque
     }
     res.json(consultation);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("Get consultation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });

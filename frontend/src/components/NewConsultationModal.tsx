@@ -363,7 +363,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
                   />
                   <div
                     className={`audio-recorder file-upload-area ${audioFile ? "has-file" : ""}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click(); }}
                   >
                     <div className="audio-icon">{audioFile ? "✅" : "📁"}</div>
                     <div className="audio-label">
