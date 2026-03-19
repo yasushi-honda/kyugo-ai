@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
+import helmet from "helmet";
 import { casesRouter } from "./routes/cases.js";
 import { staffRouter } from "./routes/staff.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
@@ -16,12 +17,9 @@ const app = express();
 const PORT = parseInt(process.env.PORT ?? "8080", 10);
 
 app.use(express.json());
-
-// Firebase Auth signInWithPopup に必要（COOPがポップアップのwindow.closedアクセスをブロックする）
-app.use((_req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
-  next();
-});
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
+}));
 
 // Rate limiting（/health はレート制限外）
 app.use("/api", defaultLimiter);
