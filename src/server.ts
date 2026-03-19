@@ -1,6 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
+import { logger } from "./utils/logger.js";
+import helmet from "helmet";
 import { casesRouter } from "./routes/cases.js";
 import { staffRouter } from "./routes/staff.js";
 import { supportMenusRouter } from "./routes/support-menus.js";
@@ -15,13 +17,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "8080", 10);
 
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://apis.google.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseapp.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
+      frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "https:", "data:"],
+    },
+  },
+}));
 app.use(express.json());
-
-// Firebase Auth signInWithPopup に必要（COOPがポップアップのwindow.closedアクセスをブロックする）
-app.use((_req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
-  next();
-});
 
 // Rate limiting（/health はレート制限外）
 app.use("/api", defaultLimiter);
@@ -61,7 +71,7 @@ app.get("/{*splat}", (_req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Kyugo AI server running on port ${PORT}`);
+  logger.info(`Kyugo AI server running on port ${PORT}`);
 });
 
 export { app };

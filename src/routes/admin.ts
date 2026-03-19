@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger.js";
 import { retryPendingConsultations } from "../services/ai-retry.js";
 
 export const adminRouter = Router();
@@ -20,10 +21,10 @@ adminRouter.use(requireAdminSecret);
 adminRouter.post("/retry-ai", async (_req: Request, res: Response) => {
   try {
     const result = await retryPendingConsultations();
-    console.log("AI retry completed:", result);
+    logger.info("AI retry completed", { result });
     res.json(result);
   } catch (err) {
-    console.error("AI retry failed:", err);
+    logger.error("AI retry failed", { error: (err as Error).message });
     res.status(500).json({ error: (err as Error).message });
   }
 });

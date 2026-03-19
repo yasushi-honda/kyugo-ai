@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import * as monitoringRepo from "../repositories/monitoring-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportPlanRepo from "../repositories/support-plan-repository.js";
@@ -62,7 +63,7 @@ monitoringRouter.post("/draft", aiLimiter, async (req: Request, res: Response) =
 
     res.status(201).json(sheet);
   } catch (err) {
-    console.error("Monitoring draft generation failed", (err as Error).message);
+    logger.error("Monitoring draft generation failed", { error: (err as Error).message });
     res.status(500).json({ error: "モニタリングシートの生成に失敗しました" });
   }
 });
@@ -78,7 +79,7 @@ monitoringRouter.get("/", async (req: Request, res: Response) => {
     }
     res.json(sheet);
   } catch (err) {
-    console.error("Get monitoring sheet failed", (err as Error).message);
+    logger.error("Get monitoring sheet failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -90,7 +91,7 @@ monitoringRouter.get("/list", async (req: Request, res: Response) => {
     const sheets = await monitoringRepo.listMonitoringSheets(caseId);
     res.json(sheets);
   } catch (err) {
-    console.error("List monitoring sheets failed", (err as Error).message);
+    logger.error("List monitoring sheets failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -118,7 +119,7 @@ monitoringRouter.patch("/:sheetId", async (req: Request, res: Response) => {
       res.status(400).json({ error: message });
       return;
     }
-    console.error("Update monitoring sheet failed", message);
+    logger.error("Update monitoring sheet failed", { error: message });
     res.status(500).json({ error: "Internal server error" });
   }
 });

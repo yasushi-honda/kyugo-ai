@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import { firestore } from "../config.js";
 
 export const staffRouter = Router();
@@ -13,7 +14,7 @@ staffRouter.get("/", async (_req: Request, res: Response) => {
     }));
     res.json(staff);
   } catch (err) {
-    console.error("Staff list failed", (err as Error).message);
+    logger.error("Staff list failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });

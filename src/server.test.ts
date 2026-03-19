@@ -606,7 +606,7 @@ describe("POST /api/cases/:id/consultations", () => {
       consultationType: "counter",
     });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("DB connection failed");
+    expect(res.body.error).toBe("Internal server error");
   });
 
   it("returns 400 for invalid consultationType", async () => {

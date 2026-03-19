@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import * as supportPlanRepo from "../repositories/support-plan-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
@@ -54,7 +55,7 @@ supportPlansRouter.post("/draft", aiLimiter, async (req: Request, res: Response)
 
     res.status(201).json(plan);
   } catch (err) {
-    console.error("Support plan draft generation failed", (err as Error).message);
+    logger.error("Support plan draft generation failed", { error: (err as Error).message });
     res.status(500).json({ error: "支援計画書の生成に失敗しました" });
   }
 });
@@ -70,7 +71,7 @@ supportPlansRouter.get("/", async (req: Request, res: Response) => {
     }
     res.json(plan);
   } catch (err) {
-    console.error("Get support plan failed", (err as Error).message);
+    logger.error("Get support plan failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -82,7 +83,7 @@ supportPlansRouter.get("/list", async (req: Request, res: Response) => {
     const plans = await supportPlanRepo.listSupportPlans(caseId);
     res.json(plans);
   } catch (err) {
-    console.error("List support plans failed", (err as Error).message);
+    logger.error("List support plans failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -110,7 +111,7 @@ supportPlansRouter.patch("/:planId", async (req: Request, res: Response) => {
       res.status(400).json({ error: message });
       return;
     }
-    console.error("Update support plan failed", message);
+    logger.error("Update support plan failed", { error: message });
     res.status(500).json({ error: "Internal server error" });
   }
 });

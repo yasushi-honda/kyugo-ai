@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import multer from "multer";
 import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
@@ -29,7 +30,7 @@ const upload = multer({
 
 // AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
 async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {
-  console.error(`AI analysis failed for consultation ${consultationId}:`, err);
+  logger.error("AI analysis failed", { consultationId, error: String(err) });
   const isTransient = isTransientError(err);
   try {
     const nextRetryAt = isTransient
@@ -44,7 +45,7 @@ async function handleAIFailure(caseId: string, consultationId: string, err: unkn
       nextRetryAt,
     );
   } catch (statusErr) {
-    console.error(`Failed to update aiStatus for consultation ${consultationId}:`, statusErr);
+    logger.error("Failed to update aiStatus", { consultationId, error: String(statusErr) });
   }
 }
 
@@ -79,13 +80,14 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
           aiResult.summary,
           aiResult.suggestedSupports,
         );
-        console.log(`AI analysis completed for consultation ${consultation.id}`);
+        logger.info("AI analysis completed", { consultationId: consultation.id });
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
     res.status(201).json(consultation);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("Consultation creation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -137,7 +139,7 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
           aiResult.suggestedSupports,
           aiResult.transcript,
         );
-        console.log(`Audio AI analysis completed for consultation ${consultation.id}`);
+        logger.info("Audio AI analysis completed", { consultationId: consultation.id });
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
@@ -147,7 +149,8 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
     if (message.includes("Unsupported audio format")) {
       res.status(400).json({ error: message });
     } else {
-      res.status(500).json({ error: message });
+      logger.error("Audio consultation creation failed", { error: message });
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 });
@@ -158,7 +161,8 @@ consultationsRouter.get("/", requireCaseAccess, async (req: Request, res: Respon
     const consultations = await consultationRepo.listConsultations(paramStr(req.params.id));
     res.json(consultations);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("List consultations failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -172,6 +176,7 @@ consultationsRouter.get("/:consultationId", requireCaseAccess, async (req: Reque
     }
     res.json(consultation);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    logger.error("Get consultation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });

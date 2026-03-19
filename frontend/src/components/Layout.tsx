@@ -17,28 +17,30 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="sidebar-brand" onClick={() => navigate("/")}>
+          <button type="button" className="sidebar-brand" onClick={() => navigate("/")}>
             <div className="sidebar-brand-icon">救</div>
             <span>救護AI</span>
-          </div>
+          </button>
         </div>
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="メインナビゲーション">
           {NAV_ITEMS
             .filter((item) => !item.adminOnly || userInfo?.role === "admin")
             .map((item) => (
-            <div
+            <button
+              type="button"
               key={item.path}
               className={`sidebar-nav-item ${location.pathname === item.path ? "active" : ""}`}
               onClick={() => navigate(item.path)}
+              aria-current={location.pathname === item.path ? "page" : undefined}
             >
               <span className="sidebar-nav-icon">{item.icon}</span>
               {item.label}
-            </div>
+            </button>
           ))}
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">{user?.email}</div>
-          <button className="sidebar-logout" onClick={logout}>
+          <button type="button" className="sidebar-logout" onClick={logout}>
             ログアウト
           </button>
         </div>

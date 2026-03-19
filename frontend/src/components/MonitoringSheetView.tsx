@@ -182,6 +182,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="全体評価"
             value={editData.overallEvaluation}
             onChange={(e) => setEditData({ ...editData, overallEvaluation: e.target.value })}
           />
@@ -200,6 +201,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
               {editData ? (
                 <select
                   className="support-plan-select"
+                  aria-label="進捗評価"
                   value={editData.goalEvaluations[i].progress}
                   onChange={(e) => updateGoalEval(i, { progress: e.target.value as MonitoringGoalEvaluation["progress"] })}
                 >
@@ -229,6 +231,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
               {editData ? (
                 <textarea
                   className="support-plan-input"
+                  aria-label="達成状況の評価"
                   value={editData.goalEvaluations[i].evaluation}
                   onChange={(e) => updateGoalEval(i, { evaluation: e.target.value })}
                 />
@@ -241,6 +244,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
               {editData ? (
                 <textarea
                   className="support-plan-input"
+                  aria-label="今後の対応方針"
                   value={editData.goalEvaluations[i].nextAction}
                   onChange={(e) => updateGoalEval(i, { nextAction: e.target.value })}
                 />
@@ -257,6 +261,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="生活環境の変化"
             value={editData.environmentChanges}
             onChange={(e) => setEditData({ ...editData, environmentChanges: e.target.value })}
           />
@@ -270,6 +275,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="本人の意向・感想"
             value={editData.clientFeedback}
             onChange={(e) => setEditData({ ...editData, clientFeedback: e.target.value })}
           />
@@ -283,6 +289,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="特記事項"
             value={editData.specialNotes}
             onChange={(e) => setEditData({ ...editData, specialNotes: e.target.value })}
           />

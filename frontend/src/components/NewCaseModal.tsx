@@ -39,18 +39,19 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
   if (!form.dateOfBirth) missingFields.push("生年月日");
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-case-title" tabIndex={-1} onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>新規ケース作成</h3>
+          <h3 id="new-case-title">新規ケース作成</h3>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
           {error && <div className="form-error">{error}</div>}
 
           <div className="form-group">
-            <label className="form-label">相談者氏名 *</label>
+            <label className="form-label" htmlFor="clientName">相談者氏名 *</label>
             <input
+              id="clientName"
               className="form-input"
               value={form.clientName}
               onChange={(e) => setForm({ ...form, clientName: e.target.value })}
@@ -58,8 +59,9 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">相談者ID（住基番号・通所者番号等） *</label>
+            <label className="form-label" htmlFor="clientId">相談者ID（住基番号・通所者番号等） *</label>
             <input
+              id="clientId"
               className="form-input"
               value={form.clientId}
               onChange={(e) => setForm({ ...form, clientId: e.target.value })}
@@ -67,8 +69,9 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">生年月日 *</label>
+            <label className="form-label" htmlFor="dateOfBirth">生年月日 *</label>
             <input
+              id="dateOfBirth"
               className="form-input"
               type="date"
               value={form.dateOfBirth}
@@ -76,8 +79,8 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">担当職員</label>
-            <input className="form-input" value={user?.email ?? ""} disabled />
+            <label className="form-label" htmlFor="newCase-staffEmail">担当職員</label>
+            <input id="newCase-staffEmail" className="form-input" value={user?.email ?? ""} disabled />
             <p className="form-help">ログイン中の職員が自動で割り当てられます</p>
           </div>
         </div>

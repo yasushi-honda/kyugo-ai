@@ -1,4 +1,5 @@
 import { Timestamp } from "@google-cloud/firestore";
+import { logger } from "../utils/logger.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import * as supportMenuRepo from "../repositories/support-menu-repository.js";
 import { analyzeConsultation, analyzeAudioConsultation } from "./ai.js";
@@ -45,7 +46,7 @@ export async function retryPendingConsultations(): Promise<RetryResult> {
         "retrying",
       );
     } catch (lockErr) {
-      console.error(`Failed to lock consultation ${consultation.id} as retrying:`, lockErr);
+      logger.error("Failed to lock consultation as retrying", { consultationId: consultation.id, error: String(lockErr) });
       result.failed++;
       continue;
     }
@@ -80,9 +81,9 @@ export async function retryPendingConsultations(): Promise<RetryResult> {
         transcript,
       );
       result.succeeded++;
-      console.log(`AI retry succeeded for consultation ${consultation.id} (attempt ${currentRetryCount})`);
+      logger.info("AI retry succeeded", { consultationId: consultation.id, attempt: currentRetryCount });
     } catch (err) {
-      console.error(`AI retry failed for consultation ${consultation.id} (attempt ${currentRetryCount}):`, err);
+      logger.error("AI retry failed", { consultationId: consultation.id, attempt: currentRetryCount, error: String(err) });
 
       const isTransient = isTransientError(err);
       const newStatus = isTransient && currentRetryCount < AI_RETRY_CONFIG.maxRetryCount
@@ -105,7 +106,7 @@ export async function retryPendingConsultations(): Promise<RetryResult> {
           nextRetryAt,
         );
       } catch (statusErr) {
-        console.error(`Failed to update aiStatus for consultation ${consultation.id}:`, statusErr);
+        logger.error("Failed to update aiStatus", { consultationId: consultation.id, error: String(statusErr) });
       }
       result.failed++;
     }

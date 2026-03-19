@@ -54,8 +54,9 @@ export function LegalSearchView({ caseId }: LegalSearchViewProps) {
       {/* 検索フォーム */}
       <div className="legal-search-form">
         <div className="form-group">
-          <label className="form-label">法令・制度を検索</label>
+          <label className="form-label" htmlFor="legalSearchQuery">法令・制度を検索</label>
           <textarea
+            id="legalSearchQuery"
             className="form-textarea"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

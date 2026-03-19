@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import { firestore, ALLOWED_EMAILS_CONFIG_DOC } from "../config.js";
 import { requireAdmin } from "../middleware/authz.js";
 import { allowedEmailsSchema } from "../schemas/case.js";
@@ -26,7 +27,7 @@ adminSettingsRouter.get("/staff", async (_req: Request, res: Response) => {
     const staff = snapshot.docs.map(toStaffResponse);
     res.json(staff);
   } catch (err) {
-    console.error("Admin staff list failed", (err as Error).message);
+    logger.error("Admin staff list failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -106,7 +107,7 @@ adminSettingsRouter.patch("/staff/:id", async (req: Request, res: Response) => {
       createdAt: merged.createdAt ?? null,
     });
   } catch (err) {
-    console.error("Staff update failed", (err as Error).message);
+    logger.error("Staff update failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -125,7 +126,7 @@ adminSettingsRouter.get("/allowed-emails", async (_req: Request, res: Response) 
       domains: (data.domains as string[]) ?? [],
     });
   } catch (err) {
-    console.error("Failed to get allowed emails config", (err as Error).message);
+    logger.error("Failed to get allowed emails config", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -150,7 +151,7 @@ adminSettingsRouter.put("/allowed-emails", async (req: Request, res: Response) =
     );
     res.json({ emails: normalizedEmails, domains: normalizedDomains });
   } catch (err) {
-    console.error("Failed to update allowed emails config", (err as Error).message);
+    logger.error("Failed to update allowed emails config", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });

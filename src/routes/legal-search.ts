@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import * as legalSearchRepo from "../repositories/legal-search-repository.js";
 import * as consultationRepo from "../repositories/consultation-repository.js";
 import { searchLegalInfo } from "../services/ai.js";
@@ -46,7 +47,7 @@ legalSearchRouter.post("/", aiLimiter, async (req: Request, res: Response) => {
 
     res.status(201).json(result);
   } catch (err) {
-    console.error("Legal search failed", (err as Error).message);
+    logger.error("Legal search failed", { error: (err as Error).message });
     res.status(500).json({ error: "法令検索に失敗しました" });
   }
 });
@@ -58,7 +59,7 @@ legalSearchRouter.get("/", async (req: Request, res: Response) => {
     const results = await legalSearchRepo.listLegalSearches(caseId);
     res.json(results);
   } catch (err) {
-    console.error("List legal searches failed", (err as Error).message);
+    logger.error("List legal searches failed", { error: (err as Error).message });
     res.status(500).json({ error: "検索履歴の取得に失敗しました" });
   }
 });
