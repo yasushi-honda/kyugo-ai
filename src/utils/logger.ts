@@ -11,10 +11,10 @@ interface LogEntry {
 
 function writeLog(severity: LogEntry["severity"], message: string, metadata?: Record<string, unknown>): void {
   const entry: LogEntry = {
+    ...metadata,
     severity,
     message,
     timestamp: new Date().toISOString(),
-    ...metadata,
   };
   const output = severity === "ERROR" ? process.stderr : process.stdout;
   output.write(JSON.stringify(entry) + "\n");

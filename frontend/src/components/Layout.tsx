@@ -40,7 +40,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-user">{user?.email}</div>
-          <button className="sidebar-logout" onClick={logout}>
+          <button type="button" className="sidebar-logout" onClick={logout}>
             ログアウト
           </button>
         </div>

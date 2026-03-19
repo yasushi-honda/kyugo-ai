@@ -217,12 +217,12 @@ Authorization: Bearer <Firebase ID Token>
   "caseId": "case_xyz789",
   "content": "本日、生活費の不足について相談を受けた。家賃の支払いが困難な状況とのこと。",
   "consultationType": "counter",
-  "status": "pending",
+  "aiStatus": "pending",
   "createdAt": "2026-03-20T09:30:00.000Z"
 }
 ```
 
-`status` は `"pending"` → `"completed"` または `"failed"` に遷移します。
+`aiStatus` は `"pending"` → `"completed"` または `"error"` に遷移します。一時的エラーの場合は `"retry_pending"` → 自動リトライされます。
 
 ---
 
@@ -247,7 +247,7 @@ Authorization: Bearer <Firebase ID Token>
   "id": "consult_002",
   "caseId": "case_xyz789",
   "consultationType": "visit",
-  "status": "pending",
+  "aiStatus": "pending",
   "createdAt": "2026-03-20T09:45:00.000Z"
 }
 ```

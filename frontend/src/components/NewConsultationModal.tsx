@@ -117,7 +117,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     const isRetryPending = status === "retry_pending";
 
     return (
-      <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-result-title" onClick={isAnalyzing ? undefined : onCreated} onKeyDown={(e) => { if (e.key === "Escape" && !isAnalyzing) onCreated(); }}>
+      <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-result-title" tabIndex={-1} onClick={isAnalyzing ? undefined : onCreated} onKeyDown={(e) => { if (e.key === "Escape" && !isAnalyzing) onCreated(); }}>
         <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h3 id="consultation-result-title">{isAnalyzing ? "AI分析中..." : isCompleted ? "AI分析結果" : "相談記録を保存しました"}</h3>
@@ -201,7 +201,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-title" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-title" tabIndex={-1} onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 id="consultation-title">新規相談記録</h3>
@@ -228,8 +228,8 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
           <div className="form-row">
             <div className="form-group form-group-flex">
-              <label className="form-label" htmlFor="staffEmail">職員</label>
-              <input id="staffEmail" className="form-input" value={user?.email ?? ""} disabled />
+              <label className="form-label" htmlFor="newConsultation-staffEmail">職員</label>
+              <input id="newConsultation-staffEmail" className="form-input" value={user?.email ?? ""} disabled />
             </div>
             <div className="form-group form-group-flex">
               <label className="form-label" htmlFor="consultationType">相談種別</label>

@@ -39,7 +39,7 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
   if (!form.dateOfBirth) missingFields.push("生年月日");
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-case-title" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-case-title" tabIndex={-1} onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 id="new-case-title">新規ケース作成</h3>
@@ -79,8 +79,8 @@ export function NewCaseModal({ onClose, onCreated }: Props) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label" htmlFor="staffEmail">担当職員</label>
-            <input id="staffEmail" className="form-input" value={user?.email ?? ""} disabled />
+            <label className="form-label" htmlFor="newCase-staffEmail">担当職員</label>
+            <input id="newCase-staffEmail" className="form-input" value={user?.email ?? ""} disabled />
             <p className="form-help">ログイン中の職員が自動で割り当てられます</p>
           </div>
         </div>

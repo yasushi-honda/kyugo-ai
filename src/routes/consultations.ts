@@ -30,7 +30,7 @@ const upload = multer({
 
 // AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
 async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {
-  logger.error(`AI analysis failed for consultation ${consultationId}`, { error: String(err) });
+  logger.error("AI analysis failed", { consultationId, error: String(err) });
   const isTransient = isTransientError(err);
   try {
     const nextRetryAt = isTransient
@@ -45,7 +45,7 @@ async function handleAIFailure(caseId: string, consultationId: string, err: unkn
       nextRetryAt,
     );
   } catch (statusErr) {
-    logger.error(`Failed to update aiStatus for consultation ${consultationId}`, { error: String(statusErr) });
+    logger.error("Failed to update aiStatus", { consultationId, error: String(statusErr) });
   }
 }
 
@@ -80,7 +80,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
           aiResult.summary,
           aiResult.suggestedSupports,
         );
-        logger.info(`AI analysis completed for consultation ${consultation.id}`);
+        logger.info("AI analysis completed", { consultationId: consultation.id });
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
@@ -138,7 +138,7 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
           aiResult.suggestedSupports,
           aiResult.transcript,
         );
-        logger.info(`Audio AI analysis completed for consultation ${consultation.id}`);
+        logger.info("Audio AI analysis completed", { consultationId: consultation.id });
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
