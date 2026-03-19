@@ -19,6 +19,17 @@ const PORT = parseInt(process.env.PORT ?? "8080", 10);
 
 app.use(helmet({
   crossOriginOpenerPolicy: { policy: "unsafe-none" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://apis.google.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseapp.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
+      frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "https:", "data:"],
+    },
+  },
 }));
 app.use(express.json());
 
