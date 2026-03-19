@@ -117,10 +117,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
     const isRetryPending = status === "retry_pending";
 
     return (
-      <div className="modal-overlay" onClick={isAnalyzing ? undefined : onCreated}>
+      <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-result-title" onClick={isAnalyzing ? undefined : onCreated} onKeyDown={(e) => { if (e.key === "Escape" && !isAnalyzing) onCreated(); }}>
         <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
-            <h3>{isAnalyzing ? "AI分析中..." : isCompleted ? "AI分析結果" : "相談記録を保存しました"}</h3>
+            <h3 id="consultation-result-title">{isAnalyzing ? "AI分析中..." : isCompleted ? "AI分析結果" : "相談記録を保存しました"}</h3>
             <button className="btn btn-ghost" onClick={onCreated}>✕</button>
           </div>
           <div className="modal-body">
@@ -201,10 +201,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="consultation-title" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>新規相談記録</h3>
+          <h3 id="consultation-title">新規相談記録</h3>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
@@ -228,12 +228,13 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
           <div className="form-row">
             <div className="form-group form-group-flex">
-              <label className="form-label">職員</label>
-              <input className="form-input" value={user?.email ?? ""} disabled />
+              <label className="form-label" htmlFor="staffEmail">職員</label>
+              <input id="staffEmail" className="form-input" value={user?.email ?? ""} disabled />
             </div>
             <div className="form-group form-group-flex">
-              <label className="form-label">相談種別</label>
+              <label className="form-label" htmlFor="consultationType">相談種別</label>
               <select
+                id="consultationType"
                 className="form-select"
                 value={form.consultationType}
                 onChange={(e) => setForm({ ...form, consultationType: e.target.value })}
@@ -247,8 +248,9 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
           {mode === "text" ? (
             <div className="form-group">
-              <label className="form-label">相談内容 *</label>
+              <label className="form-label" htmlFor="consultationContent">相談内容 *</label>
               <textarea
+                id="consultationContent"
                 className="form-textarea"
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -260,8 +262,9 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           ) : (
             <>
               <div className="form-group">
-                <label className="form-label">背景情報（任意）</label>
+                <label className="form-label" htmlFor="consultationContext">背景情報（任意）</label>
                 <textarea
+                  id="consultationContext"
                   className="form-textarea"
                   value={form.context}
                   onChange={(e) => setForm({ ...form, context: e.target.value })}

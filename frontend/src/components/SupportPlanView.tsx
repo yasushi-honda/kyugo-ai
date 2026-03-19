@@ -160,6 +160,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="全体的な支援方針"
             value={editData.overallPolicy}
             onChange={(e) => setEditData({ ...editData, overallPolicy: e.target.value })}
           />
@@ -179,6 +180,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
                 {editData ? (
                   <textarea
                     className="support-plan-input"
+                    aria-label="長期目標"
                     value={editData.goals[i].longTermGoal}
                     onChange={(e) => updateGoal(i, { longTermGoal: e.target.value })}
                   />
@@ -191,6 +193,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
                 {editData ? (
                   <textarea
                     className="support-plan-input"
+                    aria-label="短期目標"
                     value={editData.goals[i].shortTermGoal}
                     onChange={(e) => updateGoal(i, { shortTermGoal: e.target.value })}
                   />
@@ -207,6 +210,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
                     {editData ? (
                       <input
                         className="support-plan-input-inline"
+                        aria-label="支援内容"
                         value={editData.goals[i].supports[j]}
                         onChange={(e) => {
                           const supports = [...editData.goals[i].supports];
@@ -234,6 +238,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
         {editData ? (
           <textarea
             className="support-plan-textarea"
+            aria-label="特記事項"
             value={editData.specialNotes}
             onChange={(e) => setEditData({ ...editData, specialNotes: e.target.value })}
           />
