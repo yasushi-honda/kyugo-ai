@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { logger } from "../utils/logger.js";
 import multer from "multer";
 import { Timestamp } from "@google-cloud/firestore";
 import * as consultationRepo from "../repositories/consultation-repository.js";
@@ -29,7 +30,7 @@ const upload = multer({
 
 // AI分析失敗時の共通エラーハンドラ（状態復旧を最優先）
 async function handleAIFailure(caseId: string, consultationId: string, err: unknown): Promise<void> {
-  console.error(`AI analysis failed for consultation ${consultationId}:`, err);
+  logger.error(`AI analysis failed for consultation ${consultationId}`, { error: String(err) });
   const isTransient = isTransientError(err);
   try {
     const nextRetryAt = isTransient
@@ -44,7 +45,7 @@ async function handleAIFailure(caseId: string, consultationId: string, err: unkn
       nextRetryAt,
     );
   } catch (statusErr) {
-    console.error(`Failed to update aiStatus for consultation ${consultationId}:`, statusErr);
+    logger.error(`Failed to update aiStatus for consultation ${consultationId}`, { error: String(statusErr) });
   }
 }
 
@@ -79,7 +80,7 @@ consultationsRouter.post("/", requireCaseAccess, async (req: Request, res: Respo
           aiResult.summary,
           aiResult.suggestedSupports,
         );
-        console.log(`AI analysis completed for consultation ${consultation.id}`);
+        logger.info(`AI analysis completed for consultation ${consultation.id}`);
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 
@@ -137,7 +138,7 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
           aiResult.suggestedSupports,
           aiResult.transcript,
         );
-        console.log(`Audio AI analysis completed for consultation ${consultation.id}`);
+        logger.info(`Audio AI analysis completed for consultation ${consultation.id}`);
       })
       .catch((err) => handleAIFailure(caseId, consultation.id!, err));
 

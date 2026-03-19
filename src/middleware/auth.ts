@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { firebaseAuth, firestore, ALLOWED_EMAILS_CONFIG_DOC } from "../config.js";
+import { logger } from "../utils/logger.js";
 
 function parseAllowedList(envValue: string | undefined): string[] | null {
   if (!envValue) return null;
@@ -11,7 +12,7 @@ const allowedDomains = parseAllowedList(process.env.ALLOWED_EMAIL_DOMAINS);
 const allowedEmails = parseAllowedList(process.env.ALLOWED_EMAILS);
 
 if (!allowedDomains && !allowedEmails) {
-  console.warn("WARNING: ALLOWED_EMAIL_DOMAINS and ALLOWED_EMAILS are not set. Any authenticated user can auto-provision as staff.");
+  logger.warn("ALLOWED_EMAIL_DOMAINS and ALLOWED_EMAILS are not set. Any authenticated user can auto-provision as staff.");
 }
 
 function isEmailAllowedByEnv(email: string): boolean {
@@ -42,7 +43,7 @@ async function isEmailAllowed(email: string): Promise<boolean> {
       // Firestoreドキュメントは存在するが両方空 → 環境変数にフォールバック
     }
   } catch (err) {
-    console.error("Failed to read Firestore allowed emails config, falling back to env", (err as Error).message);
+    logger.error("Failed to read Firestore allowed emails config, falling back to env", { error: (err as Error).message });
   }
 
   // Firestoreに設定がない場合は環境変数にフォールバック
@@ -72,7 +73,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.status(401).json({ error: "Invalid or expired token" });
     } else {
       // auth/internal-error, auth/project-not-found, network errors, etc.
-      console.error("Token verification failed", JSON.stringify({ code, message: (err as Error).message }));
+      logger.error("Token verification failed", { code, error: (err as Error).message });
       res.status(401).json({ error: "Authentication failed" });
     }
     return;
@@ -117,7 +118,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
       if (legacyQuery.size > 1) {
         // 重複レコード検出 → fail closed
-        console.error("Duplicate staff records for firebaseUid", {
+        logger.error("Duplicate staff records for firebaseUid", {
           uid: decoded.uid,
           count: legacyQuery.size,
           docIds: legacyQuery.docs.map((d) => d.id),
@@ -199,7 +200,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     next();
   } catch (err) {
-    console.error("Staff lookup/provision failed", {
+    logger.error("Staff lookup/provision failed", {
       uid: decoded.uid,
       error: (err as Error).message,
       code: (err as { code?: number }).code,

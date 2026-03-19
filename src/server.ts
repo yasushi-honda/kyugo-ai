@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
+import { logger } from "./utils/logger.js";
 import helmet from "helmet";
 import { casesRouter } from "./routes/cases.js";
 import { staffRouter } from "./routes/staff.js";
@@ -59,7 +60,7 @@ app.get("/{*splat}", (_req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Kyugo AI server running on port ${PORT}`);
+  logger.info(`Kyugo AI server running on port ${PORT}`);
 });
 
 export { app };

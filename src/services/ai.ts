@@ -1,5 +1,6 @@
 import { generativeModel, genAI, MODEL } from "../config.js";
 import { AILegalSearchResult, AIMonitoringResult, AISummaryResult, AISupportPlanResult, AudioAnalysisResult, Case, Consultation, LegalReference, SupportMenu, SupportPlan } from "../types.js";
+import { logger } from "../utils/logger.js";
 
 const SYSTEM_INSTRUCTION_TEXT = `あなたは福祉相談支援AIアシスタントです。
 生活困窮者の相談内容を分析し、以下を行います：
@@ -117,11 +118,11 @@ ${buildMenuList(availableMenus)}
   const candidate = result.response.candidates?.[0];
   const responseText = candidate?.content?.parts?.[0]?.text;
   if (!responseText) {
-    console.error("Vertex AI empty response", JSON.stringify({
+    logger.error("Vertex AI empty response", {
       finishReason: candidate?.finishReason,
       safetyRatings: candidate?.safetyRatings,
       candidatesCount: result.response.candidates?.length ?? 0,
-    }));
+    });
   }
   return parseAIResponse<AISummaryResult>(responseText, ["summary", "suggestedSupports"]);
 }
@@ -164,11 +165,11 @@ ${buildMenuList(availableMenus)}
   const audioCandidate = result.response.candidates?.[0];
   const responseText = audioCandidate?.content?.parts?.[0]?.text;
   if (!responseText) {
-    console.error("Vertex AI empty audio response", JSON.stringify({
+    logger.error("Vertex AI empty audio response", {
       finishReason: audioCandidate?.finishReason,
       safetyRatings: audioCandidate?.safetyRatings,
       candidatesCount: result.response.candidates?.length ?? 0,
-    }));
+    });
   }
   return parseAIResponse<AudioAnalysisResult>(responseText, ["transcript", "summary", "suggestedSupports"]);
 }
@@ -242,11 +243,11 @@ ${buildMenuList(availableMenus)}
   const candidate = result.response.candidates?.[0];
   const responseText = candidate?.content?.parts?.[0]?.text;
   if (!responseText) {
-    console.error("Vertex AI empty support plan response", JSON.stringify({
+    logger.error("Vertex AI empty support plan response", {
       finishReason: candidate?.finishReason,
       safetyRatings: candidate?.safetyRatings,
       candidatesCount: result.response.candidates?.length ?? 0,
-    }));
+    });
   }
   return parseAIResponse<AISupportPlanResult>(responseText, ["overallPolicy", "goals", "specialNotes"]);
 }
@@ -329,11 +330,11 @@ ${consultationSummaries || "（相談記録なし）"}
   const candidate = result.response.candidates?.[0];
   const responseText = candidate?.content?.parts?.[0]?.text;
   if (!responseText) {
-    console.error("Vertex AI empty monitoring response", JSON.stringify({
+    logger.error("Vertex AI empty monitoring response", {
       finishReason: candidate?.finishReason,
       safetyRatings: candidate?.safetyRatings,
       candidatesCount: result.response.candidates?.length ?? 0,
-    }));
+    });
   }
   return parseAIResponse<AIMonitoringResult>(responseText, ["overallEvaluation", "goalEvaluations"]);
 }
@@ -393,9 +394,7 @@ ${consultationSummaries || "（なし）"}
 
   const responseText = response.text;
   if (!responseText) {
-    console.error("GenAI empty legal search response", JSON.stringify({
-      candidates: response.candidates?.length ?? 0,
-    }));
+    logger.error("GenAI empty legal search response", { candidates: response.candidates?.length ?? 0 });
     throw new Error("AI returned empty response for legal search");
   }
 
@@ -404,7 +403,7 @@ ${consultationSummaries || "（なし）"}
   const stripped = responseText.replace(/```(?:json)?\n?([\s\S]*?)\n?```/g, "$1").trim();
   const jsonMatch = stripped.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    console.error("GenAI legal search: no JSON found in response", responseText.slice(0, 500));
+    logger.error("GenAI legal search: no JSON found in response", { responsePreview: responseText.slice(0, 500) });
     throw new Error("AI response does not contain valid JSON for legal search");
   }
 
