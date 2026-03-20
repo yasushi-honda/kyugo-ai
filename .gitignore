@@ -14,3 +14,7 @@ playwright-report/
 blob-report/
 frontend/dist/
 .serena/
+
+# QA一時スクリーンショット
+qa-*.png
+help-page-full.png
