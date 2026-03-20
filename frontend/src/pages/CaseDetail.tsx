@@ -337,7 +337,8 @@ export function CaseDetail() {
                           </>
                         )}
 
-                        {con.editedAt && con.aiStatus === "completed" && con.summary && (
+                        {con.editedAt && con.aiStatus === "completed" && con.summary
+                          && con.editedAt._seconds > con.updatedAt._seconds && (
                           <div className="ai-edit-notice">
                             AI分析結果は編集前の内容に基づいています
                           </div>
