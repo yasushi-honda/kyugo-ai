@@ -171,6 +171,10 @@ a:hover { color: var(--ai-600); }
   gap: var(--space-3);
   position: relative;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
 }
 
 .sidebar-brand-icon {
@@ -211,6 +215,10 @@ a:hover { color: var(--ai-600); }
   margin-bottom: var(--space-1);
   position: relative;
   overflow: hidden;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
 
 .sidebar-nav-item::before {
