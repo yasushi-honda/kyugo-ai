@@ -83,7 +83,6 @@ export async function updateConsultationAIResults(
     aiErrorMessage: FieldValue.delete(),
     aiRetryCount: FieldValue.delete(),
     nextRetryAt: FieldValue.delete(),
-    editedAt: FieldValue.delete(),
     updatedAt: Timestamp.now(),
   };
   if (transcript !== undefined) update.transcript = transcript;
