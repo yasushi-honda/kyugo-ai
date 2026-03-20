@@ -251,7 +251,7 @@ export function CaseDetail() {
                                       setMenuOpenId(null);
                                       if (confirm("この相談記録を削除しますか？")) {
                                         await api.deleteConsultation(id!, con.id);
-                                        loadData();
+                                        setConsultations((prev) => prev.filter((c) => c.id !== con.id));
                                       }
                                     }}
                                   >
@@ -294,10 +294,12 @@ export function CaseDetail() {
                                     if (editContent !== con.content) update.content = editContent;
                                     if (editTranscript !== con.transcript) update.transcript = editTranscript;
                                     if (Object.keys(update).length > 0) {
-                                      await api.updateConsultation(id!, con.id, update);
+                                      const result = await api.updateConsultation(id!, con.id, update);
+                                      setConsultations((prev) =>
+                                        prev.map((c) => c.id === con.id ? result : c),
+                                      );
                                     }
                                     setEditingId(null);
-                                    loadData();
                                   } catch (err) {
                                     alert("保存に失敗しました: " + (err as Error).message);
                                   } finally {
