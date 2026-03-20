@@ -65,6 +65,7 @@ export interface Consultation {
   consultationType: "visit" | "counter" | "phone" | "online";
   aiStatus: "pending" | "completed" | "retry_pending" | "retrying" | "error";
   aiErrorMessage?: string;
+  editedAt?: { _seconds: number } | null;
   createdAt: { _seconds: number };
   updatedAt: { _seconds: number };
 }
@@ -214,6 +215,24 @@ export const api = {
 
   getConsultation: (caseId: string, consultationId: string) =>
     request<Consultation>(`/api/cases/${caseId}/consultations/${consultationId}`),
+
+  updateConsultation: (caseId: string, consultationId: string, data: { content?: string; transcript?: string }) =>
+    request<Consultation>(`/api/cases/${caseId}/consultations/${consultationId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteConsultation: async (caseId: string, consultationId: string) => {
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch(`${API_BASE}/api/cases/${caseId}/consultations/${consultationId}`, {
+      method: "DELETE",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new ApiError(err.error ?? `HTTP ${res.status}`, err.code ?? "UNKNOWN", res.status);
+    }
+  },
 
   listStaff: () =>
     request<StaffSummary[]>("/api/staff"),

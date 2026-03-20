@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, buildStaffMap } from "../api";
 import type { Case, Consultation, MonitoringSheet, SupportPlan } from "../api";
+import { useAuth } from "../contexts/AuthContext";
 import { NewConsultationModal } from "../components/NewConsultationModal";
 import { SuggestedSupports } from "../components/SuggestedSupports";
 import { SupportPlanView } from "../components/SupportPlanView";
@@ -14,6 +15,7 @@ type DetailTab = "consultations" | "support-plan" | "monitoring" | "legal-search
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { userInfo } = useAuth();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [staffMap, setStaffMap] = useState<Record<string, string>>({});
@@ -23,6 +25,11 @@ export function CaseDetail() {
   const [activeTab, setActiveTab] = useState<DetailTab>("consultations");
   const [supportPlan, setSupportPlan] = useState<SupportPlan | null>(null);
   const [monitoringSheet, setMonitoringSheet] = useState<MonitoringSheet | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editTranscript, setEditTranscript] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -200,10 +207,15 @@ export function CaseDetail() {
               </div>
             ) : (
               <div className="consultation-timeline">
-                {consultations.map((con) => (
+                {consultations.map((con) => {
+                  const isOwnerOrAdmin = userInfo?.role === "admin" || con.staffId === userInfo?.staffId;
+                  const isEditing = editingId === con.id;
+
+                  return (
                   <div key={con.id} className="consultation-item">
                     <div className="consultation-date">
                       {formatDateTime(con.createdAt)}
+                      {con.editedAt && <span className="edited-badge">（編集済み）</span>}
                     </div>
                     <div className="card">
                       <div className="card-body">
@@ -212,16 +224,116 @@ export function CaseDetail() {
                             {TYPE_LABELS[con.consultationType] ?? con.consultationType}
                           </span>
                           <span className="consultation-staff">{staffMap[con.staffId] || `（名前未設定: ${con.staffId}）`}</span>
+                          {isOwnerOrAdmin && !isEditing && (
+                            <div className="consultation-menu-wrapper">
+                              <button
+                                className="consultation-menu-btn"
+                                onClick={() => setMenuOpenId(menuOpenId === con.id ? null : con.id)}
+                                aria-label="操作メニュー"
+                              >
+                                &#x22EF;
+                              </button>
+                              {menuOpenId === con.id && (
+                                <div className="consultation-menu-dropdown">
+                                  <button
+                                    onClick={() => {
+                                      setEditingId(con.id);
+                                      setEditContent(con.content);
+                                      setEditTranscript(con.transcript);
+                                      setMenuOpenId(null);
+                                    }}
+                                  >
+                                    編集
+                                  </button>
+                                  <button
+                                    className="btn-danger-text"
+                                    onClick={async () => {
+                                      setMenuOpenId(null);
+                                      if (confirm("この相談記録を削除しますか？")) {
+                                        await api.deleteConsultation(id!, con.id);
+                                        loadData();
+                                      }
+                                    }}
+                                  >
+                                    削除
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {con.content && (
-                          <div className="consultation-content">{con.content}</div>
+                        {isEditing ? (
+                          <div className="consultation-edit-form">
+                            <label className="edit-label">相談内容</label>
+                            <textarea
+                              className="edit-textarea"
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              rows={5}
+                            />
+                            {con.transcript && (
+                              <>
+                                <label className="edit-label">文字起こし</label>
+                                <textarea
+                                  className="edit-textarea"
+                                  value={editTranscript}
+                                  onChange={(e) => setEditTranscript(e.target.value)}
+                                  rows={5}
+                                />
+                              </>
+                            )}
+                            <div className="edit-actions">
+                              <button
+                                className="btn btn-primary"
+                                disabled={editSaving || !editContent.trim()}
+                                onClick={async () => {
+                                  setEditSaving(true);
+                                  try {
+                                    const update: { content?: string; transcript?: string } = {};
+                                    if (editContent !== con.content) update.content = editContent;
+                                    if (editTranscript !== con.transcript) update.transcript = editTranscript;
+                                    if (Object.keys(update).length > 0) {
+                                      await api.updateConsultation(id!, con.id, update);
+                                    }
+                                    setEditingId(null);
+                                    loadData();
+                                  } catch (err) {
+                                    alert("保存に失敗しました: " + (err as Error).message);
+                                  } finally {
+                                    setEditSaving(false);
+                                  }
+                                }}
+                              >
+                                {editSaving ? "保存中..." : "保存"}
+                              </button>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => setEditingId(null)}
+                                disabled={editSaving}
+                              >
+                                キャンセル
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {con.content && (
+                              <div className="consultation-content">{con.content}</div>
+                            )}
+
+                            {con.transcript && (
+                              <div className="transcript-section">
+                                <div className="transcript-label">文字起こし</div>
+                                <div className="transcript-block">{con.transcript}</div>
+                              </div>
+                            )}
+                          </>
                         )}
 
-                        {con.transcript && (
-                          <div className="transcript-section">
-                            <div className="transcript-label">文字起こし</div>
-                            <div className="transcript-block">{con.transcript}</div>
+                        {con.editedAt && con.aiStatus === "completed" && con.summary && (
+                          <div className="ai-edit-notice">
+                            AI分析結果は編集前の内容に基づいています
                           </div>
                         )}
 
@@ -271,7 +383,8 @@ export function CaseDetail() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             </>

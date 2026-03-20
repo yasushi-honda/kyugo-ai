@@ -42,6 +42,8 @@ vi.mock("./repositories/consultation-repository.js", () => ({
   createConsultation: vi.fn(),
   getConsultation: vi.fn(),
   listConsultations: vi.fn(),
+  updateConsultation: vi.fn(),
+  softDeleteConsultation: vi.fn(),
   updateConsultationAIResults: vi.fn(),
   updateConsultationAIStatus: vi.fn(),
   updateConsultationAudioPath: vi.fn(),
@@ -1019,6 +1021,141 @@ describe("GET /api/cases/:id/consultations/:consultationId", () => {
 
     const res = await request(app).get("/api/cases/case-1/consultations/nonexistent");
     expect(res.status).toBe(404);
+  });
+});
+
+const MOCK_CONSULTATION = {
+  id: "cons-1",
+  caseId: "case-1",
+  staffId: "staff-1",
+  content: "テスト相談内容",
+  transcript: "",
+  summary: "",
+  suggestedSupports: [],
+  consultationType: "counter" as const,
+  aiStatus: "completed" as const,
+  createdAt: NOW,
+  updatedAt: NOW,
+};
+
+describe("PATCH /api/cases/:id/consultations/:consultationId", () => {
+  it("updates consultation content", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue(MOCK_CONSULTATION);
+    vi.mocked(consultationRepo.updateConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      content: "更新後の内容",
+      editedAt: NOW,
+    });
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({ content: "更新後の内容" });
+    expect(res.status).toBe(200);
+    expect(res.body.content).toBe("更新後の内容");
+  });
+
+  it("returns 404 if consultation not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue(null);
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/nonexistent")
+      .send({ content: "更新" });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 if not creator and not admin", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      staffId: "other-staff",
+    });
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({ content: "更新" });
+    expect(res.status).toBe(403);
+  });
+
+  it("allows admin to update any consultation", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      staffId: "other-staff",
+    });
+    vi.mocked(consultationRepo.updateConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      staffId: "other-staff",
+      content: "管理者更新",
+      editedAt: NOW,
+    });
+
+    const res = await request(adminApp)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({ content: "管理者更新" });
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 400 for invalid body", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({ content: "" });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for empty body (no fields)", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("DELETE /api/cases/:id/consultations/:consultationId", () => {
+  it("soft-deletes a consultation", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue(MOCK_CONSULTATION);
+    vi.mocked(consultationRepo.softDeleteConsultation).mockResolvedValue(undefined);
+
+    const res = await request(app).delete("/api/cases/case-1/consultations/cons-1");
+    expect(res.status).toBe(204);
+    expect(consultationRepo.softDeleteConsultation).toHaveBeenCalledWith("case-1", "cons-1");
+  });
+
+  it("returns 404 if consultation not found", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue(null);
+
+    const res = await request(app).delete("/api/cases/case-1/consultations/nonexistent");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 if not creator and not admin", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      staffId: "other-staff",
+    });
+
+    const res = await request(app).delete("/api/cases/case-1/consultations/cons-1");
+    expect(res.status).toBe(403);
+  });
+
+  it("allows admin to delete any consultation", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+    vi.mocked(consultationRepo.getConsultation).mockResolvedValue({
+      ...MOCK_CONSULTATION,
+      staffId: "other-staff",
+    });
+    vi.mocked(consultationRepo.softDeleteConsultation).mockResolvedValue(undefined);
+
+    const res = await request(adminApp).delete("/api/cases/case-1/consultations/cons-1");
+    expect(res.status).toBe(204);
   });
 });
 

@@ -34,6 +34,13 @@ export const createConsultationSchema = z.object({
   transcript: z.string().max(100000).optional().default(""),
 });
 
+export const updateConsultationSchema = z.object({
+  content: z.string().min(1).max(50000).optional(),
+  transcript: z.string().max(100000).optional(),
+}).refine((data) => data.content !== undefined || data.transcript !== undefined, {
+  message: "At least one field (content or transcript) is required",
+});
+
 export const createAudioConsultationSchema = z.object({
   consultationType: consultationTypeEnum,
   context: z.string().max(10000).optional().default(""),

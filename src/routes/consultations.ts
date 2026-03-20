@@ -13,6 +13,7 @@ import { aiLimiter } from "../middleware/rate-limit.js";
 import {
   createConsultationSchema,
   createAudioConsultationSchema,
+  updateConsultationSchema,
 } from "../schemas/case.js";
 import { paramStr, validate } from "./utils.js";
 
@@ -177,6 +178,59 @@ consultationsRouter.get("/:consultationId", requireCaseAccess, async (req: Reque
     res.json(consultation);
   } catch (err) {
     logger.error("Get consultation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /api/cases/:id/consultations/:consultationId - 相談記録編集（作成者 OR admin）
+consultationsRouter.patch("/:consultationId", requireCaseAccess, async (req: Request, res: Response) => {
+  const parsed = validate(updateConsultationSchema, req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+  try {
+    const caseId = paramStr(req.params.id);
+    const consultationId = paramStr(req.params.consultationId);
+
+    const consultation = await consultationRepo.getConsultation(caseId, consultationId);
+    if (!consultation) {
+      res.status(404).json({ error: "Consultation not found" });
+      return;
+    }
+    if (req.user!.role !== "admin" && consultation.staffId !== req.user!.staffId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const updated = await consultationRepo.updateConsultation(caseId, consultationId, parsed.data);
+    res.json(updated);
+  } catch (err) {
+    logger.error("Update consultation failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/cases/:id/consultations/:consultationId - 相談記録論理削除（作成者 OR admin）
+consultationsRouter.delete("/:consultationId", requireCaseAccess, async (req: Request, res: Response) => {
+  try {
+    const caseId = paramStr(req.params.id);
+    const consultationId = paramStr(req.params.consultationId);
+
+    const consultation = await consultationRepo.getConsultation(caseId, consultationId);
+    if (!consultation) {
+      res.status(404).json({ error: "Consultation not found" });
+      return;
+    }
+    if (req.user!.role !== "admin" && consultation.staffId !== req.user!.staffId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    await consultationRepo.softDeleteConsultation(caseId, consultationId);
+    res.status(204).send();
+  } catch (err) {
+    logger.error("Delete consultation failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
   }
 });

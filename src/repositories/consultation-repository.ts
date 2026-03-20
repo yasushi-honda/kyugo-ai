@@ -32,7 +32,35 @@ export async function getConsultation(caseId: string, consultationId: string): P
 
 export async function listConsultations(caseId: string): Promise<Consultation[]> {
   const snapshot = await consultationsRef(caseId).orderBy("createdAt", "desc").get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, caseId, ...doc.data() }) as Consultation);
+  return snapshot.docs
+    .map((doc) => ({ id: doc.id, caseId, ...doc.data() }) as Consultation)
+    .filter((c) => c.deleted !== true);
+}
+
+export async function updateConsultation(
+  caseId: string,
+  consultationId: string,
+  data: { content?: string; transcript?: string },
+): Promise<Consultation> {
+  const ref = consultationsRef(caseId).doc(consultationId);
+  const update: Record<string, unknown> = {
+    ...data,
+    editedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+  await ref.update(update);
+  const doc = await ref.get();
+  return { id: doc.id, caseId, ...doc.data() } as Consultation;
+}
+
+export async function softDeleteConsultation(
+  caseId: string,
+  consultationId: string,
+): Promise<void> {
+  await consultationsRef(caseId).doc(consultationId).update({
+    deleted: true,
+    updatedAt: Timestamp.now(),
+  });
 }
 
 export async function updateConsultationAIResults(
