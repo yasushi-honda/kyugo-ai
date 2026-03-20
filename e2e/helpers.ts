@@ -391,7 +391,20 @@ export async function mockApiRoutesForHelp(page: Page) {
         route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify([DEMO_CONSULTATION]),
+          body: JSON.stringify([
+            DEMO_CONSULTATION,
+            {
+              ...DEMO_CONSULTATION,
+              id: "cons-demo-002",
+              content: "電話相談。山田さんより生活保護申請書類の進捗について連絡あり。年金振込通知書の取得方法について相談。",
+              summary: "生活保護申請書類の進捗確認。年金振込通知書の取得方法についての電話相談。",
+              consultationType: "phone",
+              editedAt: { _seconds: 1773244800 },
+              editedBy: "staff-demo-001",
+              createdAt: { _seconds: 1773072000 },
+              updatedAt: { _seconds: 1773244800 },
+            },
+          ]),
         });
       }
     }),
@@ -415,11 +428,37 @@ export async function mockApiRoutesForHelp(page: Page) {
         route.fallback();
         return;
       }
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ...DEMO_CONSULTATION, aiStatus: "completed" }),
-      });
+      const method = route.request().method();
+      if (method === "PATCH") {
+        try {
+          const body = JSON.parse(route.request().postData() || "{}");
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ...DEMO_CONSULTATION,
+              ...body,
+              aiStatus: "pending",
+              editedAt: { _seconds: Math.floor(Date.now() / 1000) },
+              editedBy: "staff-demo-001",
+            }),
+          });
+        } catch {
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(DEMO_CONSULTATION),
+          });
+        }
+      } else if (method === "DELETE") {
+        route.fulfill({ status: 204, body: "" });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ...DEMO_CONSULTATION, aiStatus: "completed" }),
+        });
+      }
     }),
 
     // 支援計画書
@@ -603,17 +642,43 @@ export async function mockApiRoutes(page: Page) {
       });
     }),
 
-    // GET /api/cases/:id/consultations/:cId (individual consultation for polling)
+    // GET/PATCH/DELETE /api/cases/:id/consultations/:cId
     page.route(/\/api\/cases\/[^/]+\/consultations\/[^/]+$/, (route) => {
       if (route.request().url().includes("/audio")) {
         route.fallback();
         return;
       }
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ...MOCK_CONSULTATION, aiStatus: "completed" }),
-      });
+      const method = route.request().method();
+      if (method === "PATCH") {
+        try {
+          const body = JSON.parse(route.request().postData() || "{}");
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ...MOCK_CONSULTATION,
+              ...body,
+              aiStatus: "pending",
+              editedAt: { _seconds: Math.floor(Date.now() / 1000) },
+              editedBy: "e2e-staff-001",
+            }),
+          });
+        } catch {
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(MOCK_CONSULTATION),
+          });
+        }
+      } else if (method === "DELETE") {
+        route.fulfill({ status: 204, body: "" });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ...MOCK_CONSULTATION, aiStatus: "completed" }),
+        });
+      }
     }),
 
     // POST /api/cases/:id/support-plan/draft + GET /api/cases/:id/support-plan

@@ -99,6 +99,52 @@ test.describe("ケース作成・相談記録フロー", () => {
     expect(selectedValue).toBe("counter");
   });
 
+  test("相談記録を編集して保存する", async ({ page }) => {
+    // ケース詳細に遷移
+    await page.locator(".case-card").first().click();
+    await expect(page.getByText("← ケース一覧に戻る")).toBeVisible();
+
+    // ⋯メニューを開く
+    const menuBtn = page.locator(".consultation-menu-btn").first();
+    await menuBtn.click();
+
+    // 編集を選択
+    await page.locator(".consultation-menu-dropdown button", { hasText: "編集" }).click();
+
+    // テキストエリアに変更を加える
+    const textarea = page.locator("textarea").first();
+    await expect(textarea).toBeVisible();
+    await textarea.fill("編集後のテスト相談内容");
+
+    // 保存ボタンをクリック
+    await page.getByRole("button", { name: "保存" }).click();
+
+    // 編集バッジ「（テスト職員 が編集）」が表示される
+    await expect(page.getByText(/テスト職員 が編集/)).toBeVisible({ timeout: 10000 });
+  });
+
+  test("相談記録を削除する", async ({ page }) => {
+    // ケース詳細に遷移
+    await page.locator(".case-card").first().click();
+    await expect(page.getByText("← ケース一覧に戻る")).toBeVisible();
+
+    // 相談記録が表示されていることを確認
+    await expect(page.getByText("テスト相談内容")).toBeVisible();
+
+    // confirmダイアログを自動でacceptする
+    page.on("dialog", (dialog) => dialog.accept());
+
+    // ⋯メニューを開く
+    const menuBtn = page.locator(".consultation-menu-btn").first();
+    await menuBtn.click();
+
+    // 削除を選択
+    await page.locator(".consultation-menu-dropdown button", { hasText: "削除" }).click();
+
+    // 相談記録が一覧から消えることを確認
+    await expect(page.getByText("テスト相談内容")).not.toBeVisible({ timeout: 10000 });
+  });
+
   test("ケース一覧に戻るリンクが機能する", async ({ page }) => {
     await page.locator(".case-card").first().click();
     await expect(page.getByText("← ケース一覧に戻る")).toBeVisible();
