@@ -57,7 +57,9 @@ export interface Consultation {
   audioStoragePath?: string;
   audioMimeType?: string;
   deleted?: boolean;
+  deletedBy?: string;
   editedAt?: Timestamp | null;
+  editedBy?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

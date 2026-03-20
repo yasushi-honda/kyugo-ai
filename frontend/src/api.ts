@@ -66,6 +66,7 @@ export interface Consultation {
   aiStatus: "pending" | "completed" | "retry_pending" | "retrying" | "error";
   aiErrorMessage?: string;
   editedAt?: { _seconds: number } | null;
+  editedBy?: string;
   createdAt: { _seconds: number };
   updatedAt: { _seconds: number };
 }

@@ -1124,7 +1124,7 @@ describe("DELETE /api/cases/:id/consultations/:consultationId", () => {
 
     const res = await request(app).delete("/api/cases/case-1/consultations/cons-1");
     expect(res.status).toBe(204);
-    expect(consultationRepo.softDeleteConsultation).toHaveBeenCalledWith("case-1", "cons-1");
+    expect(consultationRepo.softDeleteConsultation).toHaveBeenCalledWith("case-1", "cons-1", "staff-1");
   });
 
   it("returns 404 if consultation not found", async () => {
