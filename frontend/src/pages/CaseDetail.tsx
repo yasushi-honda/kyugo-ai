@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, buildStaffMap } from "../api";
 import type { Case, Consultation, MonitoringSheet, SupportPlan } from "../api";
@@ -50,6 +50,35 @@ export function CaseDetail() {
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // pending/retrying 状態の相談を自動ポーリングして更新
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const hasPending = consultations.some(
+      (c) => c.aiStatus === "pending" || c.aiStatus === "retrying" || c.aiStatus === "retry_pending",
+    );
+    if (hasPending && id) {
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const cons = await api.listConsultations(id);
+          setConsultations(cons);
+          const stillPending = cons.some(
+            (c) => c.aiStatus === "pending" || c.aiStatus === "retrying" || c.aiStatus === "retry_pending",
+          );
+          if (!stillPending && pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
+        } catch { /* ポーリング失敗は無視、次回リトライ */ }
+      }, 5000);
+    }
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [consultations, id]);
 
   if (loading) {
     return (

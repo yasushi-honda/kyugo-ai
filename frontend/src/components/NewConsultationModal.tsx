@@ -27,7 +27,7 @@ const CONSULTATION_TYPE_LABELS: Record<string, string> = {
 };
 
 export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
-  const { user } = useAuth();
+  const { user, userInfo } = useAuth();
   const [mode, setMode] = useState<Mode>("text");
   const [audioSource, setAudioSource] = useState<AudioSource>("record");
   const [form, setForm] = useState({
@@ -228,8 +228,8 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
 
           <div className="form-row">
             <div className="form-group form-group-flex">
-              <label className="form-label" htmlFor="newConsultation-staffEmail">職員</label>
-              <input id="newConsultation-staffEmail" className="form-input" value={user?.email ?? ""} disabled />
+              <label className="form-label" htmlFor="newConsultation-staffName">職員</label>
+              <input id="newConsultation-staffName" className="form-input" value={userInfo?.name ?? user?.email ?? ""} disabled />
             </div>
             <div className="form-group form-group-flex">
               <label className="form-label" htmlFor="consultationType">相談種別</label>
