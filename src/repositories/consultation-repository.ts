@@ -27,7 +27,9 @@ export async function createConsultation(
 export async function getConsultation(caseId: string, consultationId: string): Promise<Consultation | null> {
   const doc = await consultationsRef(caseId).doc(consultationId).get();
   if (!doc.exists) return null;
-  return { id: doc.id, caseId, ...doc.data() } as Consultation;
+  const data = { id: doc.id, caseId, ...doc.data() } as Consultation;
+  if (data.deleted === true) return null;
+  return data;
 }
 
 export async function listConsultations(caseId: string): Promise<Consultation[]> {
