@@ -1105,6 +1105,15 @@ describe("PATCH /api/cases/:id/consultations/:consultationId", () => {
       .send({ content: "" });
     expect(res.status).toBe(400);
   });
+
+  it("returns 400 for empty body (no fields)", async () => {
+    vi.mocked(caseRepo.getCase).mockResolvedValue(MOCK_CASE);
+
+    const res = await request(app)
+      .patch("/api/cases/case-1/consultations/cons-1")
+      .send({});
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("DELETE /api/cases/:id/consultations/:consultationId", () => {
