@@ -204,6 +204,26 @@ consultationsRouter.patch("/:consultationId", requireCaseAccess, async (req: Req
     }
 
     const updated = await consultationRepo.updateConsultation(caseId, consultationId, parsed.data);
+
+    // content が変更された場合、AI再分析を非同期実行（エラー状態の復旧にも対応）
+    if (parsed.data.content) {
+      await consultationRepo.updateConsultationAIStatus(caseId, consultationId, "pending");
+      updated.aiStatus = "pending";
+
+      supportMenuRepo.listSupportMenus()
+        .then((menus) => analyzeConsultation(
+          { content: parsed.data.content!, transcript: updated.transcript },
+          menus,
+        ))
+        .then(async (aiResult) => {
+          await consultationRepo.updateConsultationAIResults(
+            caseId, consultationId, aiResult.summary, aiResult.suggestedSupports,
+          );
+          logger.info("AI re-analysis completed", { consultationId });
+        })
+        .catch((err) => handleAIFailure(caseId, consultationId, err));
+    }
+
     res.json(updated);
   } catch (err) {
     logger.error("Update consultation failed", { error: (err as Error).message });
