@@ -356,4 +356,129 @@ describe("CaseDetail", () => {
 
     expect(screen.getByText("新規相談記録", { selector: "h3" })).toBeInTheDocument();
   });
+
+  it("shows action menu for own consultation", async () => {
+    const ownConsultation = { ...mockConsultations[0], staffId: "test-staff-001" };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([ownConsultation]);
+    renderCaseDetail();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+
+    const menuBtn = screen.getByLabelText("操作メニュー");
+    await user.click(menuBtn);
+
+    expect(screen.getByText("編集")).toBeInTheDocument();
+    expect(screen.getByText("削除")).toBeInTheDocument();
+  });
+
+  it("does not show action menu for other staff's consultation", async () => {
+    const otherConsultation = { ...mockConsultations[0], staffId: "other-staff" };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([otherConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText("操作メニュー")).not.toBeInTheDocument();
+  });
+
+  it("enters inline edit mode and saves", async () => {
+    const ownConsultation = { ...mockConsultations[0], staffId: "test-staff-001" };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([ownConsultation]);
+    vi.mocked(api.updateConsultation).mockResolvedValue({
+      ...ownConsultation,
+      content: "更新後の内容",
+      editedAt: { _seconds: 1700000100 },
+    });
+    renderCaseDetail();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("操作メニュー"));
+    await user.click(screen.getByText("編集"));
+
+    const textarea = screen.getByDisplayValue("初回相談の記録");
+    expect(textarea).toBeInTheDocument();
+    expect(screen.getByText("保存")).toBeInTheDocument();
+    expect(screen.getByText("キャンセル")).toBeInTheDocument();
+  });
+
+  it("cancels inline edit mode", async () => {
+    const ownConsultation = { ...mockConsultations[0], staffId: "test-staff-001" };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([ownConsultation]);
+    renderCaseDetail();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("操作メニュー"));
+    await user.click(screen.getByText("編集"));
+    await user.click(screen.getByText("キャンセル"));
+
+    expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("初回相談の記録")).not.toBeInTheDocument();
+  });
+
+  it("shows edited badge when editedAt is present", async () => {
+    const editedConsultation = {
+      ...mockConsultations[0],
+      editedAt: { _seconds: 1700000100 },
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([editedConsultation]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("（編集済み）")).toBeInTheDocument();
+    });
+  });
+
+  it("shows AI edit notice when edited and has AI results", async () => {
+    const editedWithAI = {
+      ...mockConsultations[0],
+      editedAt: { _seconds: 1700000100 },
+    };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([editedWithAI]);
+    renderCaseDetail();
+
+    await waitFor(() => {
+      expect(screen.getByText("AI分析結果は編集前の内容に基づいています")).toBeInTheDocument();
+    });
+  });
+
+  it("calls deleteConsultation on confirm", async () => {
+    const ownConsultation = { ...mockConsultations[0], staffId: "test-staff-001" };
+    vi.mocked(api.getCase).mockResolvedValue(mockCase);
+    vi.mocked(api.listConsultations).mockResolvedValue([ownConsultation]);
+    vi.mocked(api.deleteConsultation).mockResolvedValue(undefined);
+    window.confirm = vi.fn().mockReturnValue(true);
+    renderCaseDetail();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("初回相談の記録")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("操作メニュー"));
+    await user.click(screen.getByText("削除"));
+
+    expect(window.confirm).toHaveBeenCalledWith("この相談記録を削除しますか？");
+    await waitFor(() => {
+      expect(api.deleteConsultation).toHaveBeenCalledWith("case-1", "cons-1");
+    });
+  });
 });
