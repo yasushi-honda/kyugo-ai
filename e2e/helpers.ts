@@ -175,6 +175,142 @@ const DEMO_CONSULTATION = {
   updatedAt: { _seconds: 1773158400 },
 };
 
+// --- ヘルプ用デモデータ: 支援計画書 ---
+const DEMO_SUPPORT_PLAN = {
+  id: "plan-demo-001",
+  caseId: "case-demo-001",
+  staffId: "staff-demo-001",
+  status: "draft",
+  clientName: "山田 花子",
+  clientId: "client-2024-001",
+  overallPolicy:
+    "生活保護申請と医療費支援を軸に、安定した生活基盤の確保を目指す。年金収入の範囲で生活が成り立つよう家計管理の支援も並行して行う。",
+  goals: [
+    {
+      area: "経済的支援",
+      longTermGoal: "生活保護受給による安定した生活基盤の確保",
+      shortTermGoal: "生活保護申請に必要な書類の収集・提出",
+      supports: ["生活保護申請支援", "家計改善支援", "住居確保給付金の検討"],
+      frequency: "週1回",
+      responsible: "佐藤 太郎（サトウ）",
+    },
+    {
+      area: "医療支援",
+      longTermGoal: "定期的な通院による健康状態の維持・改善",
+      shortTermGoal: "医療扶助の申請と通院再開",
+      supports: ["医療扶助申請", "通院同行支援", "高額療養費制度の利用案内"],
+      frequency: "月2回",
+      responsible: "佐藤 太郎（サトウ）",
+    },
+  ],
+  specialNotes: "",
+  planStartDate: "2026-03-01",
+  nextReviewDate: "2026-06-01",
+  createdAt: { _seconds: 1772542800 },
+  updatedAt: { _seconds: 1773153000 },
+};
+
+// --- ヘルプ用デモデータ: モニタリングシート ---
+const DEMO_MONITORING_SHEET = {
+  id: "mon-demo-001",
+  caseId: "case-demo-001",
+  supportPlanId: "plan-demo-001",
+  staffId: "staff-demo-001",
+  status: "draft",
+  monitoringDate: "2026-03-15",
+  overallEvaluation:
+    "生活保護申請に向けた準備が順調に進んでいる。必要書類の大半を収集済みで、来週中に申請予定。医療面では、近隣クリニックへの通院を再開し、高血圧の治療を開始した。",
+  goalEvaluations: [
+    {
+      area: "経済的支援",
+      longTermGoal: "生活保護受給による安定した生活基盤の確保",
+      shortTermGoal: "生活保護申請に必要な書類の収集・提出",
+      progress: "improved",
+      evaluation: "収入証明・住民票等の必要書類を8割収集済み。申請書の下書きも完了。",
+      nextAction: "残りの書類（年金振込通知書）を取得し、来週中に福祉事務所へ申請",
+    },
+    {
+      area: "医療支援",
+      longTermGoal: "定期的な通院による健康状態の維持・改善",
+      shortTermGoal: "医療扶助の申請と通院再開",
+      progress: "maintained",
+      evaluation: "近隣クリニックへの通院を再開。高額療養費制度の利用申請を提出済み。",
+      nextAction: "生活保護受給決定後、医療扶助への切り替え手続きを進める",
+    },
+  ],
+  environmentChanges: "特になし。引き続き一人暮らし。",
+  clientFeedback: "「書類を集めるのは大変だったけど、職員さんが一緒に確認してくれて心強い」とのこと。",
+  specialNotes: "",
+  nextMonitoringDate: "2026-04-15",
+  createdAt: { _seconds: 1773753600 },
+  updatedAt: { _seconds: 1773753600 },
+};
+
+// --- ヘルプ用デモデータ: 法令検索結果 ---
+const DEMO_LEGAL_SEARCH_RESULT = {
+  id: "legal-demo-001",
+  caseId: "case-demo-001",
+  staffId: "staff-demo-001",
+  query: "高齢者の生活保護申請要件",
+  legalBasis:
+    "生活保護法第4条に基づき、利用し得る資産、能力その他あらゆるものを活用しても最低限度の生活を維持できない場合に保護を受けることができます。年金受給者であっても、年金額が最低生活費を下回る場合は差額分の保護を受けられます。",
+  references: [
+    {
+      lawName: "生活保護法",
+      article: "第4条（保護の補足性）",
+      summary:
+        "保護は、生活に困窮する者が、その利用し得る資産、能力その他あらゆるものを、その最低限度の生活の維持のために活用することを要件として行われる。",
+      sourceUrl: "https://example.com/law/seikatsu-hogo",
+      relevance: "直接適用",
+    },
+    {
+      lawName: "生活保護法",
+      article: "第15条（医療扶助）",
+      summary:
+        "医療扶助は、困窮のため最低限度の生活を維持することのできない者に対して、診察、薬剤又は治療材料等を給付する。",
+      sourceUrl: "https://example.com/law/iryou-fujo",
+      relevance: "関連規定",
+    },
+  ],
+  createdAt: { _seconds: 1773158400 },
+};
+
+// --- ヘルプ用デモデータ: 管理者設定 ---
+const DEMO_ADMIN_STAFF = [
+  {
+    id: "staff-demo-001",
+    name: "佐藤 太郎（サトウ）",
+    email: DEMO_STAFF_EMAIL,
+    role: "admin",
+    disabled: false,
+    createdAt: { _seconds: 1771146000 },
+  },
+  {
+    id: "staff-demo-002",
+    name: "鈴木 次郎（スズキ）",
+    email: "suzuki@city.ibaraki.example.jp",
+    role: "staff",
+    disabled: false,
+    createdAt: { _seconds: 1771232400 },
+  },
+  {
+    id: "staff-demo-003",
+    name: "田中 三郎（タナカ）",
+    email: "tanaka@city.ibaraki.example.jp",
+    role: "staff",
+    disabled: false,
+    createdAt: { _seconds: 1771318800 },
+  },
+];
+
+const DEMO_ALLOWED_EMAILS = {
+  emails: [
+    "yamamoto@city.mito.example.jp",
+    "watanabe@city.hitachi.example.jp",
+  ],
+  domains: ["city.ibaraki.example.jp"],
+};
+
 /**
  * ヘルプスクリーンショット用デモデータでAPIモックをセットアップ
  */
@@ -286,28 +422,48 @@ export async function mockApiRoutesForHelp(page: Page) {
       });
     }),
 
-    // 支援計画・モニタリングは意図的に空（スクリーンショット対象外のため最小レスポンス）
-    page.route(/\/api\/cases\/[^/]+\/support-plan/, (route) => {
+    // 支援計画書
+    page.route(/\/api\/cases\/[^/]+\/support-plan$/, (route) => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({}),
+        body: JSON.stringify(DEMO_SUPPORT_PLAN),
       });
     }),
 
-    page.route(/\/api\/cases\/[^/]+\/monitoring/, (route) => {
+    // モニタリングシート
+    page.route(/\/api\/cases\/[^/]+\/monitoring$/, (route) => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({}),
+        body: JSON.stringify(DEMO_MONITORING_SHEET),
       });
     }),
 
+    // 法令検索（過去結果一覧）
     page.route(/\/api\/cases\/[^/]+\/legal-search$/, (route) => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([]),
+        body: JSON.stringify([DEMO_LEGAL_SEARCH_RESULT]),
+      });
+    }),
+
+    // 管理者設定: 許可メール・ドメイン
+    page.route("**/api/admin-settings/allowed-emails", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(DEMO_ALLOWED_EMAILS),
+      });
+    }),
+
+    // 管理者設定: 職員一覧
+    page.route("**/api/admin-settings/staff", (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(DEMO_ADMIN_STAFF),
       });
     }),
 

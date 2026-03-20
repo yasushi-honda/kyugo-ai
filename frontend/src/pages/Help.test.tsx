@@ -19,11 +19,11 @@ describe("Help", () => {
     expect(screen.getByText(/福祉相談業務支援システム/)).toBeInTheDocument();
   });
 
-  it("renders all 7 section headings", () => {
+  it("renders all 12 section headings", () => {
     renderHelp();
 
     const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings).toHaveLength(7);
+    expect(headings).toHaveLength(12);
     expect(headings[0]).toHaveTextContent("ダッシュボード（ケース一覧）");
     expect(headings[1]).toHaveTextContent("新規ケースの作成");
     expect(headings[2]).toHaveTextContent("ケース詳細の確認");
@@ -31,24 +31,30 @@ describe("Help", () => {
     expect(headings[4]).toHaveTextContent("音声で相談を記録する（直接録音）");
     expect(headings[5]).toHaveTextContent("音声で相談を記録する（ファイルアップロード）");
     expect(headings[6]).toHaveTextContent("AI分析結果の見方");
+    expect(headings[7]).toHaveTextContent("支援計画書の作成");
+    expect(headings[8]).toHaveTextContent("モニタリングシートの作成");
+    expect(headings[9]).toHaveTextContent("法令・制度の検索");
+    expect(headings[10]).toHaveTextContent("ログイン許可設定");
+    expect(headings[11]).toHaveTextContent("アカウント管理");
   });
 
   it("renders table of contents with anchor links", () => {
     renderHelp();
 
     const tocLinks = screen.getAllByRole("link");
-    expect(tocLinks).toHaveLength(7);
+    expect(tocLinks).toHaveLength(12);
     expect(tocLinks[0]).toHaveAttribute("href", "#dashboard");
     expect(tocLinks[4]).toHaveAttribute("href", "#audio-recording");
     expect(tocLinks[5]).toHaveAttribute("href", "#audio-file-upload");
     expect(tocLinks[6]).toHaveAttribute("href", "#ai-analysis");
+    expect(tocLinks[11]).toHaveAttribute("href", "#settings-accounts");
   });
 
   it("renders screenshots with lazy loading", () => {
     renderHelp();
 
     const images = screen.getAllByRole("img");
-    expect(images).toHaveLength(7);
+    expect(images).toHaveLength(12);
     images.forEach((img) => {
       expect(img).toHaveAttribute("loading", "lazy");
     });

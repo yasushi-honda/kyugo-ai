@@ -155,4 +155,67 @@ test.describe("ヘルプ用スクリーンショット生成", () => {
       });
     }
   });
+
+  test("8. 支援計画書タブ", async ({ page }) => {
+    await page.getByText("山田 花子").click();
+    await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });
+    // 支援計画書タブに切り替え（button.detail-tab）
+    await page.locator(".detail-tab", { hasText: /支援計画書/ }).click();
+    await page.locator(".support-plan").waitFor({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "support-plan.png"),
+    });
+  });
+
+  test("9. モニタリングシート", async ({ page }) => {
+    await page.getByText("山田 花子").click();
+    await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });
+    // モニタリングタブに切り替え（button.detail-tab）
+    await page.locator(".detail-tab", { hasText: /モニタリング/ }).click();
+    await page.locator(".support-plan").waitFor({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "monitoring-sheet.png"),
+    });
+  });
+
+  test("10. 法令検索タブ", async ({ page }) => {
+    await page.getByText("山田 花子").click();
+    await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });
+    // 法令検索タブに切り替え（button.detail-tab）
+    await page.locator(".detail-tab", { hasText: /法令検索/ }).click();
+    await page.locator(".legal-search-view").waitFor({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "legal-search.png"),
+    });
+  });
+
+  test("11. アクセス設定（ログイン許可）", async ({ page }) => {
+    // サイドバーからアクセス設定に遷移
+    const settingsNav = page.locator(".sidebar-nav-item", { hasText: /アクセス設定/ });
+    await settingsNav.click();
+    await page.waitForURL(/\/settings/);
+    // ログイン許可タブがデフォルトで表示される
+    await page.locator(".settings-layout").waitFor({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "settings-whitelist.png"),
+    });
+  });
+
+  test("12. アクセス設定（アカウント管理）", async ({ page }) => {
+    // サイドバーからアクセス設定に遷移
+    const settingsNav = page.locator(".sidebar-nav-item", { hasText: /アクセス設定/ });
+    await settingsNav.click();
+    await page.waitForURL(/\/settings/);
+    // アカウント管理タブに切り替え
+    await page.getByRole("button", { name: /アカウント管理/ }).click();
+    await page.locator(".staff-table").waitFor({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "settings-accounts.png"),
+    });
+  });
 });
