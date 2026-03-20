@@ -156,6 +156,19 @@ test.describe("ヘルプ用スクリーンショット生成", () => {
     }
   });
 
+  test("7.5. 相談記録の編集メニュー", async ({ page }) => {
+    await page.getByText("山田 花子").click();
+    await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });
+    // ⋯メニューをクリックして開いた状態でスクリーンショット
+    const menuBtn = page.locator(".consultation-menu-btn").first();
+    await menuBtn.click();
+    await page.locator(".consultation-menu-dropdown").waitFor({ timeout: 5000 });
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: path.join(OUTPUT_DIR, "edit-consultation.png"),
+    });
+  });
+
   test("8. 支援計画書タブ", async ({ page }) => {
     await page.getByText("山田 花子").click();
     await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });

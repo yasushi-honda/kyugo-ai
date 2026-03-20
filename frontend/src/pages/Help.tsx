@@ -250,6 +250,35 @@ const HELP_SECTIONS: HelpSection[] = [
     noteImportant: true,
   },
   {
+    id: "edit-delete-consultation",
+    title: "相談記録の編集・削除",
+    description:
+      "記録した相談内容の修正や、誤って作成した記録の削除ができます。",
+    image: { src: "/help/edit-consultation.png", alt: "相談記録の編集・削除" },
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "",
+        description:
+          "相談記録カードの右上にある ⋯ ボタンをクリックします。自分が作成した記録、または管理者権限がある場合に表示されます。",
+      },
+      {
+        icon: "2",
+        title: "",
+        description:
+          "「編集」を選ぶと相談内容がテキストエリアに変わります。内容を修正して「保存」をクリックしてください。",
+      },
+      {
+        icon: "3",
+        title: "",
+        description:
+          "保存後、AIが編集後の内容で自動的に再分析を行います。日時の横に編集者名が表示されます。",
+      },
+    ],
+    note: "削除した記録は画面から消えますが、システム内部には保存されています。誤削除の復旧が必要な場合は管理者にお問い合わせください。",
+  },
+  {
     id: "support-plan",
     title: "支援計画書の作成",
     description:
