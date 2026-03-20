@@ -43,11 +43,13 @@ export async function updateConsultation(
   caseId: string,
   consultationId: string,
   data: { content?: string; transcript?: string },
+  editedBy: string,
 ): Promise<Consultation> {
   const ref = consultationsRef(caseId).doc(consultationId);
   const update: Record<string, unknown> = {
     ...data,
     editedAt: Timestamp.now(),
+    editedBy,
     updatedAt: Timestamp.now(),
   };
   await ref.update(update);
@@ -58,9 +60,11 @@ export async function updateConsultation(
 export async function softDeleteConsultation(
   caseId: string,
   consultationId: string,
+  deletedBy: string,
 ): Promise<void> {
   await consultationsRef(caseId).doc(consultationId).update({
     deleted: true,
+    deletedBy,
     updatedAt: Timestamp.now(),
   });
 }

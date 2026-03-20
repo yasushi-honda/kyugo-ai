@@ -215,7 +215,11 @@ export function CaseDetail() {
                   <div key={con.id} className="consultation-item">
                     <div className="consultation-date">
                       {formatDateTime(con.createdAt)}
-                      {con.editedAt && <span className="edited-badge">（編集済み）</span>}
+                      {con.editedAt && (
+                        <span className="edited-badge">
+                          （{con.editedBy ? `${staffMap[con.editedBy] || con.editedBy} が編集` : "編集済み"}）
+                        </span>
+                      )}
                     </div>
                     <div className="card">
                       <div className="card-body">

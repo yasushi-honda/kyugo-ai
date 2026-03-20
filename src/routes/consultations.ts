@@ -16,6 +16,25 @@ import {
   updateConsultationSchema,
 } from "../schemas/case.js";
 import { paramStr, validate } from "./utils.js";
+import type { Consultation } from "../types.js";
+
+// PATCH/DELETE 共通: 相談記録の存在確認＋作成者 OR admin 権限チェック
+async function requireConsultationOwnership(
+  req: Request, res: Response,
+): Promise<{ consultation: Consultation; caseId: string; consultationId: string } | null> {
+  const caseId = paramStr(req.params.id);
+  const consultationId = paramStr(req.params.consultationId);
+  const consultation = await consultationRepo.getConsultation(caseId, consultationId);
+  if (!consultation) {
+    res.status(404).json({ error: "Consultation not found" });
+    return null;
+  }
+  if (req.user!.role !== "admin" && consultation.staffId !== req.user!.staffId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return { consultation, caseId, consultationId };
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -190,20 +209,11 @@ consultationsRouter.patch("/:consultationId", requireCaseAccess, async (req: Req
     return;
   }
   try {
-    const caseId = paramStr(req.params.id);
-    const consultationId = paramStr(req.params.consultationId);
+    const ctx = await requireConsultationOwnership(req, res);
+    if (!ctx) return;
+    const { caseId, consultationId } = ctx;
 
-    const consultation = await consultationRepo.getConsultation(caseId, consultationId);
-    if (!consultation) {
-      res.status(404).json({ error: "Consultation not found" });
-      return;
-    }
-    if (req.user!.role !== "admin" && consultation.staffId !== req.user!.staffId) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-
-    const updated = await consultationRepo.updateConsultation(caseId, consultationId, parsed.data);
+    const updated = await consultationRepo.updateConsultation(caseId, consultationId, parsed.data, req.user!.staffId);
 
     // content が変更された場合、AI再分析を非同期実行（エラー状態の復旧にも対応）
     if (parsed.data.content) {
@@ -234,20 +244,10 @@ consultationsRouter.patch("/:consultationId", requireCaseAccess, async (req: Req
 // DELETE /api/cases/:id/consultations/:consultationId - 相談記録論理削除（作成者 OR admin）
 consultationsRouter.delete("/:consultationId", requireCaseAccess, async (req: Request, res: Response) => {
   try {
-    const caseId = paramStr(req.params.id);
-    const consultationId = paramStr(req.params.consultationId);
+    const ctx = await requireConsultationOwnership(req, res);
+    if (!ctx) return;
 
-    const consultation = await consultationRepo.getConsultation(caseId, consultationId);
-    if (!consultation) {
-      res.status(404).json({ error: "Consultation not found" });
-      return;
-    }
-    if (req.user!.role !== "admin" && consultation.staffId !== req.user!.staffId) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-
-    await consultationRepo.softDeleteConsultation(caseId, consultationId);
+    await consultationRepo.softDeleteConsultation(ctx.caseId, ctx.consultationId, req.user!.staffId);
     res.status(204).send();
   } catch (err) {
     logger.error("Delete consultation failed", { error: (err as Error).message });
