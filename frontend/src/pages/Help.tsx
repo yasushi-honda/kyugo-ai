@@ -249,6 +249,172 @@ const HELP_SECTIONS: HelpSection[] = [
     note: "AI分析結果はあくまで参考情報です。最終的な支援方針の判断は、必ず担当職員が行ってください。",
     noteImportant: true,
   },
+  {
+    id: "support-plan",
+    title: "支援計画書の作成",
+    description:
+      "AI分析結果をもとに、個別支援計画書の下書きを自動生成できます。ケース詳細画面の「支援計画書」タブから操作します。",
+    image: { src: "/help/support-plan.png", alt: "支援計画書タブ" },
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "支援計画書タブ",
+        description: "を選択します",
+      },
+      {
+        icon: "2",
+        title: "",
+        description:
+          "「AI下書きを生成」ボタンをクリックすると、相談記録のAI分析結果をもとに下書きが自動生成されます",
+      },
+      {
+        icon: "3",
+        title: "全体的な支援方針",
+        description: "と支援目標（経済的支援・医療支援など）の内容を確認します",
+      },
+      {
+        icon: "4",
+        title: "",
+        description:
+          "「編集」ボタンで方針や目標を修正できます。内容が確定したら「確定」ボタンをクリックします",
+      },
+    ],
+    note: "確定後はモニタリングシートの生成が可能になります。",
+  },
+  {
+    id: "monitoring-sheet",
+    title: "モニタリングシートの作成",
+    description:
+      "支援計画書の進捗を定期的に評価するモニタリングシートを作成します。ケース詳細画面の「モニタリング」タブから操作します。",
+    image: { src: "/help/monitoring-sheet.png", alt: "モニタリングシート" },
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "モニタリングタブ",
+        description: "を選択します",
+      },
+      {
+        icon: "2",
+        title: "",
+        description:
+          "「AI下書きを生成」ボタンをクリックすると、支援計画書の目標に基づいた下書きが自動生成されます",
+      },
+      {
+        icon: "3",
+        title: "全体評価",
+        description:
+          "と目標別の進捗（改善・維持・後退・未着手）を確認します",
+      },
+      {
+        icon: "4",
+        title: "",
+        description:
+          "「編集」ボタンで評価内容を修正し、「確定」ボタンで確定します",
+      },
+    ],
+    note: "支援計画書が確定済みである必要があります。",
+    noteImportant: true,
+  },
+  {
+    id: "legal-search",
+    title: "法令・制度の検索",
+    description:
+      "支援に関連する法令や制度をAIで検索できます。ケース詳細画面の「法令検索」タブから操作します。",
+    image: { src: "/help/legal-search.png", alt: "法令検索タブ" },
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "法令検索タブ",
+        description: "を選択します",
+      },
+      {
+        icon: "2",
+        title: "",
+        description:
+          "検索フォームにキーワード（例:「高齢者の生活保護申請要件」）を入力します",
+      },
+      {
+        icon: "3",
+        title: "",
+        description: "「関連法令を検索」ボタンをクリックして検索を実行します",
+      },
+      {
+        icon: "4",
+        title: "法的根拠",
+        description:
+          "と関連法令（法律名・条文・概要）を確認します",
+      },
+    ],
+    note: "検索結果はケースに紐づいて保存されます。過去の検索履歴も参照できます。",
+  },
+  {
+    id: "settings-whitelist",
+    title: "ログイン許可設定",
+    description:
+      "システムにログインできるユーザーを制限します。サイドバーの「アクセス設定」から操作します（管理者のみ表示）。",
+    image: {
+      src: "/help/settings-whitelist.png",
+      alt: "ログイン許可設定画面",
+    },
+    annotationType: "points",
+    annotations: [
+      {
+        icon: "a",
+        title: "許可メールアドレス",
+        description:
+          "個別のメールアドレスを追加・削除して、ログインを許可するユーザーを管理します。",
+      },
+      {
+        icon: "b",
+        title: "許可ドメイン",
+        description:
+          "ドメイン単位でログインを許可します。例: city.ibaraki.example.jp を追加すると、そのドメインの全ユーザーがログイン可能になります。",
+      },
+      {
+        icon: "c",
+        title: "変更の保存",
+        description:
+          "追加・削除した後、「変更を保存」ボタンをクリックして設定を反映します。",
+      },
+    ],
+    note: "管理者ロールのユーザーのみこのページが表示されます。",
+  },
+  {
+    id: "settings-accounts",
+    title: "アカウント管理",
+    description:
+      "登録済み職員のロール変更やアカウントの無効化を管理します。「アクセス設定」の「アカウント管理」タブから操作します。",
+    image: {
+      src: "/help/settings-accounts.png",
+      alt: "アカウント管理画面",
+    },
+    annotationType: "points",
+    annotations: [
+      {
+        icon: "a",
+        title: "職員一覧",
+        description:
+          "登録済み職員の名前、メールアドレス、ロール、状態が一覧表示されます。",
+      },
+      {
+        icon: "b",
+        title: "ロール変更",
+        description:
+          "ドロップダウンから「管理者」または「職員」を選択してロールを変更します。",
+      },
+      {
+        icon: "c",
+        title: "アカウントの無効化",
+        description:
+          "「無効化」ボタンでアカウントを停止し、「有効化」ボタンで復旧できます。",
+      },
+    ],
+    note: "自分自身のロール降格・無効化は安全のためできません。",
+    noteImportant: true,
+  },
 ];
 
 function PointAnnotation({ annotation }: { annotation: HelpAnnotation }) {
