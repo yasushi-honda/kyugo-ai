@@ -8,6 +8,8 @@ import { CaseDetail } from "./pages/CaseDetail";
 import { Login } from "./pages/Login";
 import { Help } from "./pages/Help";
 import { About } from "./pages/About";
+import { Terms } from "./pages/Terms";
+import { Privacy } from "./pages/Privacy";
 import { Settings } from "./pages/Settings";
 
 export function ProtectedRoutes() {
@@ -61,6 +63,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
             <Route path="/about" element={<About />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/*" element={<ProtectedRoutes />} />
           </Routes>
         </BrowserRouter>

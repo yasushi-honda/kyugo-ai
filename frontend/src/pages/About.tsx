@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 interface ContentItem {
   icon?: string;
@@ -336,6 +336,11 @@ export function About() {
 
       {/* ── Footer ── */}
       <footer className="about-footer">
+        <div className="legal-footer-links">
+          <Link to="/about">救護AIについて</Link>
+          <Link to="/terms">利用規約</Link>
+          <Link to="/privacy">プライバシーポリシー</Link>
+        </div>
         <p>
           &copy; {CURRENT_YEAR} 救護AI — 福祉相談業務AI支援システム
         </p>
