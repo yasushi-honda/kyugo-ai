@@ -30,6 +30,7 @@ export function CaseDetail() {
   const [editTranscript, setEditTranscript] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -345,8 +346,23 @@ export function CaseDetail() {
 
                             {con.transcript && (
                               <div className="transcript-section">
-                                <div className="transcript-label">文字起こし</div>
-                                <div className="transcript-block">{con.transcript}</div>
+                                <div className="transcript-label">
+                                  🎙️ 音声から文字起こし
+                                  <button
+                                    className="transcript-toggle"
+                                    onClick={() => setExpandedTranscripts(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(con.id)) next.delete(con.id);
+                                      else next.add(con.id);
+                                      return next;
+                                    })}
+                                  >
+                                    {expandedTranscripts.has(con.id) ? "折りたたむ ▲" : "全文を表示 ▼"}
+                                  </button>
+                                </div>
+                                <div className={`transcript-block ${expandedTranscripts.has(con.id) ? "expanded" : "collapsed"}`}>
+                                  {con.transcript}
+                                </div>
                               </div>
                             )}
                           </>
