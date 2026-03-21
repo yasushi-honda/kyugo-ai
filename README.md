@@ -93,7 +93,6 @@ kyugo-ai/
 │       └── hooks/          # カスタムフック
 ├── e2e/                    # E2Eテスト（Playwright）
 ├── docs/
-│   ├── adr/                # Architecture Decision Records
 │   ├── adr/                # Architecture Decision Records（ADR-001〜007）
 │   └── operations/         # 運用マニュアル（デプロイ・バックアップ・監視・障害対応・ユーザー管理）
 ├── infra/                  # インフラ設定
