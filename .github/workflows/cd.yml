@@ -73,5 +73,6 @@ jobs:
             --min-instances=0 \
             --max-instances=3 \
             --set-env-vars="^::^GCP_PROJECT_ID=${{ env.PROJECT_ID }}::GCP_REGION=${{ env.REGION }}::ALLOWED_EMAIL_DOMAINS=osaka-fujinhome.or.jp::ALLOWED_EMAILS=hy.unimail.11@gmail.com" \
+            --set-secrets="AI_RETRY_SECRET=ai-retry-secret:latest" \
             --service-account=kyugo-ai-deployer@kyugo-ai-dev.iam.gserviceaccount.com \
             --quiet
