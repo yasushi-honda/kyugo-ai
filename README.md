@@ -68,7 +68,7 @@ cd frontend && npm run dev  # フロントエンド（Vite）
 |---------|------|
 | `npm run dev` | 開発サーバー起動 |
 | `npm run build` | TypeScriptビルド |
-| `npm test` | テスト実行（BE 220件 + FE 216件） |
+| `npm test` | テスト実行（BE 241件 + FE 231件） |
 | `npm run lint` | ESLint実行 |
 | `npm run test:e2e` | E2Eテスト（Firebase Auth Emulator必要） |
 | `npm run seed` | 支援メニューシードデータ投入 |
@@ -81,7 +81,7 @@ kyugo-ai/
 │   ├── routes/             # APIエンドポイント
 │   ├── services/           # ビジネスロジック（AI, リトライ）
 │   ├── repositories/       # Firestoreデータアクセス
-│   ├── middleware/          # 認証・認可・レート制限
+│   ├── middleware/          # 認証・認可・レート制限・監査ログ・エラーハンドラ
 │   ├── schemas/            # Zodバリデーション
 │   ├── utils/              # ユーティリティ（ログ等）
 │   └── types.ts            # 型定義
@@ -93,20 +93,20 @@ kyugo-ai/
 │       └── hooks/          # カスタムフック
 ├── e2e/                    # E2Eテスト（Playwright）
 ├── docs/
-│   ├── adr/                # Architecture Decision Records
-│   └── API.md              # APIドキュメント
+│   ├── adr/                # Architecture Decision Records（ADR-001〜007）
+│   └── operations/         # 運用マニュアル（デプロイ・バックアップ・監視・障害対応・ユーザー管理）
 ├── infra/                  # インフラ設定
 └── firestore/              # Firestoreセキュリティルール
 ```
 
 ## デプロイ
 
+`main` ブランチへのマージで GitHub Actions CI/CD が自動実行される。
+詳細は `docs/operations/deployment.md` を参照。
+
 ```bash
-# Cloud Run へのデプロイ
-gcloud run deploy kyugo-ai \
-  --source . \
-  --region asia-northeast1 \
-  --allow-unauthenticated
+# 本番URL
+https://kyugo-ai-2knyenyska-an.a.run.app
 ```
 
 ## ADR（Architecture Decision Records）
@@ -118,6 +118,8 @@ gcloud run deploy kyugo-ai \
 | ADR-003 | データモデル |
 | ADR-004 | 音声文字起こし |
 | ADR-005 | AIリトライ機構 |
+| ADR-006 | Firestoreトランザクション導入方針 |
+| ADR-007 | 監査ログ設計 |
 
 詳細は `docs/adr/` を参照。
 
@@ -128,6 +130,11 @@ gcloud run deploy kyugo-ai \
 - Firestoreセキュリティルールで行レベルアクセス制御
 - Firebase IDトークンによるAPI認証
 - Helmetによるセキュリティヘッダー
+- 監査ログ（Cloud Logging、個人情報非出力）
+- Firestoreトランザクションによるデータ整合性保証
+- Secret Managerによるシークレット管理
+- Firestore日次自動バックアップ（7日保持）
+- 全エンドポイント認証チェック表: `docs/operations/security-checklist.md`
 
 ## トラブルシューティング
 

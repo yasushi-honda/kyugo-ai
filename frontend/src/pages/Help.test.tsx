@@ -19,11 +19,11 @@ describe("Help", () => {
     expect(screen.getByText(/福祉相談業務支援システム/)).toBeInTheDocument();
   });
 
-  it("renders all 13 section headings", () => {
+  it("renders all 14 section headings", () => {
     renderHelp();
 
     const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings).toHaveLength(13);
+    expect(headings).toHaveLength(14);
     expect(headings[0]).toHaveTextContent("ダッシュボード（ケース一覧）");
     expect(headings[1]).toHaveTextContent("新規ケースの作成");
     expect(headings[2]).toHaveTextContent("ケース詳細の確認");
@@ -37,19 +37,21 @@ describe("Help", () => {
     expect(headings[10]).toHaveTextContent("法令・制度の検索");
     expect(headings[11]).toHaveTextContent("ログイン許可設定");
     expect(headings[12]).toHaveTextContent("アカウント管理");
+    expect(headings[13]).toHaveTextContent("CSVエクスポート");
   });
 
   it("renders table of contents with anchor links", () => {
     renderHelp();
 
     const tocLinks = screen.getAllByRole("link");
-    expect(tocLinks).toHaveLength(13);
+    expect(tocLinks).toHaveLength(14);
     expect(tocLinks[0]).toHaveAttribute("href", "#dashboard");
     expect(tocLinks[4]).toHaveAttribute("href", "#audio-recording");
     expect(tocLinks[5]).toHaveAttribute("href", "#audio-file-upload");
     expect(tocLinks[6]).toHaveAttribute("href", "#ai-analysis");
     expect(tocLinks[7]).toHaveAttribute("href", "#edit-delete-consultation");
     expect(tocLinks[12]).toHaveAttribute("href", "#settings-accounts");
+    expect(tocLinks[13]).toHaveAttribute("href", "#csv-export");
   });
 
   it("renders screenshots with lazy loading", () => {

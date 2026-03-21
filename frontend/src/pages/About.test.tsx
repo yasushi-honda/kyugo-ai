@@ -26,13 +26,14 @@ describe("About", () => {
     expect(screen.getByText("福祉相談業務AI支援システム")).toBeInTheDocument();
   });
 
-  it("renders 4 feature cards", () => {
+  it("renders 5 feature cards", () => {
     renderAbout();
 
     expect(screen.getByText("相談記録のデジタル化")).toBeInTheDocument();
     expect(screen.getByText("AIによる自動分析・要約")).toBeInTheDocument();
     expect(screen.getByText("支援メニューの自動提案")).toBeInTheDocument();
     expect(screen.getByText("音声からの自動文字起こし")).toBeInTheDocument();
+    expect(screen.getByText("CSVエクスポート")).toBeInTheDocument();
   });
 
   it("renders 5 security points", () => {

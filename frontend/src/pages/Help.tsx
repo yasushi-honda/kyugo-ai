@@ -8,7 +8,7 @@ interface HelpSection {
   id: string;
   title: string;
   description: string;
-  image: { src: string; alt: string };
+  image?: { src: string; alt: string };
   annotations: HelpAnnotation[];
   annotationType: "points" | "steps";
   note?: string;
@@ -444,6 +444,34 @@ const HELP_SECTIONS: HelpSection[] = [
     note: "自分自身のロール降格・無効化は安全のためできません。",
     noteImportant: true,
   },
+  {
+    id: "csv-export",
+    title: "CSVエクスポート",
+    description:
+      "ケース一覧や相談記録をCSV形式でダウンロードできます。Excelでの集計や報告書作成にご活用ください。",
+    annotationType: "steps",
+    annotations: [
+      {
+        icon: "1",
+        title: "ケース一覧のCSV出力",
+        description:
+          "ダッシュボードの「CSV出力」ボタンをクリックすると、表示中の全ケースがCSVファイルとしてダウンロードされます。",
+      },
+      {
+        icon: "2",
+        title: "相談記録のCSV出力",
+        description:
+          "ケース詳細画面の相談記録タブにある「CSV出力」ボタンで、そのケースの全相談記録をダウンロードできます。",
+      },
+      {
+        icon: "3",
+        title: "CSVファイルの利用",
+        description:
+          "ダウンロードしたCSVはExcelで直接開けます（UTF-8 BOM付き）。文字化けする場合はファイルのエンコーディングをUTF-8に設定してください。",
+      },
+    ],
+    note: "CSVには担当ケースのデータのみが含まれます。管理者は全ケースのデータを出力できます。",
+  },
 ];
 
 function PointAnnotation({ annotation }: { annotation: HelpAnnotation }) {
@@ -487,9 +515,11 @@ function HelpSectionView({
       <div className="help-section-number">{index + 1}</div>
       <h2>{section.title}</h2>
       <p>{section.description}</p>
-      <div className="help-screenshot">
-        <img src={section.image.src} alt={section.image.alt} loading="lazy" />
-      </div>
+      {section.image && (
+        <div className="help-screenshot">
+          <img src={section.image.src} alt={section.image.alt} loading="lazy" />
+        </div>
+      )}
       <div className={isPoints ? "help-points" : "help-steps"}>
         {section.annotations.map((a) =>
           isPoints ? (

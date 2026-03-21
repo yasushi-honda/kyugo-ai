@@ -33,6 +33,12 @@ const FEATURES: ContentItem[] = [
     description:
       "タブレットやスマートフォン、PCのマイクから直接録音、または録音ファイルのアップロードで、AIが自動で文字起こし。テキスト入力の手間を省き、相談者との対話に集中できます。",
   },
+  {
+    icon: "📊",
+    title: "CSVエクスポート",
+    description:
+      "ケース一覧や相談記録をCSV形式でダウンロード。Excelでの集計・報告書作成に活用でき、データの二次利用が容易になります。",
+  },
 ];
 
 const SECURITY_POINTS: ContentItem[] = [
@@ -198,7 +204,7 @@ export function About() {
           <div className="about-section-header">
             <span className="about-section-label">主な機能</span>
             <h2>救護AIでできること</h2>
-            <p>日々の福祉相談業務を4つの柱でサポートします。</p>
+            <p>日々の福祉相談業務を5つの柱でサポートします。</p>
           </div>
           <div className="about-features-grid">
             {FEATURES.map((f) => (
