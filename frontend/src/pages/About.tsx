@@ -87,7 +87,7 @@ const SCREENSHOTS: Screenshot[] = [
     description: "担当ケースの一覧とステータス統計をひと目で把握。直感的な操作で業務を開始できます。",
   },
   {
-    src: "/help/ai-analysis.png",
+    src: "/help/case-detail.png",
     alt: "AI分析結果画面",
     title: "AI分析・支援メニュー提案",
     description: "相談内容をAIが自動要約し、関連度スコア付きで活用可能な公的制度を提案します。",
