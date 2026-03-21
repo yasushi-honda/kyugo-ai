@@ -1,3 +1,4 @@
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 interface ContentItem {
@@ -140,12 +141,13 @@ function SecurityCard({ point }: { point: ContentItem }) {
   );
 }
 
-function ScreenshotCard({ item, index }: { item: Screenshot; index: number }) {
+function ScreenshotCard({ item, index, onOpen }: { item: Screenshot; index: number; onOpen: () => void }) {
   return (
     <div className="about-screenshot-card">
-      <div className="about-screenshot-image">
+      <button type="button" className="about-screenshot-image" onClick={onOpen} aria-label={`${item.title}の画像を拡大表示`}>
         <img src={item.src} alt={item.alt} loading={index === 0 ? "eager" : "lazy"} />
-      </div>
+        <div className="about-screenshot-zoom-hint" aria-hidden="true">クリックで拡大</div>
+      </button>
       <div className="about-screenshot-body">
         <h3>{item.title}</h3>
         <p>{item.description}</p>
@@ -154,12 +156,30 @@ function ScreenshotCard({ item, index }: { item: Screenshot; index: number }) {
   );
 }
 
+function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="lightbox-overlay" role="dialog" aria-modal="true" aria-label={alt} onClick={onClose}>
+      <button type="button" className="lightbox-close" onClick={onClose} aria-label="閉じる">✕</button>
+      <img src={src} alt={alt} className="lightbox-image" onClick={(e) => e.stopPropagation()} />
+    </div>
+  );
+}
+
 export function About() {
   const navigate = useNavigate();
   const goToLogin = () => navigate("/login");
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
+  const closeLightbox = useCallback(() => setLightboxImage(null), []);
 
   return (
     <div className="about-page">
+      {lightboxImage && <Lightbox src={lightboxImage.src} alt={lightboxImage.alt} onClose={closeLightbox} />}
       {/* ── Navigation Bar ── */}
       <nav className="about-nav">
         <div className="about-nav-inner">
@@ -224,7 +244,7 @@ export function About() {
           </div>
           <div className="about-screenshots-grid">
             {SCREENSHOTS.map((s, i) => (
-              <ScreenshotCard key={s.title} item={s} index={i} />
+              <ScreenshotCard key={s.title} item={s} index={i} onOpen={() => setLightboxImage({ src: s.src, alt: s.alt })} />
             ))}
           </div>
         </div>
