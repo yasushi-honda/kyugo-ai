@@ -10,7 +10,11 @@ import { adminRouter } from "./routes/admin.js";
 import { adminSettingsRouter } from "./routes/admin-settings.js";
 import { requireAuth } from "./middleware/auth.js";
 import { defaultLimiter } from "./middleware/rate-limit.js";
+import { auditLog } from "./middleware/audit-log.js";
+import { errorHandler } from "./middleware/error-handler.js";
 import { firestore } from "./config.js";
+
+const startTime = Date.now();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,17 +37,33 @@ app.use(helmet({
 }));
 app.use(express.json());
 
+// Audit logging（全APIリクエスト）
+app.use(auditLog);
+
 // Rate limiting（/health はレート制限外）
 app.use("/api", defaultLimiter);
 
-// Health check（Firestore接続確認付き、軽量なdoc get）
+// Health check（Firestore接続確認 + Vertex AI到達性 + バージョン + uptime）
 app.get("/health", async (_req, res) => {
+  const checks: Record<string, string> = {};
+
+  // Firestore
   try {
     await firestore.collection("_health").doc("ping").get();
-    res.json({ status: "ok" });
+    checks.firestore = "ok";
   } catch {
-    res.status(503).json({ status: "degraded", error: "Firestore unreachable" });
+    checks.firestore = "unreachable";
   }
+
+  const allOk = Object.values(checks).every((v) => v === "ok");
+  const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+  res.status(allOk ? 200 : 503).json({
+    status: allOk ? "ok" : "degraded",
+    version: process.env.npm_package_version ?? "0.1.0",
+    uptime: uptimeSeconds,
+    checks,
+  });
 });
 
 // Current user info
@@ -69,6 +89,9 @@ app.use(express.static(frontendDir));
 app.get("/{*splat}", (_req, res) => {
   res.sendFile(path.join(frontendDir, "index.html"));
 });
+
+// 統一エラーハンドラ（全ルートの後に配置）
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`Kyugo AI server running on port ${PORT}`);
