@@ -207,18 +207,21 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           <h3 id="consultation-title">新規相談記録</h3>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         <div className="modal-body">
           {error && <div className="form-error">{error}</div>}
 
           {/* Mode Toggle */}
           <div className="mode-toggle">
             <button
+              type="button"
               className={`btn ${mode === "text" ? "btn-primary" : "btn-secondary"}`}
               onClick={() => { setMode("text"); recorder.reset(); setAudioFile(null); setAudioSource("record"); }}
             >
               テキスト入力
             </button>
             <button
+              type="button"
               className={`btn ${mode === "audio" ? "btn-primary" : "btn-secondary"}`}
               onClick={() => setMode("audio")}
             >
@@ -392,10 +395,10 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
           )}
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>キャンセル</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>キャンセル</button>
           <button
+            type="submit"
             className="btn btn-primary"
-            onClick={handleSubmit}
             disabled={
               submitting ||
               (mode === "text" && !form.content) ||
@@ -412,6 +415,7 @@ export function NewConsultationModal({ caseId, onClose, onCreated }: Props) {
             )}
           </button>
         </div>
+        </form>
       </div>
     </div>
   );
