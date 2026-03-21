@@ -18,7 +18,7 @@ test.describe("ヘルプページ", () => {
     await expect(page.getByText("福祉相談業務支援システムの基本的な操作方法")).toBeVisible();
   });
 
-  test("全13セクションの見出しが表示される", async ({ page }) => {
+  test("全14セクションの見出しが表示される", async ({ page }) => {
     const expectedTitles = [
       "ダッシュボード（ケース一覧）",
       "新規ケースの作成",
@@ -33,24 +33,26 @@ test.describe("ヘルプページ", () => {
       "法令・制度の検索",
       "ログイン許可設定",
       "アカウント管理",
+      "CSVエクスポート",
     ];
     const headings = page.getByRole("heading", { level: 2 });
-    await expect(headings).toHaveCount(13);
+    await expect(headings).toHaveCount(14);
     for (const title of expectedTitles) {
       await expect(page.getByRole("heading", { level: 2, name: title })).toBeVisible();
     }
   });
 
-  test("目次に13のアンカーリンクが存在する", async ({ page }) => {
+  test("目次に14のアンカーリンクが存在する", async ({ page }) => {
     const toc = page.locator(".help-toc");
     await expect(toc).toBeVisible();
     const links = toc.locator("a");
-    await expect(links).toHaveCount(13);
+    await expect(links).toHaveCount(14);
     // 代表的なアンカーリンクを確認
     await expect(links.nth(0)).toHaveAttribute("href", "#dashboard");
     await expect(links.nth(6)).toHaveAttribute("href", "#ai-analysis");
     await expect(links.nth(7)).toHaveAttribute("href", "#edit-delete-consultation");
     await expect(links.nth(12)).toHaveAttribute("href", "#settings-accounts");
+    await expect(links.nth(13)).toHaveAttribute("href", "#csv-export");
   });
 
   test("全13枚のスクリーンショット画像が読み込まれる", async ({ page }) => {
