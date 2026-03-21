@@ -9,6 +9,7 @@
  */
 import { Timestamp } from "@google-cloud/firestore";
 import { firestore } from "../config.js";
+import type { SupportPlanGoal } from "../types.js";
 
 const staffId = process.argv[2];
 if (!staffId) {
@@ -71,7 +72,7 @@ const supportPlan1Data = {
       frequency: "月2回",
       responsible: "生活保護受給指導員",
     },
-  ],
+  ] satisfies SupportPlanGoal[],
   specialNotes: "独居高齢者のため、定期的な訪問による見守りも併せて実施する。",
   planStartDate: "2026-04-01",
   nextReviewDate: "2026-05-01",
