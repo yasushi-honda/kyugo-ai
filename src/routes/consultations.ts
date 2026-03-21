@@ -17,7 +17,7 @@ import {
 } from "../schemas/case.js";
 import { paramStr, validate } from "./utils.js";
 import type { Consultation } from "../types.js";
-import { toCsv, CsvColumn } from "../utils/csv.js";
+import { toCsv, CsvColumn, formatTimestamp } from "../utils/csv.js";
 
 // PATCH/DELETE 共通: 相談記録の存在確認＋作成者 OR admin 権限チェック
 async function requireConsultationOwnership(
@@ -175,15 +175,6 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
     }
   }
 });
-
-// Timestamp を文字列に変換（CSV用）
-function formatTimestamp(ts: unknown): string {
-  if (!ts) return "";
-  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
-    return (ts as Timestamp).toDate().toISOString();
-  }
-  return String(ts);
-}
 
 const CONSULTATION_TYPE_LABELS: Record<string, string> = {
   visit: "訪問", counter: "窓口", phone: "電話", online: "オンライン",

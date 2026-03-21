@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, buildStaffMap } from "../api";
+import { api, buildStaffMap, downloadCsv } from "../api";
 import type { Case } from "../api";
 import { NewCaseModal } from "../components/NewCaseModal";
 import { useAuth } from "../contexts/AuthContext";
@@ -75,15 +75,10 @@ export function Dashboard() {
               className="btn btn-outline btn-sm"
               onClick={async () => {
                 try {
-                  const res = await api.get("/api/cases/export/csv");
-                  const blob = new Blob([res.data], { type: "text/csv; charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `cases_${new Date().toISOString().slice(0, 10)}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch { /* ignore */ }
+                  await downloadCsv("/api/cases/export/csv", `cases_${new Date().toISOString().slice(0, 10)}.csv`);
+                } catch (err) {
+                  alert(`CSV出力に失敗しました: ${(err as Error).message}`);
+                }
               }}
               disabled={cases.length === 0}
             >

@@ -11,7 +11,7 @@ import { supportPlansRouter } from "./support-plans.js";
 import { monitoringRouter } from "./monitoring.js";
 import { legalSearchRouter } from "./legal-search.js";
 import { paramStr, validate } from "./utils.js";
-import { toCsv, CsvColumn } from "../utils/csv.js";
+import { toCsv, CsvColumn, formatTimestamp } from "../utils/csv.js";
 import { Case } from "../types.js";
 import { logger } from "../utils/logger.js";
 
@@ -29,18 +29,9 @@ casesRouter.use("/:id/monitoring", monitoringRouter);
 // 法令検索ルートを委譲
 casesRouter.use("/:id/legal-search", legalSearchRouter);
 
-// Timestamp を文字列に変換（CSV用）
-function formatTimestamp(ts: unknown): string {
-  if (!ts) return "";
-  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
-    return (ts as Timestamp).toDate().toISOString();
-  }
-  return String(ts);
-}
-
 const STATUS_LABELS: Record<string, string> = {
   active: "対応中",
-  referred: "紹介済",
+  referred: "照会中",
   closed: "終了",
 };
 

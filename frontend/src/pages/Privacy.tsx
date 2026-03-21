@@ -1,28 +1,12 @@
-import { useNavigate, Link } from "react-router-dom";
-
-const CURRENT_YEAR = new Date().getFullYear();
+import { PublicLayout } from "../components/PublicLayout";
 
 export function Privacy() {
-  const navigate = useNavigate();
-
   return (
-    <div className="about-page">
-      <nav className="about-nav">
-        <div className="about-nav-inner">
-          <div className="about-nav-brand" style={{ cursor: "pointer" }} onClick={() => navigate("/about")}>
-            <div className="about-nav-brand-icon">救</div>
-            <span>救護AI</span>
-          </div>
-          <button className="btn btn-primary about-nav-login" onClick={() => navigate("/login")}>
-            ログイン
-          </button>
-        </div>
-      </nav>
-
+    <PublicLayout>
       <section className="about-section" style={{ paddingTop: "6rem" }}>
         <div className="about-section-inner legal-content">
           <h1>プライバシーポリシー</h1>
-          <p className="legal-updated">最終更新日: {CURRENT_YEAR}年3月21日</p>
+          <p className="legal-updated">最終更新日: 2026年3月21日</p>
 
           <h2>1. 基本方針</h2>
           <p>
@@ -134,15 +118,6 @@ export function Privacy() {
           </p>
         </div>
       </section>
-
-      <footer className="about-footer">
-        <div className="legal-footer-links">
-          <Link to="/about">救護AIについて</Link>
-          <Link to="/terms">利用規約</Link>
-          <Link to="/privacy">プライバシーポリシー</Link>
-        </div>
-        <p>&copy; {CURRENT_YEAR} 救護AI — 福祉相談業務AI支援システム</p>
-      </footer>
-    </div>
+    </PublicLayout>
   );
 }

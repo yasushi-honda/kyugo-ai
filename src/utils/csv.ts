@@ -20,6 +20,15 @@ export interface CsvColumn<T> {
   value: (row: T) => unknown;
 }
 
+/** Firestore Timestamp を ISO文字列に変換（CSV出力用） */
+export function formatTimestamp(ts: unknown): string {
+  if (!ts) return "";
+  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
+    return (ts as { toDate: () => Date }).toDate().toISOString();
+  }
+  return String(ts);
+}
+
 export function toCsv<T>(columns: CsvColumn<T>[], rows: T[]): string {
   const headerLine = columns.map((c) => escapeCell(c.header)).join(",");
   const dataLines = rows.map((row) =>
