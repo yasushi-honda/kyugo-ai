@@ -12,6 +12,10 @@ vi.mock("./config.js", () => ({
       }),
     }),
     doc: vi.fn(),
+    runTransaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = { get: vi.fn(), update: vi.fn(), set: vi.fn(), delete: vi.fn() };
+      return fn(tx);
+    }) as never,
   },
   generativeModel: {
     generateContent: vi.fn(),
@@ -1510,12 +1514,18 @@ describe("PATCH /api/admin-settings/staff/:id", () => {
   });
 
   it("returns 404 for nonexistent staff", async () => {
+    const mockDocRef = { id: "nonexistent" };
     vi.mocked(firestore.collection).mockReturnValue({
-      doc: vi.fn().mockReturnValue({
-        get: vi.fn().mockResolvedValue({ exists: false }),
-        update: mockUpdate,
-      }),
+      doc: vi.fn().mockReturnValue(mockDocRef),
     } as never);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firestore.runTransaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        get: vi.fn().mockResolvedValue({ exists: false }),
+        update: vi.fn(),
+      };
+      return fn(tx);
+    });
 
     const res = await request(adminApp).patch("/api/admin-settings/staff/nonexistent").send({ role: "admin" });
     expect(res.status).toBe(404);
@@ -1553,36 +1563,86 @@ describe("PATCH /api/admin-settings/staff/:id", () => {
     const staffData = { name: "唯一の管理者", role: "admin", email: "other@test.com" };
     const adminQueryDocs = [{ id: "other-admin", data: () => ({ role: "admin", disabled: false }) }];
 
-    const mockWhereChain = {
+    const mockDocRef = { id: "other-admin" };
+    const mockQuery = { docs: adminQueryDocs };
+
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockDocRef),
       where: vi.fn().mockReturnValue({
-        limit: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ docs: adminQueryDocs }),
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockReturnValue("admin-query"),
         }),
       }),
-    };
-    vi.mocked(firestore.collection).mockReturnValue({
-      doc: vi.fn().mockReturnValue({
-        get: vi.fn().mockResolvedValue({ exists: true, id: "other-admin", data: () => staffData }),
-        update: mockUpdate,
-      }),
-      where: vi.fn().mockReturnValue(mockWhereChain),
     } as never);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firestore.runTransaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        get: vi.fn()
+          .mockImplementation((ref: unknown) => {
+            if (ref === "admin-query") return Promise.resolve(mockQuery);
+            return Promise.resolve({ exists: true, id: "other-admin", data: () => staffData });
+          }),
+        update: vi.fn(),
+      };
+      return fn(tx);
+    });
 
     const res = await request(adminApp).patch("/api/admin-settings/staff/other-admin").send({ role: "staff" });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("Cannot demote the last admin");
   });
 
+  it("prevents disabling the last admin", async () => {
+    const staffData = { name: "唯一の管理者", role: "admin", email: "other@test.com", disabled: false };
+    const adminQueryDocs = [{ id: "other-admin", data: () => ({ role: "admin", disabled: false }) }];
+
+    const mockDocRef = { id: "other-admin" };
+    const mockQuery = { docs: adminQueryDocs };
+
+    vi.mocked(firestore.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockReturnValue("admin-query"),
+        }),
+      }),
+    } as never);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firestore.runTransaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        get: vi.fn()
+          .mockImplementation((ref: unknown) => {
+            if (ref === "admin-query") return Promise.resolve(mockQuery);
+            return Promise.resolve({ exists: true, id: "other-admin", data: () => staffData });
+          }),
+        update: vi.fn(),
+      };
+      return fn(tx);
+    });
+
+    const res = await request(adminApp).patch("/api/admin-settings/staff/other-admin").send({ disabled: true });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Cannot disable the last admin");
+  });
+
   it("successfully updates role", async () => {
     const staffData = { name: "職員A", email: "a@test.com", role: "staff", disabled: false, createdAt: new Date() };
-    const updatedData = { ...staffData, role: "admin" };
-    const mockGet = vi.fn()
-      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => staffData })
-      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => updatedData });
-    const mockRef = { get: mockGet, update: mockUpdate };
+    const mockDocRef = { id: "s1" };
     vi.mocked(firestore.collection).mockReturnValue({
-      doc: vi.fn().mockReturnValue(mockRef),
+      doc: vi.fn().mockReturnValue(mockDocRef),
     } as never);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firestore.runTransaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const txUpdate = vi.fn();
+      const tx = {
+        get: vi.fn().mockResolvedValue({ exists: true, id: "s1", data: () => staffData }),
+        update: txUpdate,
+      };
+      const result = await fn(tx);
+      mockUpdate.mockReturnValue(undefined);
+      mockUpdate(txUpdate.mock.calls[0]?.[1]);
+      return result;
+    });
 
     const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ role: "admin" });
     expect(res.status).toBe(200);
@@ -1592,14 +1652,22 @@ describe("PATCH /api/admin-settings/staff/:id", () => {
 
   it("successfully toggles disabled", async () => {
     const staffData = { name: "職員A", email: "a@test.com", role: "staff", disabled: false, createdAt: new Date() };
-    const updatedData = { ...staffData, disabled: true };
-    const mockGet = vi.fn()
-      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => staffData })
-      .mockResolvedValueOnce({ exists: true, id: "s1", data: () => updatedData });
-    const mockRef = { get: mockGet, update: mockUpdate };
+    const mockDocRef = { id: "s1" };
     vi.mocked(firestore.collection).mockReturnValue({
-      doc: vi.fn().mockReturnValue(mockRef),
+      doc: vi.fn().mockReturnValue(mockDocRef),
     } as never);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firestore.runTransaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const txUpdate = vi.fn();
+      const tx = {
+        get: vi.fn().mockResolvedValue({ exists: true, id: "s1", data: () => staffData }),
+        update: txUpdate,
+      };
+      const result = await fn(tx);
+      mockUpdate.mockReturnValue(undefined);
+      mockUpdate(txUpdate.mock.calls[0]?.[1]);
+      return result;
+    });
 
     const res = await request(adminApp).patch("/api/admin-settings/staff/s1").send({ disabled: true });
     expect(res.status).toBe(200);

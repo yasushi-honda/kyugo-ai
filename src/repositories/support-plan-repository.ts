@@ -44,20 +44,25 @@ export async function updateSupportPlan(
   planId: string,
   data: Partial<Pick<SupportPlan, "overallPolicy" | "goals" | "specialNotes" | "planStartDate" | "nextReviewDate" | "status">>,
 ): Promise<SupportPlan> {
-  const current = await getSupportPlan(caseId, planId);
-  if (!current) throw new Error(`SupportPlan ${planId} not found`);
-  if (current.status === "confirmed") {
-    throw new Error("Cannot edit a confirmed support plan");
-  }
+  const docRef = supportPlansRef(caseId).doc(planId);
 
-  const now = Timestamp.now();
-  const update: Record<string, unknown> = { ...data, updatedAt: now };
+  return firestore.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
+    if (!doc.exists) throw new Error(`SupportPlan ${planId} not found`);
 
-  // 確定時にconfirmedAtを設定
-  if (data.status === "confirmed") {
-    update.confirmedAt = now;
-  }
+    const current = { id: doc.id, caseId, ...doc.data() } as SupportPlan;
+    if (current.status === "confirmed") {
+      throw new Error("Cannot edit a confirmed support plan");
+    }
 
-  await supportPlansRef(caseId).doc(planId).update(update);
-  return { ...current, ...update, updatedAt: now } as SupportPlan;
+    const now = Timestamp.now();
+    const update: Record<string, unknown> = { ...data, updatedAt: now };
+
+    if (data.status === "confirmed") {
+      update.confirmedAt = now;
+    }
+
+    tx.update(docRef, update);
+    return { ...current, ...update, updatedAt: now } as SupportPlan;
+  });
 }

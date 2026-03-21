@@ -45,15 +45,20 @@ export async function listAllCases(status?: CaseStatus): Promise<Case[]> {
 }
 
 export async function updateCaseStatus(id: string, newStatus: CaseStatus): Promise<Case> {
-  const current = await getCase(id);
-  if (!current) throw new Error(`Case ${id} not found`);
+  const docRef = casesRef().doc(id);
 
-  const allowed = VALID_STATUS_TRANSITIONS[current.status];
-  if (!allowed.includes(newStatus)) {
-    throw new Error(`Invalid status transition: ${current.status} → ${newStatus}`);
-  }
+  return firestore.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
+    if (!doc.exists) throw new Error(`Case ${id} not found`);
 
-  const now = Timestamp.now();
-  await casesRef().doc(id).update({ status: newStatus, updatedAt: now });
-  return { ...current, status: newStatus, updatedAt: now };
+    const current = { id: doc.id, ...doc.data() } as Case;
+    const allowed = VALID_STATUS_TRANSITIONS[current.status];
+    if (!allowed.includes(newStatus)) {
+      throw new Error(`Invalid status transition: ${current.status} → ${newStatus}`);
+    }
+
+    const now = Timestamp.now();
+    tx.update(docRef, { status: newStatus, updatedAt: now });
+    return { ...current, status: newStatus, updatedAt: now };
+  });
 }

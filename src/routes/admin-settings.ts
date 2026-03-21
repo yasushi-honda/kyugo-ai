@@ -53,59 +53,77 @@ adminSettingsRouter.patch("/staff/:id", async (req: Request, res: Response) => {
 
   try {
     const staffRef = firestore.collection("staff").doc(id);
-    const staffDoc = await staffRef.get();
-    if (!staffDoc.exists) {
-      res.status(404).json({ error: "Staff not found" });
-      return;
-    }
 
-    // admin自身のロール降格防止
+    // admin自身のロール降格・無効化防止（トランザクション外で早期リターン）
     if (role === "staff" && id === req.user!.staffId) {
       res.status(400).json({ error: "Cannot demote yourself" });
       return;
     }
-
-    // admin自身の無効化防止
     if (disabled === true && id === req.user!.staffId) {
       res.status(400).json({ error: "Cannot disable yourself" });
       return;
     }
 
-    // 最後のadmin降格防止
-    if (role === "staff") {
+    const result = await firestore.runTransaction(async (tx) => {
+      const staffDoc = await tx.get(staffRef);
+      if (!staffDoc.exists) {
+        return { error: "Staff not found", status: 404 } as const;
+      }
+
       const currentData = staffDoc.data()!;
-      if (currentData.role === "admin") {
-        const adminSnapshot = await firestore.collection("staff")
-          .where("role", "==", "admin")
-          .where("disabled", "==", false)
-          .limit(2)
-          .get();
-        const activeAdmins = adminSnapshot.docs.filter(
-          (d) => d.id !== id,
+
+      // 最後のadmin降格防止（トランザクション内で整合性保証）
+      if (role === "staff" && currentData.role === "admin") {
+        const adminSnapshot = await tx.get(
+          firestore.collection("staff")
+            .where("role", "==", "admin")
+            .where("disabled", "==", false)
+            .limit(2),
         );
+        const activeAdmins = adminSnapshot.docs.filter((d) => d.id !== id);
         if (activeAdmins.length === 0) {
-          res.status(400).json({ error: "Cannot demote the last admin" });
-          return;
+          return { error: "Cannot demote the last admin", status: 400 } as const;
         }
       }
-    }
 
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    if (role !== undefined) updateData.role = role;
-    if (disabled !== undefined) updateData.disabled = disabled;
+      // 最後のadmin無効化防止
+      if (disabled === true && currentData.role === "admin") {
+        const adminSnapshot = await tx.get(
+          firestore.collection("staff")
+            .where("role", "==", "admin")
+            .where("disabled", "==", false)
+            .limit(2),
+        );
+        const activeAdmins = adminSnapshot.docs.filter((d) => d.id !== id);
+        if (activeAdmins.length === 0) {
+          return { error: "Cannot disable the last admin", status: 400 } as const;
+        }
+      }
 
-    await staffRef.update(updateData);
+      const updateData: Record<string, unknown> = { updatedAt: new Date() };
+      if (role !== undefined) updateData.role = role;
+      if (disabled !== undefined) updateData.disabled = disabled;
 
-    const existingData = staffDoc.data()!;
-    const merged = { ...existingData, ...updateData };
-    res.json({
-      id,
-      name: (merged.name as string) ?? "",
-      email: (merged.email as string) ?? "",
-      role: (merged.role as string) ?? "staff",
-      disabled: (merged.disabled as boolean) ?? false,
-      createdAt: merged.createdAt ?? null,
+      tx.update(staffRef, updateData);
+
+      const merged = { ...currentData, ...updateData };
+      return {
+        data: {
+          id,
+          name: (merged.name as string) ?? "",
+          email: (merged.email as string) ?? "",
+          role: (merged.role as string) ?? "staff",
+          disabled: (merged.disabled as boolean) ?? false,
+          createdAt: merged.createdAt ?? null,
+        },
+      } as const;
     });
+
+    if ("error" in result) {
+      res.status(result.status as number).json({ error: result.error });
+      return;
+    }
+    res.json(result.data);
   } catch (err) {
     logger.error("Staff update failed", { error: (err as Error).message });
     res.status(500).json({ error: "Internal server error" });
