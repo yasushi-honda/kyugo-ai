@@ -72,8 +72,9 @@ adminSettingsRouter.patch("/staff/:id", async (req: Request, res: Response) => {
 
       const currentData = staffDoc.data()!;
 
-      // 最後のadmin降格防止（トランザクション内で整合性保証）
-      if (role === "staff" && currentData.role === "admin") {
+      // 最後のadmin降格/無効化防止（クエリは1回のみ実行）
+      const needsAdminCheck = currentData.role === "admin" && (role === "staff" || disabled === true);
+      if (needsAdminCheck) {
         const adminSnapshot = await tx.get(
           firestore.collection("staff")
             .where("role", "==", "admin")
@@ -82,21 +83,8 @@ adminSettingsRouter.patch("/staff/:id", async (req: Request, res: Response) => {
         );
         const activeAdmins = adminSnapshot.docs.filter((d) => d.id !== id);
         if (activeAdmins.length === 0) {
-          return { error: "Cannot demote the last admin", status: 400 } as const;
-        }
-      }
-
-      // 最後のadmin無効化防止
-      if (disabled === true && currentData.role === "admin") {
-        const adminSnapshot = await tx.get(
-          firestore.collection("staff")
-            .where("role", "==", "admin")
-            .where("disabled", "==", false)
-            .limit(2),
-        );
-        const activeAdmins = adminSnapshot.docs.filter((d) => d.id !== id);
-        if (activeAdmins.length === 0) {
-          return { error: "Cannot disable the last admin", status: 400 } as const;
+          const action = role === "staff" ? "demote" : "disable";
+          return { error: `Cannot ${action} the last admin`, status: 400 } as const;
         }
       }
 
