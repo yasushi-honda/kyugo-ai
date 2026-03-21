@@ -70,9 +70,29 @@ export function Dashboard() {
 
         <div className="section-header">
           <h3>全ケース</h3>
-          <button className="btn btn-accent" onClick={() => setShowNewCase(true)}>
-            ＋ 新規ケース
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={async () => {
+                try {
+                  const res = await api.get("/api/cases/export/csv");
+                  const blob = new Blob([res.data], { type: "text/csv; charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `cases_${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch { /* ignore */ }
+              }}
+              disabled={cases.length === 0}
+            >
+              CSV出力
+            </button>
+            <button className="btn btn-accent" onClick={() => setShowNewCase(true)}>
+              ＋ 新規ケース
+            </button>
+          </div>
         </div>
 
         {loading ? (

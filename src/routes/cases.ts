@@ -11,6 +11,9 @@ import { supportPlansRouter } from "./support-plans.js";
 import { monitoringRouter } from "./monitoring.js";
 import { legalSearchRouter } from "./legal-search.js";
 import { paramStr, validate } from "./utils.js";
+import { toCsv, CsvColumn } from "../utils/csv.js";
+import { Case } from "../types.js";
+import { logger } from "../utils/logger.js";
 
 export const casesRouter = Router();
 
@@ -25,6 +28,52 @@ casesRouter.use("/:id/monitoring", monitoringRouter);
 
 // 法令検索ルートを委譲
 casesRouter.use("/:id/legal-search", legalSearchRouter);
+
+// Timestamp を文字列に変換（CSV用）
+function formatTimestamp(ts: unknown): string {
+  if (!ts) return "";
+  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
+    return (ts as Timestamp).toDate().toISOString();
+  }
+  return String(ts);
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "対応中",
+  referred: "紹介済",
+  closed: "終了",
+};
+
+const CASE_CSV_COLUMNS: CsvColumn<Case>[] = [
+  { header: "ケースID", value: (c) => c.id },
+  { header: "相談者名", value: (c) => c.clientName },
+  { header: "相談者ID", value: (c) => c.clientId },
+  { header: "生年月日", value: (c) => formatTimestamp(c.dateOfBirth) },
+  { header: "ステータス", value: (c) => STATUS_LABELS[c.status] ?? c.status },
+  { header: "担当職員ID", value: (c) => c.assignedStaffId },
+  { header: "作成日時", value: (c) => formatTimestamp(c.createdAt) },
+  { header: "更新日時", value: (c) => formatTimestamp(c.updatedAt) },
+];
+
+// GET /api/cases/export/csv - ケース一覧CSVエクスポート
+casesRouter.get("/export/csv", async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    const cases = user.role === "admin"
+      ? await caseRepo.listAllCases()
+      : await caseRepo.listCasesByStaff(user.staffId);
+
+    const csv = toCsv(CASE_CSV_COLUMNS, cases);
+    const filename = `cases_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) {
+    logger.error("CSV export failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // POST /api/cases - ケース作成（assignedStaffIdはreq.userから強制）
 casesRouter.post("/", async (req: Request, res: Response) => {

@@ -17,6 +17,7 @@ import {
 } from "../schemas/case.js";
 import { paramStr, validate } from "./utils.js";
 import type { Consultation } from "../types.js";
+import { toCsv, CsvColumn } from "../utils/csv.js";
 
 // PATCH/DELETE 共通: 相談記録の存在確認＋作成者 OR admin 権限チェック
 async function requireConsultationOwnership(
@@ -172,6 +173,48 @@ consultationsRouter.post("/audio", requireCaseAccess, aiLimiter, upload.single("
       logger.error("Audio consultation creation failed", { error: message });
       res.status(500).json({ error: "Internal server error" });
     }
+  }
+});
+
+// Timestamp を文字列に変換（CSV用）
+function formatTimestamp(ts: unknown): string {
+  if (!ts) return "";
+  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
+    return (ts as Timestamp).toDate().toISOString();
+  }
+  return String(ts);
+}
+
+const CONSULTATION_TYPE_LABELS: Record<string, string> = {
+  visit: "訪問", counter: "窓口", phone: "電話", online: "オンライン",
+};
+
+const CONSULTATION_CSV_COLUMNS: CsvColumn<Consultation>[] = [
+  { header: "相談ID", value: (c) => c.id },
+  { header: "ケースID", value: (c) => c.caseId },
+  { header: "担当職員ID", value: (c) => c.staffId },
+  { header: "相談種別", value: (c) => CONSULTATION_TYPE_LABELS[c.consultationType] ?? c.consultationType },
+  { header: "相談内容", value: (c) => c.content },
+  { header: "AI要約", value: (c) => c.summary },
+  { header: "AI状態", value: (c) => c.aiStatus },
+  { header: "作成日時", value: (c) => formatTimestamp(c.createdAt) },
+];
+
+// GET /api/cases/:id/consultations/export/csv - 相談記録CSVエクスポート
+consultationsRouter.get("/export/csv", requireCaseAccess, async (req: Request, res: Response) => {
+  try {
+    const caseId = paramStr(req.params.id);
+    const consultations = await consultationRepo.listConsultations(caseId);
+
+    const csv = toCsv(CONSULTATION_CSV_COLUMNS, consultations);
+    const filename = `consultations_${caseId}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) {
+    logger.error("Consultation CSV export failed", { error: (err as Error).message });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

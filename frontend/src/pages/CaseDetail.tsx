@@ -192,9 +192,29 @@ export function CaseDetail() {
             <>
             <div className="section-header">
               <h3>相談記録</h3>
-              <button className="btn btn-accent" onClick={() => setShowNewConsultation(true)}>
-                ＋ 新規相談記録
-              </button>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={async () => {
+                    try {
+                      const res = await api.get(`/api/cases/${id}/consultations/export/csv`);
+                      const blob = new Blob([res.data], { type: "text/csv; charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `consultations_${id}_${new Date().toISOString().slice(0, 10)}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch { /* ignore */ }
+                  }}
+                  disabled={consultations.length === 0}
+                >
+                  CSV出力
+                </button>
+                <button className="btn btn-accent" onClick={() => setShowNewConsultation(true)}>
+                  ＋ 新規相談記録
+                </button>
+              </div>
             </div>
 
             {consultations.length === 0 ? (
