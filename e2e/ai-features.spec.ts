@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mockApiRoutes, signInTestUser } from "./helpers";
+import { mockApiRoutes, signInTestUser, MOCK_SUPPORT_PLAN, MOCK_MONITORING_SHEET } from "./helpers";
 
 test.describe("支援計画書フロー", () => {
   test.beforeEach(async ({ page }) => {
@@ -60,6 +60,68 @@ test.describe("モニタリングシートフロー", () => {
       page.on("dialog", (dialog) => dialog.accept());
       await confirmBtn.click();
     }
+  });
+});
+
+test.describe("P0回帰: goals/goalEvaluations欠損でクラッシュしない", () => {
+  test("支援計画書タブ: goalsが未定義でもクラッシュしない", async ({ page }) => {
+    await mockApiRoutes(page);
+    // goalsを除外した支援計画書データで上書き
+    const { goals: _g, ...planWithoutGoals } = MOCK_SUPPORT_PLAN;
+    void _g;
+    await page.route(/\/api\/cases\/[^/]+\/support-plan$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(planWithoutGoals),
+      });
+    });
+    await page.goto("/");
+    await signInTestUser(page);
+    await expect(page.getByText("テスト太郎")).toBeVisible({ timeout: 15000 });
+    await page.locator(".case-card").first().click();
+    await page.getByRole("button", { name: /支援計画書/ }).click();
+    // クラッシュせず計画書が表示される（ErrorBoundaryが出ない）
+    await expect(page.getByText(/個別支援計画書/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/予期しないエラー/)).not.toBeVisible();
+  });
+
+  test("支援計画書タブ: goalsが空配列でもクラッシュしない", async ({ page }) => {
+    await mockApiRoutes(page);
+    await page.route(/\/api\/cases\/[^/]+\/support-plan$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...MOCK_SUPPORT_PLAN, goals: [] }),
+      });
+    });
+    await page.goto("/");
+    await signInTestUser(page);
+    await expect(page.getByText("テスト太郎")).toBeVisible({ timeout: 15000 });
+    await page.locator(".case-card").first().click();
+    await page.getByRole("button", { name: /支援計画書/ }).click();
+    await expect(page.getByText(/個別支援計画書/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/予期しないエラー/)).not.toBeVisible();
+  });
+
+  test("モニタリングタブ: goalEvaluationsが未定義でもクラッシュしない", async ({ page }) => {
+    await mockApiRoutes(page);
+    const { goalEvaluations: _ge, ...sheetWithoutEvals } = MOCK_MONITORING_SHEET;
+    void _ge;
+    await page.route(/\/api\/cases\/[^/]+\/monitoring$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(sheetWithoutEvals),
+      });
+    });
+    await page.goto("/");
+    await signInTestUser(page);
+    await expect(page.getByText("テスト太郎")).toBeVisible({ timeout: 15000 });
+    await page.locator(".case-card").first().click();
+    await page.getByRole("button", { name: /モニタリング/ }).click();
+    await expect(page.getByText(/モニタリングシート/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/予期しないエラー/)).not.toBeVisible();
   });
 });
 
