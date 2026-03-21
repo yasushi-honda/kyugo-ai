@@ -125,13 +125,13 @@ test.describe("ヘルプ用スクリーンショット生成", () => {
   test("7. AI分析結果", async ({ page }) => {
     await page.getByText("山田 花子").click();
     await page.locator(".consultation-timeline").waitFor({ timeout: 10000 });
-    // AI分析結果パネルが表示されるまで待つ
-    await page.locator(".ai-panel").waitFor({ timeout: 10000 });
+    // AI分析結果パネルが表示されるまで待つ（複数相談記録があるため .first() を使用）
+    const aiPanel = page.locator(".ai-panel").first();
+    await aiPanel.waitFor({ timeout: 10000 });
     // AI分析結果セクションまでスクロール
-    await page.locator(".ai-panel").scrollIntoViewIfNeeded();
+    await aiPanel.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     // AI分析結果部分のみをキャプチャ（要約+支援メニュー提案）
-    const aiPanel = page.locator(".ai-panel").first();
     // パネルの周囲コンテキストも含めてスクリーンショット
     // まずAIパネルの位置を取得して、その領域をページスクリーンショットでクリップ
     const box = await aiPanel.boundingBox();
