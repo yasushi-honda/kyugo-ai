@@ -69,7 +69,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
     if (!sheet) return;
     setEditData({
       overallEvaluation: sheet.overallEvaluation,
-      goalEvaluations: sheet.goalEvaluations.map((g) => ({ ...g })),
+      goalEvaluations: (sheet.goalEvaluations ?? []).map((g) => ({ ...g })),
       environmentChanges: sheet.environmentChanges,
       clientFeedback: sheet.clientFeedback,
       specialNotes: sheet.specialNotes,
@@ -193,7 +193,7 @@ export function MonitoringSheetView({ caseId, sheet, hasSupportPlan, onUpdate }:
 
       <div className="support-plan-section">
         <h4>目標別進捗評価</h4>
-        {(editData ? editData.goalEvaluations : sheet.goalEvaluations).map((goal, i) => (
+        {(editData ? editData.goalEvaluations : sheet.goalEvaluations ?? []).map((goal, i) => (
           <div key={i} className="support-plan-goal">
             <div className="goal-area-badge">{goal.area}</div>
             <div className="monitoring-progress-row">

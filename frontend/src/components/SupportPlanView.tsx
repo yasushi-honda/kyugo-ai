@@ -52,7 +52,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
     if (!plan) return;
     setEditData({
       overallPolicy: plan.overallPolicy,
-      goals: plan.goals.map((g) => ({ ...g, supports: [...g.supports] })),
+      goals: (plan.goals ?? []).map((g) => ({ ...g, supports: [...(g.supports ?? [])] })),
       specialNotes: plan.specialNotes,
       planStartDate: plan.planStartDate,
       nextReviewDate: plan.nextReviewDate,
@@ -171,7 +171,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
 
       <div className="support-plan-section">
         <h4>支援目標・内容</h4>
-        {(editData ? editData.goals : plan.goals).map((goal, i) => (
+        {(editData ? editData.goals : plan.goals ?? []).map((goal, i) => (
           <div key={i} className="support-plan-goal">
             <div className="goal-area-badge">{goal.area}</div>
             <div className="goal-grid">
@@ -205,7 +205,7 @@ export function SupportPlanView({ caseId, plan, onUpdate }: SupportPlanViewProps
             <div className="goal-supports">
               <div className="goal-label">具体的な支援内容</div>
               <ul>
-                {goal.supports.map((s, j) => (
+                {(goal.supports ?? []).map((s, j) => (
                   <li key={j}>
                     {editData ? (
                       <input
